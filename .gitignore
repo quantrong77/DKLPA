@@ -8,6 +8,10 @@ coverage/
 # bí mật — không commit
 .env
 .env.*
+!.env.example
 
 # file khóa của Word/Excel đang mở
 ~$*
+
+# ứng dụng độc lập (standalone/): bản build và biến môi trường
+standalone/dist/

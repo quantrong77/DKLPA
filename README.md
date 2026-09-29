@@ -116,6 +116,24 @@ Mẫu Giấy xác nhận: thay `templates/template_gxn.source.docx`, chạy `pyt
 `node scripts/render-confirmation-sample.js`. Script bỏ các dòng trống dưới tên người ký (mẫu gốc tràn sang trang 2)
 và nới ô chữ ký để dòng "địa danh, ngày … tháng … năm …" nằm trên một dòng.
 
+## Chạy độc lập trên Supabase + Render (`standalone/`)
+
+Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Supabase, server Express chạy trên Render (gói miễn phí).
+
+- Người mới **tự đăng ký**, nhưng chưa thuộc tổ nào nên chưa xem được gì; admin vào **Quản trị** để tạo tổ (tên + viết tắt dùng trong số giấy), xếp người vào tổ và cấp **Trưởng/phó tổ** (được lập, sửa hồ sơ và danh mục).
+- Email trong `ADMIN_EMAILS` tự là admin.
+- Mỗi người tự sửa hồ sơ (họ tên, chức danh, điện thoại) — dùng cho mục "người đại diện" trên giấy.
+
+**1. Supabase** (supabase.com): New project, region Singapore.
+- *Authentication → Sign In / Providers → Email*: **tắt "Confirm email"** (email xác nhận miễn phí của Supabase chỉ gửi được cho thành viên dự án). Quên mật khẩu: admin đặt lại ở *Authentication → Users*.
+- Lấy: Project URL, khóa **anon public** (*Project Settings → API Keys*), chuỗi kết nối **Transaction pooler** (nút *Connect*, cổng 6543).
+
+**2. Render** (render.com): *New → Blueprint* → repo DKLPA (đọc `render.yaml`), điền `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS`. Bảng `dkct_*` được tạo khi server khởi động.
+
+Gói miễn phí: Render ngủ sau 15 phút không dùng (lần mở đầu chờ ~1 phút); Supabase tạm dừng dự án sau 7 ngày không có truy cập (bấm *Restore* trên trang Supabase).
+
+Chạy ở máy: chép `standalone/.env.example` thành `standalone/.env`, rồi `npm ci && cd standalone && npm ci && npm run build && npm start` (http://localhost:3000). Test: `npm test` trong `standalone/`; toàn bộ test module trên Postgres: `npm run test:pg`.
+
 ## Phát triển
 
 ```bash

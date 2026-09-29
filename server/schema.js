@@ -1,12 +1,13 @@
 /**
- * Bảng của module ĐKCT (tiền tố dkct_), dùng chung một định nghĩa cho MySQL và SQLite
- * như cơ chế hai CSDL của ChatLan. migrate() chạy được nhiều lần (IF NOT EXISTS),
+ * Bảng của module ĐKCT (tiền tố dkct_), dùng chung một định nghĩa cho MySQL, SQLite
+ * (cơ chế hai CSDL của ChatLan) và Postgres (bản chạy độc lập trên Supabase, db.dialect = 'postgres'). migrate() chạy được nhiều lần (IF NOT EXISTS),
  * rồi nạp dữ liệu danh mục ban đầu khi bảng còn trống.
  */
 const crypto = require('node:crypto');
 
 const TYPES = {
   mysql: { id: 'VARCHAR(64)', short: 'VARCHAR(191)', str: 'VARCHAR(255)', text: 'TEXT', long: 'MEDIUMTEXT', int: 'INT', time: 'VARCHAR(16)', blob: 'LONGBLOB', now: 'DATETIME DEFAULT CURRENT_TIMESTAMP' },
+  postgres: { id: 'VARCHAR(64)', short: 'VARCHAR(191)', str: 'VARCHAR(255)', text: 'TEXT', long: 'TEXT', int: 'INTEGER', time: 'VARCHAR(16)', blob: 'BYTEA', now: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' },
   sqlite: { id: 'TEXT', short: 'TEXT', str: 'TEXT', text: 'TEXT', long: 'TEXT', int: 'INTEGER', time: 'TEXT', blob: 'BLOB', now: 'DATETIME DEFAULT CURRENT_TIMESTAMP' }
 };
 
@@ -226,6 +227,11 @@ const ADDED_COLUMNS = (t) => [
 
 async function addColumn(db, [table, column, type, fk]) {
   const exists = /duplicate column/i;
+  if (db.dialect === 'postgres') {
+    const ref = fk ? ` REFERENCES ${fk.ref} ${fk.rule}` : '';
+    await db.execute(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${type}${ref}`);
+    return;
+  }
   if (!db.isMySQL) {
     // SQLite: ADD COLUMN ... REFERENCES được phép khi cột mặc định NULL
     const ref = fk ? ` REFERENCES ${fk.ref} ${fk.rule}` : '';
@@ -312,6 +318,7 @@ function drawingSortOrder(label) {
 /** Bảng cũ dkct_substation_drawings (một bản vẽ mỗi trạm) -> dkct_drawings, tên "Sơ đồ trạm"; xong thì xóa bảng cũ. */
 async function migrateOldDrawings(db) {
   let rows;
+  if (db.dialect === 'postgres') return; // bản Postgres cài mới, không có bảng cũ
   try { rows = await db.query('SELECT * FROM dkct_substation_drawings'); } catch { return; } // không có bảng cũ
   for (const r of rows) {
     if (await db.queryOne('SELECT id FROM dkct_drawings WHERE substationId = ? AND label = ?', [r.substationId, DEFAULT_DRAWING_LABEL])) continue;
@@ -323,8 +330,11 @@ async function migrateOldDrawings(db) {
   await db.execute('DROP TABLE dkct_substation_drawings');
 }
 
+/** Mọi định nghĩa cột (để bản Postgres trả lại tên cột camelCase, xem pgDb.js). */
+const COLUMN_TEXT = Object.values(tables(TYPES.sqlite)).join(',');
+
 async function migrate(db) {
-  const dialect = db.isMySQL ? 'mysql' : 'sqlite';
+  const dialect = db.dialect === 'postgres' ? 'postgres' : db.isMySQL ? 'mysql' : 'sqlite';
   const suffix = db.isMySQL ? ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci' : '';
   for (const [name, columns] of Object.entries(tables(TYPES[dialect]))) {
     await db.execute(`CREATE TABLE IF NOT EXISTS ${name} (${columns}\n)${suffix}`);
@@ -341,4 +351,4 @@ async function migrate(db) {
   await importSubstations(db);
 }
 
-module.exports = { migrate, newId, sameUnitName, drawingSortOrder, DEFAULT_DRAWING_LABEL };
+module.exports = { migrate, COLUMN_TEXT, newId, sameUnitName, drawingSortOrder, DEFAULT_DRAWING_LABEL };

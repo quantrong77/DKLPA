@@ -1,0 +1,22 @@
+# Render Blueprint: ứng dụng Đăng ký công tác chạy độc lập (Supabase Postgres + Auth).
+# Render → New → Blueprint → chọn repo DKLPA; điền 4 biến môi trường khi được hỏi.
+services:
+  - type: web
+    name: dkct
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci --omit=dev && npm ci --include=dev --prefix standalone && npm run build --prefix standalone
+    startCommand: node standalone/server/index.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false

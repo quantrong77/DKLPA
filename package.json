@@ -5,7 +5,8 @@
   "description": "Module Đăng ký công tác (ĐKCT) gắn vào ChatLan: lịch cắt điện, giấy ĐKCT có cấu trúc, xuất DOCX theo mẫu",
   "main": "server/index.js",
   "scripts": {
-    "test": "node --test --experimental-test-coverage --test-coverage-include=server/** --test-coverage-include=client/lib/** \"tests/**/*.test.js\""
+    "test": "node --test --experimental-test-coverage --test-coverage-include=server/** --test-coverage-include=client/lib/** \"tests/**/*.test.js\"",
+    "test:pg": "node --env-file=tests/pg.env --test \"tests/**/*.test.js\""
   },
   "dependencies": {
     "docxtemplater": "^3.60.0",
@@ -18,5 +19,8 @@
     "lucide-react": ">=0.400.0",
     "pdfjs-dist": "^5.0.0",
     "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
   }
 }

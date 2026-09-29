@@ -63,7 +63,9 @@ test('khóa ngoại: không xóa được đơn vị QLVH còn TBA; xóa TBA th�
   } finally { db.close(); }
 });
 
-test('migrate: bản vẽ ở bảng cũ (một bản/trạm) chuyển sang dkct_drawings tên "Sơ đồ trạm", xóa bảng cũ; chạy lại không lỗi', async () => {
+// bảng cũ chỉ có ở CSDL ChatLan (MySQL/SQLite); bản Postgres (Supabase) cài mới
+test('migrate: bản vẽ ở bảng cũ (một bản/trạm) chuyển sang dkct_drawings tên "Sơ đồ trạm", xóa bảng cũ; chạy lại không lỗi',
+  { skip: process.env.DKCT_TEST_DB === 'postgres' }, async () => {
   const db = createTestDb();
   try {
     await migrate(db);

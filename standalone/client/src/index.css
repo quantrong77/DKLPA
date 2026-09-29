@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: theme('colors.slate.50');
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Viền focus rõ cho bàn phím (:where giữ độ ưu tiên 0 để style của thành phần luôn thắng). */
+:where(a, button, [role="button"], [role="tab"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid theme('colors.chatlan.500');
+  outline-offset: 2px;
+}
+
+/* iOS phóng to trang khi ô nhập < 16px được focus */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
