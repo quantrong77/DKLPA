@@ -77,7 +77,8 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults }) {
   router.get('/outages', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
     const where = [];
-    const params = [actor.department || ''];
+    const dept = actor.department || '';
+    const params = [dept, dept, dept];
     const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
     const from = date(req.query.from);
     const to = date(req.query.to);
@@ -89,12 +90,20 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults }) {
       where.push(`(location ${LIKE} OR content ${LIKE} OR scope ${LIKE} OR workUnit ${LIKE} OR registrationUnit ${LIKE})`);
       params.push(...Array(5).fill(likePattern(search)));
     }
-    // chỉ đếm giấy của tổ người xem (không lộ hoạt động của tổ khác)
+    // tiến độ 3 bước (biên bản KSHT → phương án → giấy ĐKCT): chỉ đếm hồ sơ của tổ người xem (không lộ hoạt động của tổ khác)
     const items = await db.query(`
-      SELECT o.*, (SELECT COUNT(*) FROM dkct_registrations r WHERE r.outageId = o.id AND r.department = ?) AS registrationCount
+      SELECT o.*,
+        (SELECT COUNT(*) FROM dkct_surveys s WHERE s.outageId = o.id AND s.department = ?) AS surveyCount,
+        (SELECT COUNT(*) FROM dkct_plans p WHERE p.outageId = o.id AND p.department = ?) AS planCount,
+        (SELECT COUNT(*) FROM dkct_registrations r WHERE r.outageId = o.id AND r.department = ?) AS registrationCount
       FROM dkct_outages o ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY regStart LIMIT 1000`, params);
-    res.json({ items: items.map(o => ({ ...o, registrationCount: Number(o.registrationCount) || 0 })) });
+    const count = (v) => Number(v) || 0;
+    res.json({
+      items: items.map(o => ({
+        ...o, surveyCount: count(o.surveyCount), planCount: count(o.planCount), registrationCount: count(o.registrationCount)
+      }))
+    });
   }));
 
   router.delete('/outages/:id', wrap(async (req, res) => {

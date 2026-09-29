@@ -618,6 +618,22 @@ test('Phương án: nháp từ lịch cắt điện; khóa ngoại tới BBKSHT/
   } finally { app.close(); }
 });
 
+test('Lịch cắt điện: đếm biên bản KSHT/phương án/giấy ĐKCT theo dòng, chỉ trong tổ mình', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', 'Cô lập A', 'Đ1', 'Đ1', '']]));
+    const list = async (who) => (await app.call(who, 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items[0];
+    const counts = (o) => [o.surveyCount, o.planCount, o.registrationCount];
+    const o = await list('lead');
+    assert.deepEqual(counts(o), [0, 0, 0]);
+    assert.equal((await app.call('lead', 'POST', '/surveys', { ...SURVEY, outageId: o.id })).status, 201);
+    assert.equal((await app.call('lead', 'POST', '/plans', { ...PLAN, outageId: o.id })).status, 201);
+    assert.equal((await app.call('lead', 'POST', '/plans', { ...PLAN, outageId: o.id })).status, 201);
+    assert.deepEqual(counts(await list('lead')), [1, 2, 0]);
+    assert.deepEqual(counts(await list('other')), [0, 0, 0], 'tổ khác không thấy hồ sơ của tổ này');
+  } finally { app.close(); }
+});
+
 test('Giấy xác nhận: lập từ giấy ĐKCT (trạm, ngăn lộ, mục kết quả), số riêng "n/GXN-<tổ>", sửa/xóa, quyền, xuất Word', async () => {
   const app = await startApp();
   try {
