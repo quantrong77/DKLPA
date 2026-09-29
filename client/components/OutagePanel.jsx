@@ -143,14 +143,14 @@ export default function OutagePanel({ canCreate, onCreateFromOutage, onCreateSur
                 </div>
                 {canCreate && (
                   <div className="flex flex-col gap-1.5">
-                    <button type="button" className={btnSecondary} onClick={() => onCreateFromOutage(o)}>
-                      <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Tạo giấy ĐKCT{o.registrationCount > 0 ? ` (đã có ${o.registrationCount})` : ''}
-                    </button>
                     <button type="button" className={btnSecondary} onClick={() => onCreateSurveyFromOutage(o)}>
                       <ClipboardList className="w-4 h-4 text-chatlan-600" /> Lập biên bản KSHT
                     </button>
                     <button type="button" className={btnSecondary} onClick={() => onCreatePlanFromOutage(o)}>
                       <FileStack className="w-4 h-4 text-chatlan-600" /> Lập phương án
+                    </button>
+                    <button type="button" className={btnSecondary} onClick={() => onCreateFromOutage(o)}>
+                      <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Tạo giấy ĐKCT{o.registrationCount > 0 ? ` (đã có ${o.registrationCount})` : ''}
                     </button>
                   </div>
                 )}
