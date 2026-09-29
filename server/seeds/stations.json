@@ -1,0 +1,9 @@
+[
+  { "name": "Tổ thao tác lưu động Phan Thiết", "email": "", "phone": "" },
+  { "name": "Trạm 220kV Bảo Lộc", "email": "trambaoloc@gmail.com", "phone": "1111111111" },
+  { "name": "Trạm 220kV Đăk Nông", "email": "tramdaknong@gmail.com", "phone": "2222222222" },
+  { "name": "Trạm 220kV Đức Trọng", "email": "tramductrong@gmail.com", "phone": "3333333333" },
+  { "name": "Trạm 500kV Di Linh", "email": "tramdilinh@gmail.com", "phone": "4444444444" },
+  { "name": "Trạm 500kV Vĩnh Tân", "email": "tramvinhtan@gmail.com", "phone": "5555555555" },
+  { "name": "Trạm 220kV Phan Rí", "email": "tramphanri@gmail.com", "phone": "096288888888" }
+]

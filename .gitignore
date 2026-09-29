@@ -1,0 +1,13 @@
+# dependencies
+node_modules/
+
+# kết quả chạy thử / đo độ phủ
+tests/.tmp/
+coverage/
+
+# bí mật — không commit
+.env
+.env.*
+
+# file khóa của Word/Excel đang mở
+~$*

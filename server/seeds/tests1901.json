@@ -1,0 +1,2695 @@
+[
+ {
+  "key": "MBA",
+  "name": "MBA",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 9, Bảng 1 (MBA lực ≥110kV)",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện lõi từ",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện gông từ",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Kiểm tra điện áp tăng cao tần số công nghiệp (Applied voltage)",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Kiểm tra độ kín vỏ máy",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện đối với MBA có trang bị túi khí",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra hệ thống làm mát",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra sự hoạt động của các đồng hồ đo nhiệt độ cuộn dây",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Kiểm tra độ chính xác của các đồng hồ đo nhiệt độ dầu, mức dầu",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo dòng không tải và tổn thất không tải",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Đo điện trở cách điện các cuộn dây R60 và R60/R15, R600/R60 (PI)",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Đo tổn hao điện môi tgδ và điện dung của các cuộn dây",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Đo tổn hao điện môi tgδ và điện dung, đáp ứng tần số điện môi (DFR) của sứ đầu vào",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Đo điện trở 1 chiều của các cuộn dây ở tất cả các nấc",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "14",
+    "name": "Đo tỉ số biến các cuộn dây ở tất cả các nấc",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15",
+    "name": "Kiểm tra cực tính, tổ đấu dây và thứ tự pha",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "16",
+    "name": "Đo tổn hao ngắn mạch và điện áp ngắn mạch",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17",
+    "name": "Kiểm tra độ ẩm cách điện cứng",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "18",
+    "name": "Kiểm tra các biến dòng lắp sẵn (TI chân sứ)",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "18.1",
+    "name": "- Đo điện trở cách điện cuộn thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "18.2",
+    "name": "- Đặc tính từ hoá",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "18.3",
+    "name": "- Tỷ số biến và cực tính",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "18.4",
+    "name": "- Đo điện trở một chiều cuộn thứ cấp",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "18.5",
+    "name": "- Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "19",
+    "name": "Kiểm tra bộ điều áp dưới tải - Chụp sóng bộ công tắc K (đo điện trở động) và phân tích quá trình làm việc của các tiếp điểm dập lửa - Kiểm tra đồ thị vòng",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "Kiểm tra định kỳ theo quy định của Nhà sản xuất",
+    "extra": ""
+   },
+   {
+    "code": "20",
+    "name": "Kiểm tra các rơle bảo vệ nội bộ MBA",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "20.1",
+    "name": "Đo điện trở cách điện rơ le, cáp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "20.2",
+    "name": "Kiểm tra sự hoạt động của rơ le",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21",
+    "name": "Kiểm tra dầu cách điện",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.1",
+    "name": "Đo điện áp chọc thủng Uct",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.2",
+    "name": "Đo độ chớp cháy",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.3",
+    "name": "Đo hàm lượng axit",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.4",
+    "name": "Đo hàm lượng tạp chất cơ học",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.5",
+    "name": "Đo tổn hao điện môi tgδ",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.6",
+    "name": "Đo hàm lượng nước trong dầu",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.7",
+    "name": "Đo hàm lượng khí trong dầu",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "21.8",
+    "name": "Đo điện trở suất",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "22",
+    "name": "Kiểm tra phóng điện cục bộ PD",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "Chi tiết theo Điều 44",
+    "extra": ""
+   },
+   {
+    "code": "23",
+    "name": "Kiểm tra phản hồi tần số FRA",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "MBA_TD",
+  "name": "MBA TỰ DÙNG",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 9, Bảng 2 (MBA tự dùng ≤35kV)",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Kiểm tra điện áp tăng cao tần số công nghiệp (Applied voltage)",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo dòng không tải",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở cách điện các cuộn dây R60 và R60/R15",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo tỉ số biến các cuộn dây ở tất cả các nấc",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra cực tính, tổ đấu dây và thứ tự pha",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Đo điện trở 1 chiều của các cuộn dây ở tất cả các nấc",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo điện áp chọc thủng Uct",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "KH",
+  "name": "KHÁNG DẦU",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 9, Bảng 3 (Kháng dầu)",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện lõi từ",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện gông từ",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Kiểm tra điện áp tăng cao tần số công nghiệp (Applied voltage)",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Kiểm tra độ kín vỏ máy",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện đối với KH có trang bị túi khí",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra hệ thống làm mát",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra sự hoạt động của các đồng hồ đo nhiệt độ cuộn dây",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Kiểm tra độ chính xác của các đồng hồ đo nhiệt độ dầu, mức dầu",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo trở kháng",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Đo điện trở cách điện các cuộn dây R60 và R60/R15, R600/R60 (PI)",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Đo tổn hao điện môi tgδ và điện dung, của các cuộn dây",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Đo tổn hao điện môi tgδ và điện dung, đáp ứng tần số điện môi (DFR) của sứ đầu vào",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Đo điện trở 1 chiều của các cuộn dây",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "14",
+    "name": "Kiểm tra độ ẩm cách điện cứng",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15",
+    "name": "Kiểm tra các biến dòng lắp sẵn (TI chân sứ)",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15.1",
+    "name": "- Đo điện trở cách điện cuộn thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15.2",
+    "name": "- Đặc tính từ hoá",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15.3",
+    "name": "- Tỷ số biến và cực tính",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15.4",
+    "name": "- Đo điện trở một chiều cuộn thứ cấp",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15.5",
+    "name": "- Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "16",
+    "name": "Kiểm tra các rơle bảo vệ nội bộ KH",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "16.1",
+    "name": "Đo điện trở cách điện rơ le, cáp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "16.2",
+    "name": "Kiểm tra sự hoạt động của rơ le",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17",
+    "name": "Kiểm tra dầu cách điện",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.1",
+    "name": "Đo điện áp chọc thủng Uct",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.2",
+    "name": "Đo độ chớp cháy",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.3",
+    "name": "Đo hàm lượng axit",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.4",
+    "name": "Đo hàm lượng tạp chất cơ học",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.5",
+    "name": "Đo tổn hao điện môi tgδ",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.6",
+    "name": "Đo hàm lượng nước trong dầu",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.7",
+    "name": "Đo hàm lượng khí trong dầu",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "17.8",
+    "name": "Đo điện trở suất",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "18",
+    "name": "Kiểm tra phóng điện cục bộ PD",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "Chi tiết theo Điều 44",
+    "extra": ""
+   },
+   {
+    "code": "19",
+    "name": "Kiểm tra phản hồi tần số FRA",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "TI_HO",
+  "name": "BIẾN DÒNG ĐIỆN (kiểu hở, có ống thở)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 10, Bảng 9, mục I",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của cuộn dây sơ cấp đối với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện của cuộn dây sơ cấp đối với cuộn thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở cách điện của cuộn dây thứ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện trở cách điện cuộn dây thứ cấp với nhau",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Đo tổn hao điện môi tgδ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "Không đo đối với TI có U ≤ 35kV",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra đặc tính từ hoá V~A",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Kiểm tra cực tính",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo tỉ số biến",
+    "cycles": [
+     "install",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Đo điện trở một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "- Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Thí nghiệm dầu cách điện",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Kiểm tra đo lường",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "",
+    "name": "Xác định sai số cơ bản",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện cho cuộn đo lường",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "TI_DAU",
+  "name": "BIẾN DÒNG ĐIỆN (kín, cách điện dầu ≥110kV)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 10, Bảng 9, mục II",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của cuộn dây sơ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện cuộn dây sơ cấp với cuộn dây thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở cách điện cuộn dây thứ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện trở cách điện cuộn dây thứ cấp với nhau",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Đo tổn hao điện môi tgδ cuộn dây sơ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra đặc tính từ hoá V~A",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Kiểm tra cực tính",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo tỉ số biến",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Đo điện trở một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "- Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Thí nghiệm dầu cách điện",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Kiểm tra đo lường",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "",
+    "name": "Xác định sai số cơ bản",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện cho cuộn đo lường",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "TI_SF6",
+  "name": "BIẾN DÒNG ĐIỆN (cách điện khí SF6)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 10, Bảng 9, mục III",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Kiểm tra áp lực khí SF6",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Kiểm tra độ ẩm và hàm lượng khí SF6 trong TI",
+    "cycles": [],
+    "note": "Vận hành trên 10 năm, chỉ thực hiện khi mục 5 có biểu hiện suy giảm",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Kiểm tra đồng hồ đo mật độ hoặc đồng hồ đo áp lực khí SF6",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "Khi kết cấu cho phép",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện trở cách điện của cuộn dây sơ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Đo điện trở cách điện cuộn dây sơ cấp với cuộn dây thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Đo điện trở cách điện cuộn dây thứ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo điện trở cách điện cuộn dây thứ cấp với nhau",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo tổn hao điện môi tgδ cuộn dây sơ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "Thực hiện với TI có hệ thống cách điện kiểu tụ",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Kiểm tra đặc tính từ hoá V~A",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Kiểm tra cực tính",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Đo tỉ số biến",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Đo điện trở một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "14",
+    "name": "- Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15",
+    "name": "Kiểm tra đo lường",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "",
+    "name": "Xác định sai số cơ bản",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện cho cuộn đo lường",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "TI_35",
+  "name": "BIẾN DÒNG ĐIỆN (≤35kV, TI xuyến)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 10, Bảng 9, mục IV",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của cuộn dây sơ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện cuộn dây sơ cấp với cuộn dây thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở cách điện cuộn dây thứ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện trở cách điện cuộn dây thứ cấp với nhau",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra đặc tính từ hoá V~A",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra cực tính",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo tỉ số biến",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo điện trở một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "- Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Kiểm tra đo lường",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "",
+    "name": "Xác định sai số cơ bản",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện cho cuộn đo lường",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Thí nghiệm điện áp tăng cao tần số 50Hz trong 1 phút đối với phía sơ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "TU_CD",
+  "name": "BIẾN ĐIỆN ÁP (kiểu cuộn dây)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 11, Bảng 14, mục I",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của cuộn dây sơ cấp đối với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện cuộn dây sơ cấp với cuộn thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở cách điện cuộn thứ cấp với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện trở cách điện cuộn thứ cấp với nhau",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra cực tính",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Đo tỷ số biến",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo điện trở một chiều cuộn sơ cấp và thứ cấp",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Thí nghiệm cách điện vòng dây bằng điện áp cảm ứng",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Thí nghiệm dầu cách điện",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Kiểm tra đo lường",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "",
+    "name": "Xác định sai số cơ bản",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện cho cuộn đo lường",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "TU_TU",
+  "name": "BIẾN ĐIỆN ÁP (kiểu tụ, kín cách điện dầu)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 11, Bảng 14, mục II",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của phía sơ cấp đối với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "Khi kết cấu TU cho phép",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện của phía sơ cấp đối với cuộn thứ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở cách điện của cuộn dây thứ cấp đối với vỏ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện trở cách điện của cuộn dây thứ cấp đối với nhau",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Đo tổn hao điện môi tgδ và điện dung của tụ phân áp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "Khi kết cấu TU cho phép",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra cực tính",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo tỷ số biến",
+    "cycles": [
+     "install",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo điện trở một chiều các cuộn hạ áp",
+    "cycles": [
+     "install",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Kiểm tra điện áp xoay chiều tăng cao cuộn thứ cấp",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Thí nghiệm dầu cách điện của khối điện từ",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Kiểm tra đo lường",
+    "cycles": [],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "",
+    "name": "Xác định sai số cơ bản",
+    "cycles": [
+     "install"
+    ],
+    "note": "Thực hiện cho cuộn đo lường",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "MC_DAU",
+  "name": "MÁY CẮT DẦU",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 12, Bảng 19, mục I",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của của đường dẫn điện sơ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện của các mạch điện điều khiển",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "Định kỳ thực hiện theo quy định của mạch nhị thứ",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở một chiều và cách điện các cuộn dây: - Cuộn đóng - Cuộn cắt",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Kiểm tra động cơ tích năng: - Điện trở cách điện - Điện trở một chiều - Thời gian tích năng",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra đóng cắt máy cắt bằng tay 3 lần",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra đóng cắt máy cắt bằng điện 5 lần: - Đóng máy cắt ở điện áp thấp - Cắt máy cắt ở điện áp thấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo thời gian: - Thời gian đóng - Thời gian cắt - Độ đồng thời giữa 3 pha khi đóng, cắt - Độ đồng thời giữa các tiếp điểm trong 1 pha (đối với MC có nhiều điểm cắt) khi đóng, cắt - Ngừng tiếp xúc trong chu trình O -CO",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "Đối với MC có U ≥ 35kV",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo điện trở tiếp xúc bằng dòng điện một chiều các tiếp điểm chính",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Đo điện trở tiếp xúc bằng dòng điện một chiều các tiếp điểm phụ",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Thí nghiệm điện áp tăng cao tần số 50Hz (đối với các máy cắt có điện áp định mức ≤35kV)",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "Chỉ khi thay mới buồng dập hồ quang, thanh cách điện",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Đo tgδ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Thí nghiệm dầu cách điện",
+    "cycles": [
+     "install",
+     "year1",
+     "annual",
+     "y3"
+    ],
+    "note": "Đối với MC có U ≥35kV và MC không nạp áp lực",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "MC_SF6",
+  "name": "MÁY CẮT SF6",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 12, Bảng 19, mục II",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện đường dẫn sơ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện của các mạch điều khiển",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "Định kỳ thực hiện theo quy định của mạch nhị thứ",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở một chiều và cách điện các cuộn dây: - Cuộn đóng - Cuộn cắt",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Kiểm tra động cơ tích năng/nạp áp lực: - Điện trở cách điện - Điện trở một chiều - Thời gian tích năng",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra đồng hồ đo mật độ hoặc đồng hồ đo áp lực khí SF6",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra độ ẩm và độ tinh khiết khí SF6",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "Thực hiện với MC điện áp từ 110kV trở lên và MC trong hệ thống GIS, HGIS, compact GIS các cấp điện áp",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Phân tích khí phân rã trong khí SF6 (đo hàm lượng khí SO2)",
+    "cycles": [
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Kiểm tra đóng cắt máy cắt bằng tay 3 lần",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Kiểm tra đóng cắt máy cắt bằng điện 5 lần: - Đóng máy cắt ở điện áp thấp - Cắt máy cắt ở điện áp thấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Kiểm tra hệ thống liên động, khóa bằng SF6",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "Kiểm tra liên động điện. Định kỳ thực hiện theo quy định của mạch nhị thứ",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Đo thời gian: - Thời gian đóng - Thời gian cắt - Độ đồng thời giữa 3 pha khi đóng, cắt - Độ đồng thời giữa các tiếp điểm trong 1 pha (đối với MC có nhiều điểm cắt) khi đóng, cắt - Ngừng tiếp xúc trong chu trình O - CO",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Đo điện trở tiếp xúc tiếp điểm chính bằng dòng điện một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "14",
+    "name": "Đo điện trở tiếp xúc của tiếp điểm phụ",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "15",
+    "name": "Thí nghiệm điện áp tăng cao tần số 50Hz (Đối với các máy cắt có điện áp định mức ≤35kV)",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "Chỉ khi thay mới buồng dập hồ quang, thanh cách điện",
+    "extra": ""
+   },
+   {
+    "code": "16",
+    "name": "Kiểm tra đặc tính áp lực làm việc đối với bộ truyền động thuỷ lực, khí nén",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "MC_CK",
+  "name": "MÁY CẮT CHÂN KHÔNG",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 12, Bảng 19, mục III",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3",
+   "y6"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của các đường dẫn điện sơ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện của mạch điều khiển",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "Định kỳ thực hiện theo quy định của mạch nhị thứ",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện trở một chiều và cách điện các cuộn dây: - Cuộn đóng - Cuộn cắt",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Kiểm tra động cơ tích năng: - Điện trở cách điện - Điện trở một chiều - Thời gian tích năng",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra đóng cắt máy cắt 3 lần lần bằng tay",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Kiểm tra đóng cắt máy cắt bằng điện 5 lần: - Đóng máy cắt ở điện áp thấp - Cắt máy cắt ở điện áp thấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo thời gian: - Thời gian đóng - Thời gian cắt - Độ đồng thời giữa 3 pha khi đóng, cắt - Ngừng tiếp xúc trong chu trình O-CO",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Kiểm tra độ mòn của tiếp điểm",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "Nếu có cơ cấu chỉ thị độ mòn tiếp điểm",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Đo điện trở tiếp xúc tiếp điểm chính",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Đo điện trở tiếp xúc tiếp điểm phụ",
+    "cycles": [
+     "install",
+     "year1",
+     "y6"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Kiểm tra độ bền điện môi (Thử nghiệm điện áp tăng cao tần số 50Hz, hoặc đo dòng rò theo điện áp quy định của nhà sản xuất)",
+    "cycles": [
+     "install"
+    ],
+    "note": "Đối với máy cắt ≤35kV",
+    "extra": ""
+   },
+   {
+    "code": "13",
+    "name": "Kiểm tra độ kín chân không",
+    "cycles": [],
+    "note": "",
+    "extra": "Thực hiện theo quy định của nhà sản xuất"
+   }
+  ]
+ },
+ {
+  "key": "DCL",
+  "name": "DAO CÁCH LY, DAO TIẾP ĐỊA",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 13, Bảng 22",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Kiểm tra thao tác đóng mở bằng tay 3 lần",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Kiểm tra thao tác đóng mở từ xa 3 lần",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Kiểm tra khóa liên động cơ khí giữa lưỡi chính của DCL với lưỡi của dao nối đất",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện trở cách điện của phần dẫn điện sơ cấp",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Đo điện trở cách điện của mạch điều khiển và mạch thứ cấp",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "Trong định kỳ thực hiện 6 năm/lần cùng với tổng hợp mạch nhị thứ",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Đo điện trở cách điện của động cơ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "8",
+    "name": "Đo điện trở tiếp xúc mạch chính DCL bằng dòng điện một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "9",
+    "name": "Đo điện trở tiếp xúc lưỡi dao tiếp địa bằng dòng điện một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "10",
+    "name": "Đo điện trở tiếp xúc của tiếp điểm phụ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "11",
+    "name": "Kiểm tra sự làm việc của các tiếp điểm phụ",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "12",
+    "name": "Kiểm tra độ bền điện môi (Thử nghiệm điện áp xoay chiều tăng cao tần số 50Hz)",
+    "cycles": [
+     "install"
+    ],
+    "note": "Đối với DCL có điện áp định mức ≤35kV",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "CSV_KH",
+  "name": "CHỐNG SÉT VAN (có khe hở)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 15, Bảng 26, mục I",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của phần chính",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện của phần đế cách điện",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo dòng điện rò ở điện áp vận hành liên tục hoặc đo điện áp ở dòng điện tham chiếu",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "Không cần đo nếu đã có đồng hồ đo dòng rò",
+    "extra": ""
+   },
+   {
+    "code": "5",
+    "name": "Đo điện áp phóng điện ở tần số 50Hz với chống sét ≤ 35kV",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra thiết bị đếm sét",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "CSV",
+  "name": "CHỐNG SÉT VAN (không khe hở)",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 15, Bảng 26, mục II",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của phần chính",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở cách điện của phần đế cách điện",
+    "cycles": [
+     "install",
+     "year1"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo dòng điện rò tổng ở điện áp vận hành",
+    "cycles": [
+     "install",
+     "year1",
+     "annual",
+     "y3"
+    ],
+    "note": "Không cần đo nếu đã có đồng hồ đo dòng rò",
+    "extra": "x + sau giông bão"
+   },
+   {
+    "code": "5",
+    "name": "Đo dòng điện tham chiếu (Iref) tại điện áp tham chiếu (Uref) và/ hoặc đo điện áp tham chiếu tại dòng điện tham chiếu theo quy định của nhà sản xuất",
+    "cycles": [
+     "install"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "6",
+    "name": "Kiểm tra thiết bị đếm sét, đồng hồ đo dòng rò",
+    "cycles": [
+     "install",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "7",
+    "name": "Đo dòng rò thành phần điện trở của CSV",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "KK",
+  "name": "KHÁNG KHÔ",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 16, Bảng 27 (Kháng lõi không khí)",
+  "cycles": [
+   "install",
+   "year1",
+   "annual",
+   "y3"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở cách điện của phần chính",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "3",
+    "name": "Đo điện trở một chiều",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "4",
+    "name": "Đo điện cảm, trở kháng ở điện áp tần số 50Hz",
+    "cycles": [
+     "install",
+     "year1",
+     "y3"
+    ],
+    "note": "Nếu có điều kiện thì thực hiện đo ở nhiệt độ 75°C",
+    "extra": ""
+   }
+  ]
+ },
+ {
+  "key": "ND",
+  "name": "HỆ THỐNG NỐI ĐẤT",
+  "source": "QĐ 1901/QĐ-EVNNPT, Điều 17, Bảng 28",
+  "cycles": [
+   "install",
+   "year1",
+   "annual"
+  ],
+  "items": [
+   {
+    "code": "1",
+    "name": "Kiểm tra bên ngoài",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   },
+   {
+    "code": "2",
+    "name": "Đo điện trở nối đất",
+    "cycles": [
+     "install",
+     "year1",
+     "annual"
+    ],
+    "note": "",
+    "extra": ""
+   }
+  ]
+ }
+]

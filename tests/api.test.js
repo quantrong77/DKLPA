@@ -1,0 +1,674 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const express = require('express');
+const PizZip = require('pizzip');
+const { createTestDb } = require('./helpers/sqliteDb');
+const createDkctModule = require('../server');
+
+const USERS = {
+  lead: { id: 'U1', role: 'member', department: 'Tổ Thí nghiệm điện Lâm Đồng', fullName: 'Nguyễn Hữu Kính', position: 'Tổ trưởng', phone: '0962524070', email: 'kinh@example.com' },
+  member: { id: 'U2', role: 'member', department: 'Tổ Thí nghiệm điện Lâm Đồng', fullName: 'Lê Hữu Anh', position: 'Kỹ sư' },
+  other: { id: 'U3', role: 'member', department: 'Tổ Vận tải', fullName: 'Đặng Minh Hải', position: 'Tổ trưởng' },
+  admin: { id: 'U9', role: 'admin', department: 'Ban giám đốc', fullName: 'Admin', position: 'Quản trị' }
+};
+const byId = Object.fromEntries(Object.values(USERS).map(u => [u.id, u]));
+const SHORT = { 'Tổ Thí nghiệm điện Lâm Đồng': 'TNLĐ', 'Tổ Vận tải': 'VT', 'Ban giám đốc': 'BGĐ' };
+
+async function startApp({ legacyLastIssued } = {}) {
+  const db = createTestDb();
+  const dkct = createDkctModule({
+    db,
+    getActor: async (id) => byId[id] || null,
+    getProfile: async (id) => byId[id] || null,
+    isAdmin: (a) => a?.role === 'admin',
+    isDepartmentHead: (a, dept) => a?.role === 'manager' && a.department === dept,
+    isUnitLead: async (id, dept) => id === 'U1' && dept === USERS.lead.department,
+    getUnit: async (id) => ({ department: byId[id].department, shortName: SHORT[byId[id].department] }),
+    listDepartments: async () => Object.entries(SHORT).map(([name, shortName]) => ({ name, shortName })),
+    legacyLastIssued
+  });
+  await dkct.migrate();
+  const app = express();
+  app.use(express.json({ limit: '2mb' }));
+  app.use('/api/dkct', (req, res, next) => { req.userId = req.headers['x-test-user']; next(); }, dkct.router);
+  const server = await new Promise(resolve => { const s = app.listen(0, () => resolve(s)); });
+  const base = `http://127.0.0.1:${server.address().port}/api/dkct`;
+  const call = async (user, method, url, body) => {
+    const init = { method, headers: { 'x-test-user': USERS[user].id } };
+    if (body instanceof FormData) init.body = body;
+    else if (body !== undefined) { init.headers['content-type'] = 'application/json'; init.body = JSON.stringify(body); }
+    const res = await fetch(base + url, init);
+    const type = res.headers.get('content-type') || '';
+    return { status: res.status, headers: res.headers, body: type.includes('json') ? await res.json() : Buffer.from(await res.arrayBuffer()) };
+  };
+  return { db, call, close: () => { server.close(); db.close(); } };
+}
+
+function excelForm() {
+  const form = new FormData();
+  const file = fs.readFileSync(path.join(__dirname, 'fixtures', 'lichcatdien-sample.xlsx'));
+  form.append('file', new Blob([file]), 'lichcatdien.xlsx');
+  return form;
+}
+
+async function validInput(call) {
+  const personnel = (await call('lead', 'GET', '/personnel')).body.items;
+  const stations = (await call('lead', 'GET', '/stations')).body.items;
+  const find = (name) => personnel.find(p => p.fullName === name).id;
+  return {
+    header: { unitName: 'Đội Sửa chữa, thí nghiệm điện 3', teamName: 'Tổ Thí nghiệm điện Lâm Đồng', place: 'Lâm Đồng', date: '2026-09-23' },
+    recipient: { stationId: stations.find(s => s.name.includes('Vĩnh Tân')).id },
+    workContent: { text: 'TNĐK ngăn MBA AT1', source: 'manual' },
+    workLocation: 'Trạm 500kV Vĩnh Tân',
+    condition: { text: 'Cô lập MBA AT1', source: 'manual' },
+    time: { start: '2026-10-07T17:00', end: '2026-10-08T07:00', source: 'manual' },
+    workUnits: [{ commander: { personnelId: find('Trần Văn Hoàng') }, members: [{ personnelId: find('Kim Văn Quỳnh') }] }],
+    nominees: [{ person: { personnelId: find('Trần Văn Hoàng') }, duty: 'Chỉ huy trực tiếp đơn vị công tác 1' }],
+    permits: [{ isolation: 'Cô lập MBA AT1', workUnitSeq: 1, content: 'TNĐK', workers: [{ personnelId: find('Kim Văn Quỳnh') }] }]
+  };
+}
+
+test('migrate nạp danh mục ban đầu và chạy lại nhiều lần không nhân đôi', async () => {
+  const app = await startApp();
+  try {
+    const { body } = await app.call('member', 'GET', '/personnel');
+    assert.equal(body.items.length, 16);
+    const hoang = body.items.find(p => p.fullName === 'Trần Văn Hoàng');
+    assert.equal(hoang.safetyLevel, '5/5');
+    assert.equal(hoang.safetyCard, '058');
+    assert.equal((await app.call('member', 'GET', '/risks')).body.items.length, 17);
+    const stations = (await app.call('member', 'GET', '/stations')).body.items;
+    assert.equal(stations.find(s => s.name === 'Tổ QLVH TBA 500kV Vĩnh Tân').email, 'tramvinhtan@gmail.com');
+    assert.ok((await app.call('member', 'GET', '/duties')).body.items.length >= 5);
+  } finally { app.close(); }
+});
+
+test('danh mục: chỉ trưởng/phó tổ, trưởng phòng, admin được sửa; xóa là ẩn đi', async () => {
+  const app = await startApp();
+  try {
+    const denied = await app.call('member', 'POST', '/personnel', { fullName: 'A' });
+    assert.equal(denied.status, 403);
+    const created = await app.call('lead', 'POST', '/personnel', { fullName: ' Phạm Văn Mới ', safetyLevel: '4/5', safetyCard: '070', hacked: 'x' });
+    assert.equal(created.status, 201);
+    assert.equal(created.body.item.fullName, 'Phạm Văn Mới');
+    assert.equal(created.body.item.hacked, undefined);
+    const id = created.body.item.id;
+    const updated = await app.call('lead', 'PUT', `/personnel/${id}`, { fullName: 'Phạm Văn Mới', safetyLevel: '5/5', safetyCard: '070' });
+    assert.equal(updated.body.item.safetyLevel, '5/5');
+    assert.equal((await app.call('lead', 'POST', '/personnel', { fullName: '  ' })).status, 400);
+    assert.equal((await app.call('lead', 'DELETE', `/personnel/${id}`)).status, 200);
+    const list = (await app.call('lead', 'GET', '/personnel')).body.items;
+    assert.ok(!list.some(p => p.id === id));
+    assert.equal((await app.call('lead', 'GET', '/personnel?includeInactive=1')).body.items.some(p => p.id === id), true);
+  } finally { app.close(); }
+});
+
+test('lịch cắt điện: xem trước, lưu, import lại không trùng; thành viên thường không được import', async () => {
+  const app = await startApp();
+  try {
+    assert.equal((await app.call('member', 'POST', '/outages/import/preview', excelForm())).status, 403);
+    const preview = await app.call('lead', 'POST', '/outages/import/preview', excelForm());
+    assert.equal(preview.status, 200);
+    assert.equal(preview.body.rows.length, 64);
+    assert.equal(preview.body.rows.filter(r => r.alreadyImported).length, 0);
+
+    const commit = await app.call('lead', 'POST', '/outages/import/commit', excelForm());
+    assert.deepEqual({ inserted: commit.body.inserted, skipped: commit.body.skipped }, { inserted: 64, skipped: 0 });
+    const again = await app.call('lead', 'POST', '/outages/import/commit', excelForm());
+    assert.deepEqual({ inserted: again.body.inserted, skipped: again.body.skipped }, { inserted: 0, skipped: 64 });
+    const preview2 = await app.call('lead', 'POST', '/outages/import/preview', excelForm());
+    assert.equal(preview2.body.rows.filter(r => r.alreadyImported).length, 64);
+
+    const list = await app.call('member', 'GET', '/outages?from=2024-10-20&to=2024-10-21&search=Krông');
+    assert.ok(list.body.items.length >= 1);
+    assert.ok(list.body.items.every(o => o.regStart >= '2024-10-20' && o.regStart < '2024-10-22'));
+    assert.ok(list.body.items.every(o => /krông/i.test(o.location + o.content + o.scope)));
+
+    const draft = await app.call('lead', 'GET', `/outages/${list.body.items[0].id}/draft`);
+    assert.equal(draft.body.draft.workContent.source, 'outage');
+    assert.equal(draft.body.draft.header.teamName, 'Tổ Thí nghiệm điện Lâm Đồng');
+    assert.equal(draft.body.draft.representative.name, 'Nguyễn Hữu Kính');
+    assert.equal(draft.body.draft.representative.role, 'Tổ trưởng');
+    assert.equal(draft.body.draft.risks.length, 17, 'mặc định chọn toàn bộ thư viện rủi ro');
+  } finally { app.close(); }
+});
+
+test('import file không phải Excel báo lỗi 400', async () => {
+  const app = await startApp();
+  try {
+    const form = new FormData();
+    form.append('file', new Blob([Buffer.from('không phải excel')]), 'x.xlsx');
+    const res = await app.call('lead', 'POST', '/outages/import/preview', form);
+    assert.equal(res.status, 400);
+    assert.ok(res.body.error);
+  } finally { app.close(); }
+});
+
+test('giấy ĐKCT: cấp số theo tổ/năm, đặt số khởi đầu, lỗi 422, xem/sửa theo phạm vi tổ', async () => {
+  const app = await startApp({ legacyLastIssued: async () => 214 });
+  try {
+    const input = await validInput(app.call);
+    assert.equal((await app.call('member', 'POST', '/registrations', input)).status, 403, 'chỉ trưởng/phó tổ lập giấy');
+
+    const numbering = await app.call('lead', 'GET', '/numbering');
+    assert.equal(numbering.body.numbering.preview, '215/ĐK-TNLĐ', 'tiếp nối số đã cấp ở module cũ');
+
+    const bad = await app.call('lead', 'POST', '/registrations', { ...input, workUnits: [{ commander: { name: '' } }] });
+    assert.equal(bad.status, 422);
+    assert.deepEqual(bad.body.errors.map(e => e.field), ['workUnits.0.commander', 'permits.0.workers']);
+
+    const created = await app.call('lead', 'POST', '/registrations', input);
+    assert.equal(created.status, 201);
+    assert.equal(created.body.registration.docNumber, '215/ĐK-TNLĐ');
+    assert.equal(created.body.registration.data.recipient.email, 'tramvinhtan@gmail.com');
+    const id = created.body.registration.id;
+
+    assert.equal((await app.call('member', 'PUT', '/numbering', { startNumber: 300 })).status, 403);
+    assert.equal((await app.call('lead', 'PUT', '/numbering', { startNumber: 215 })).status, 400, 'không lùi về số đã cấp');
+    assert.equal((await app.call('lead', 'PUT', '/numbering', { startNumber: 300 })).body.numbering.preview, '300/ĐK-TNLĐ');
+    const second = await app.call('lead', 'POST', '/registrations', input);
+    assert.equal(second.body.registration.docNumber, '300/ĐK-TNLĐ');
+
+    assert.equal((await app.call('member', 'GET', `/registrations/${id}`)).status, 200, 'cùng tổ được xem');
+    assert.equal((await app.call('other', 'GET', `/registrations/${id}`)).status, 403, 'tổ khác không được xem');
+    assert.equal((await app.call('admin', 'GET', `/registrations/${id}`)).status, 200);
+    assert.equal((await app.call('other', 'GET', '/registrations')).body.items.length, 0);
+    assert.equal((await app.call('member', 'GET', '/registrations?search=MBA')).body.items.length, 2);
+
+    assert.equal((await app.call('member', 'PUT', `/registrations/${id}`, input)).status, 403);
+    const upd = await app.call('lead', 'PUT', `/registrations/${id}`, { ...input, workLocation: 'Ngăn MBA AT1' });
+    assert.equal(upd.status, 200);
+    assert.equal(upd.body.registration.docNumber, '215/ĐK-TNLĐ', 'sửa giấy không đổi số');
+    assert.equal(upd.body.registration.data.workLocation, 'Ngăn MBA AT1');
+
+    const docx = await app.call('member', 'GET', `/registrations/${id}/docx`);
+    assert.equal(docx.status, 200);
+    assert.match(docx.headers.get('content-disposition'), /DangKyCongTac_215/);
+    const xml = new PizZip(docx.body).file('word/document.xml').asText();
+    assert.match(xml, /215\/ĐK-TNLĐ/);
+    assert.match(xml, /Ngăn MBA AT1/);
+
+    assert.equal((await app.call('member', 'DELETE', `/registrations/${id}`)).status, 403);
+    assert.equal((await app.call('lead', 'DELETE', `/registrations/${id}`)).status, 200);
+    assert.equal((await app.call('lead', 'GET', `/registrations/${id}`)).status, 404);
+  } finally { app.close(); }
+});
+
+test('meta: quyền của người dùng và giá trị mặc định cho form', async () => {
+  const app = await startApp();
+  try {
+    const lead = (await app.call('lead', 'GET', '/meta')).body;
+    assert.equal(lead.permissions.canCreate, true);
+    assert.equal(lead.permissions.canManageCatalog, true);
+    assert.equal(lead.defaults.representative.contact, '0962524070 (kinh@example.com)');
+    assert.equal(lead.defaults.header.unitName, 'Đội Sửa chữa, thí nghiệm điện 3');
+    assert.equal(lead.defaults.header.teamName, 'Tổ Thí nghiệm điện Lâm Đồng');
+    assert.deepEqual(lead.departments.map(d => d.name), ['Tổ Thí nghiệm điện Lâm Đồng', 'Tổ Vận tải', 'Ban giám đốc']);
+    const member = (await app.call('member', 'GET', '/meta')).body;
+    assert.equal(member.permissions.canCreate, false);
+  } finally { app.close(); }
+});
+
+test('meta: tổ đăng ký mặc định là tổ của người lập, kể cả khi giấy gần nhất ghi tổ khác', async () => {
+  const app = await startApp();
+  try {
+    const body = await validInput(app.call);
+    body.header.teamName = 'Tổ Vận tải';
+    assert.equal((await app.call('lead', 'POST', '/registrations', body)).status, 201);
+    const lead = (await app.call('lead', 'GET', '/meta')).body;
+    assert.equal(lead.defaults.header.teamName, 'Tổ Thí nghiệm điện Lâm Đồng');
+    assert.equal(lead.defaults.header.unitName, 'Đội Sửa chữa, thí nghiệm điện 3', 'đơn vị cấp trên vẫn theo giấy gần nhất');
+  } finally { app.close(); }
+});
+
+const XLSX = require('xlsx');
+function excelFrom(rows) {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['LỊCH CẮT ĐIỆN'], [],
+    ['Thời gian bắt đầu', 'Thời gian kết thúc', 'Địa điểm', 'Nội dung', 'Phạm vi', 'Đơn vị đăng ký', 'Đơn vị công tác', 'Tình trạng đăng ký'],
+    ...rows
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  const form = new FormData();
+  form.append('file', new Blob([XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })]), 'lich.xlsx');
+  return form;
+}
+
+test('import lại cùng lịch: cập nhật tình trạng/đơn vị công tác thay vì bỏ qua', async () => {
+  const app = await startApp();
+  try {
+    const row = ['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', 'Cô lập A', 'Đ1', 'Đ1'];
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([[...row, 'Chờ duyệt']]));
+    const again = await app.call('lead', 'POST', '/outages/import/commit', excelFrom([[...row, 'Đã có lịch công tác A3']]));
+    assert.deepEqual({ inserted: again.body.inserted, updated: again.body.updated }, { inserted: 0, updated: 1 });
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    assert.equal(o.status, 'Đã có lịch công tác A3');
+  } finally { app.close(); }
+});
+
+test('không xóa được dòng lịch đã có giấy ĐKCT; đếm giấy chỉ trong tổ mình', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', 'Cô lập A', 'Đ1', 'Đ1', '']]));
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    const input = { ...(await validInput(app.call)), outageId: o.id };
+    assert.equal((await app.call('lead', 'POST', '/registrations', input)).status, 201);
+    assert.equal((await app.call('lead', 'DELETE', `/outages/${o.id}`)).status, 409);
+    const mine = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items[0];
+    const other = (await app.call('other', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items[0];
+    assert.equal(mine.registrationCount, 1);
+    assert.equal(other.registrationCount, 0);
+  } finally { app.close(); }
+});
+
+test('outageId không tồn tại bị bỏ; tìm kiếm với ký tự % không trả tất cả', async () => {
+  const app = await startApp();
+  try {
+    const created = await app.call('lead', 'POST', '/registrations', { ...(await validInput(app.call)), outageId: 'không-có' });
+    assert.equal(created.status, 201);
+    assert.equal(created.body.registration.outageId, null);
+    assert.equal((await app.call('lead', 'GET', '/registrations?search=%25')).body.items.length, 0);
+  } finally { app.close(); }
+});
+
+test('danh mục: includeInactive=0 không hiện mục ẩn; sửa mục ẩn không tự hiện lại', async () => {
+  const app = await startApp();
+  try {
+    const { item } = (await app.call('lead', 'POST', '/duties', { name: 'Tạm' })).body;
+    await app.call('lead', 'DELETE', `/duties/${item.id}`);
+    assert.ok(!(await app.call('lead', 'GET', '/duties?includeInactive=0')).body.items.some(d => d.id === item.id));
+    await app.call('lead', 'PUT', `/duties/${item.id}`, { name: 'Tạm 2' });
+    assert.ok(!(await app.call('lead', 'GET', '/duties')).body.items.some(d => d.id === item.id));
+  } finally { app.close(); }
+});
+
+test('một giấy có dữ liệu JSON hỏng không làm hỏng /meta của cả tổ', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/registrations', await validInput(app.call));
+    await app.db.execute("UPDATE dkct_registrations SET data = '{hỏng'");
+    assert.equal((await app.call('lead', 'GET', '/meta')).status, 200);
+  } finally { app.close(); }
+});
+
+test('nhân sự tổ khác: trưởng tổ không sửa/ẩn được; người chưa gán tổ thì sửa được', async () => {
+  const app = await startApp();
+  try {
+    const other = await app.db.execute("INSERT INTO dkct_personnel (id, fullName, department) VALUES ('P-OTHER', 'Người tổ khác', 'Tổ Vận tải')");
+    assert.ok(other);
+    assert.equal((await app.call('lead', 'PUT', '/personnel/P-OTHER', { fullName: 'Sửa trộm' })).status, 403);
+    assert.equal((await app.call('lead', 'DELETE', '/personnel/P-OTHER')).status, 403);
+    assert.equal((await app.call('admin', 'PUT', '/personnel/P-OTHER', { fullName: 'Admin sửa', department: 'Tổ Vận tải' })).status, 200);
+    const created = (await app.call('lead', 'POST', '/personnel', { fullName: 'Người mới' })).body.item;
+    assert.equal(created.department, USERS.lead.department, 'người mới gán vào tổ của người tạo');
+    const seeded = (await app.call('lead', 'GET', '/personnel')).body.items.find(p => p.fullName === 'Trần Văn Hoàng');
+    assert.equal((await app.call('lead', 'PUT', `/personnel/${seeded.id}`, { fullName: 'Trần Văn Hoàng', safetyLevel: '5/5', safetyCard: '058' })).status, 200);
+  } finally { app.close(); }
+});
+
+test('lịch cắt điện: chỉ người import hoặc admin xóa được', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', '', '', '', '']]));
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    await app.db.execute("UPDATE dkct_outages SET importedBy = 'U-KHAC'");
+    assert.equal((await app.call('lead', 'DELETE', `/outages/${o.id}`)).status, 403);
+    assert.equal((await app.call('admin', 'DELETE', `/outages/${o.id}`)).status, 200);
+  } finally { app.close(); }
+});
+
+test('danh sách giấy cho biết người xem có được sửa từng giấy không', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/registrations', await validInput(app.call));
+    assert.equal((await app.call('lead', 'GET', '/registrations')).body.items[0].canEdit, true);
+    assert.equal((await app.call('member', 'GET', '/registrations')).body.items[0].canEdit, false);
+  } finally { app.close(); }
+});
+
+const { SURVEY } = require('./fixtures/sampleSurvey');
+const { makePng } = require('./helpers/png');
+
+function pngForm(buffer, type = 'image/png', name = 'sodo.png') {
+  const form = new FormData();
+  form.append('file', new Blob([buffer], { type }), name);
+  return form;
+}
+
+test('BBKSHT: mặc định theo người lập, lập/sửa/xem/xóa, phân quyền theo tổ', async () => {
+  const app = await startApp();
+  try {
+    const { draft } = (await app.call('lead', 'GET', '/survey-defaults')).body;
+    assert.equal(draft.header.unitName, 'Đội Sửa chữa, thí nghiệm điện 3');
+    assert.equal(draft.header.teamShort, 'TNLĐ');
+    assert.deepEqual(draft.workUnitReps, [{ honorific: 'Ông', name: 'Nguyễn Hữu Kính', role: 'Tổ trưởng - Tổ TNLĐ' }]);
+    assert.match(draft.surveyTime, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+
+    assert.equal((await app.call('member', 'POST', '/surveys', SURVEY)).status, 403);
+    const bad = await app.call('lead', 'POST', '/surveys', { ...SURVEY, workContent: '' });
+    assert.equal(bad.status, 422);
+    assert.equal(bad.body.errors[0].field, 'workContent');
+
+    const created = await app.call('lead', 'POST', '/surveys', SURVEY);
+    assert.equal(created.status, 201);
+    const id = created.body.survey.id;
+    assert.equal(created.body.survey.hasDiagram, false);
+
+    const list = (await app.call('member', 'GET', '/surveys?search=Tháp Chàm')).body.items;
+    assert.equal(list.length, 1);
+    assert.equal(list[0].canEdit, false);
+    assert.equal(list[0].data, undefined, 'danh sách không trả dữ liệu đầy đủ');
+    assert.equal((await app.call('other', 'GET', `/surveys/${id}`)).status, 403);
+    assert.equal((await app.call('other', 'GET', '/surveys')).body.items.length, 0);
+
+    const edited = await app.call('lead', 'PUT', `/surveys/${id}`, { ...SURVEY, equipment: 'Ngăn 276' });
+    assert.equal(edited.body.survey.data.equipment, 'Ngăn 276');
+    assert.equal((await app.call('member', 'PUT', `/surveys/${id}`, SURVEY)).status, 403);
+
+    const defaults2 = (await app.call('lead', 'GET', '/survey-defaults')).body.draft;
+    assert.equal(defaults2.header.unitName, 'Đội Sửa chữa, thí nghiệm điện 3');
+
+    assert.equal((await app.call('member', 'DELETE', `/surveys/${id}`)).status, 403);
+    assert.equal((await app.call('lead', 'DELETE', `/surveys/${id}`)).status, 200);
+    assert.equal((await app.call('lead', 'GET', `/surveys/${id}`)).status, 404);
+  } finally { app.close(); }
+});
+
+test('BBKSHT: ảnh sơ đồ tải lên/xem/xóa, xuất Word có ảnh', async () => {
+  const app = await startApp();
+  try {
+    const id = (await app.call('lead', 'POST', '/surveys', SURVEY)).body.survey.id;
+    assert.equal((await app.call('member', 'PUT', `/surveys/${id}/diagram`, pngForm(makePng(40, 20)))).status, 403);
+    assert.equal((await app.call('lead', 'PUT', `/surveys/${id}/diagram`, pngForm(Buffer.from('không phải ảnh'), 'image/png'))).status, 400);
+    assert.equal((await app.call('lead', 'PUT', `/surveys/${id}/diagram`, pngForm(Buffer.from('GIF89a....'), 'image/gif', 'a.gif'))).status, 400);
+
+    const up = await app.call('lead', 'PUT', `/surveys/${id}/diagram`, pngForm(makePng(40, 20)));
+    assert.equal(up.status, 200);
+    assert.deepEqual([up.body.width, up.body.height], [40, 20]);
+    assert.equal((await app.call('lead', 'GET', `/surveys/${id}`)).body.survey.hasDiagram, true);
+    const img = await app.call('member', 'GET', `/surveys/${id}/diagram`);
+    assert.equal(img.headers.get('content-type'), 'image/png');
+    assert.equal(img.body.readUInt32BE(16), 40);
+    assert.equal((await app.call('other', 'GET', `/surveys/${id}/diagram`)).status, 403);
+
+    const docx = await app.call('member', 'GET', `/surveys/${id}/docx`);
+    assert.equal(docx.status, 200);
+    assert.match(docx.headers.get('content-disposition'), /BienBanKhaoSat_20260721\.docx/);
+    const zip = new PizZip(docx.body);
+    assert.ok(zip.file('word/media/dkct_diagram.png'));
+    assert.match(zip.file('word/document.xml').asText(), /Nguyễn Yên/);
+
+    assert.equal((await app.call('lead', 'DELETE', `/surveys/${id}/diagram`)).status, 200);
+    assert.equal((await app.call('lead', 'GET', `/surveys/${id}/diagram`)).status, 404);
+    assert.equal(new PizZip((await app.call('lead', 'GET', `/surveys/${id}/docx`)).body).file('word/media/dkct_diagram.png'), null);
+  } finally { app.close(); }
+});
+
+test('BBKSHT: lập nháp từ dòng lịch cắt điện', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'TBA 220kV Tháp Chàm', 'Thí nghiệm TU275', 'Cô lập MC275', '', '', '']]));
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    const { draft } = (await app.call('lead', 'GET', `/outages/${o.id}/survey-draft`)).body;
+    assert.equal(draft.outageId, o.id);
+    assert.equal(draft.station.name, 'TBA 220kV Tháp Chàm');
+    assert.ok(draft.station.substationId, 'địa điểm trùng tên TBA trong danh mục thì gắn TBA');
+    assert.equal(draft.station.qlvhUnitName, 'Tổ Thao tác lưu động Tháp Chàm');
+    assert.equal(draft.workContent, 'Thí nghiệm TU275');
+    assert.equal(draft.risks[0].measures, 'Cô lập MC275');
+    assert.equal(draft.workUnitReps[0].name, 'Nguyễn Hữu Kính');
+    assert.equal((await app.call('lead', 'GET', '/outages/khong-co/survey-draft')).status, 404);
+  } finally { app.close(); }
+});
+
+test('danh mục TBA: gắn đơn vị QLVH (khóa ngoại), BBKSHT lưu liên kết TBA', async () => {
+  const app = await startApp();
+  try {
+    const subs = (await app.call('member', 'GET', '/substations')).body.items;
+    assert.equal(subs.length, 14);
+    const units = (await app.call('member', 'GET', '/stations')).body.items;
+    const thapCham = units.find(u => u.name === 'Tổ Thao tác lưu động Tháp Chàm');
+    assert.deepEqual([thapCham.shortName, thapCham.leaderName], ['TTLĐTC', 'Nguyễn Yên']);
+
+    assert.equal((await app.call('lead', 'POST', '/substations', { name: 'TBA mới', stationId: 'KHONG-CO' })).status, 400);
+    assert.equal((await app.call('member', 'POST', '/substations', { name: 'TBA mới', stationId: thapCham.id })).status, 403);
+    const created = await app.call('lead', 'POST', '/substations', { name: 'TBA 110kV Mới', stationId: thapCham.id });
+    assert.equal(created.status, 201);
+
+    const sub = subs.find(s => s.name === 'TBA 220kV Tháp Chàm');
+    const survey = (await app.call('lead', 'POST', '/surveys', { ...SURVEY, station: { substationId: sub.id } })).body.survey;
+    assert.equal(survey.substationId, sub.id);
+    assert.equal(survey.data.station.qlvhUnitName, 'Tổ Thao tác lưu động Tháp Chàm');
+  } finally { app.close(); }
+});
+
+const PDF = Buffer.from('%PDF-1.7\n1 0 obj <<>> endobj\ntrailer <<>>\n%%EOF\n');
+function drawingForm({ pdf = PDF, image = makePng(300, 150), page = '2', pageCount = '3', label = 'Sơ đồ trạm' } = {}) {
+  const form = new FormData();
+  if (pdf) form.append('pdf', new Blob([pdf], { type: 'application/pdf' }), 'So do TBA Thap Cham.pdf');
+  if (image) form.append('image', new Blob([image], { type: 'image/png' }), 'trang2.png');
+  if (label !== null) form.append('label', label);
+  form.append('page', page);
+  form.append('pageCount', pageCount);
+  return form;
+}
+const labelForm = (label) => { const f = new FormData(); f.append('label', label); return f; };
+
+test('bản vẽ trạm: tải PDF + ảnh trang, xem, tải PDF gốc, đổi tên, thay file, xóa; phân quyền', async () => {
+  const app = await startApp();
+  try {
+    const sub = (await app.call('lead', 'GET', '/substations')).body.items.find(s => s.name === 'TBA 220kV Tháp Chàm');
+    const url = `/substations/${sub.id}/drawings`;
+    assert.deepEqual((await app.call('member', 'GET', url)).body.items, []);
+    assert.equal((await app.call('member', 'POST', url, drawingForm())).status, 403);
+    assert.equal((await app.call('lead', 'POST', url, drawingForm({ pdf: Buffer.from('không phải pdf') }))).status, 400);
+    assert.equal((await app.call('lead', 'POST', url, drawingForm({ image: Buffer.from('xx') }))).status, 400);
+    assert.equal((await app.call('lead', 'POST', url, drawingForm({ image: null }))).status, 400);
+    assert.equal((await app.call('lead', 'POST', url, drawingForm({ label: '  ' }))).status, 400, 'phải đặt tên sơ đồ');
+    assert.equal((await app.call('lead', 'POST', '/substations/KHONG-CO/drawings', drawingForm())).status, 404);
+
+    const up = await app.call('lead', 'POST', url, drawingForm());
+    assert.equal(up.status, 201);
+    const d = up.body.drawing;
+    assert.deepEqual([d.label, d.page, d.pageCount, d.width, d.height, d.pdfSize], ['Sơ đồ trạm', 2, 3, 300, 150, PDF.length]);
+    assert.equal(d.fileName, 'So do TBA Thap Cham.pdf');
+    const list = (await app.call('member', 'GET', '/substation-drawings')).body.items;
+    assert.deepEqual(list.map(x => x.substationId), [sub.id]);
+    assert.equal(list[0].image, undefined, 'danh sách không kèm dữ liệu file');
+
+    const img = await app.call('member', 'GET', `/drawings/${d.id}/image`);
+    assert.equal(img.headers.get('content-type'), 'image/png');
+    assert.equal(img.body.readUInt32BE(16), 300);
+    const pdf = await app.call('member', 'GET', `/drawings/${d.id}/pdf`);
+    assert.equal(pdf.headers.get('content-type'), 'application/pdf');
+    assert.ok(pdf.body.equals(PDF));
+
+    // đổi tên (không gửi file), thay file
+    assert.equal((await app.call('member', 'PUT', `/drawings/${d.id}`, labelForm('Phía 220kV'))).status, 403);
+    assert.equal((await app.call('lead', 'PUT', `/drawings/${d.id}`, labelForm('Phía 220kV'))).body.drawing.label, 'Phía 220kV');
+    const replaced = (await app.call('lead', 'PUT', `/drawings/${d.id}`, drawingForm({ page: '1', pageCount: '1', label: 'Phía 220kV' }))).body.drawing;
+    assert.deepEqual([replaced.page, replaced.pageCount], [1, 1]);
+    assert.equal((await app.call('member', 'GET', '/substation-drawings')).body.items.length, 1);
+
+    assert.equal((await app.call('member', 'DELETE', `/drawings/${d.id}`)).status, 403);
+    assert.equal((await app.call('lead', 'DELETE', `/drawings/${d.id}`)).status, 200);
+    assert.equal((await app.call('member', 'GET', `/drawings/${d.id}/image`)).status, 404);
+  } finally { app.close(); }
+});
+
+test('bản vẽ trạm 500kV: hai sơ đồ "Phía 500kV", "Phía 220kV" (500kV xếp trước); tên không trùng trong một trạm', async () => {
+  const app = await startApp();
+  try {
+    const sub = (await app.call('lead', 'GET', '/substations')).body.items.find(s => s.name === 'TBA 500kV Vĩnh Tân');
+    const url = `/substations/${sub.id}/drawings`;
+    assert.equal((await app.call('lead', 'POST', url, drawingForm({ label: 'Phía 220kV' }))).status, 201);
+    assert.equal((await app.call('lead', 'POST', url, drawingForm({ label: 'Phía 500kV' }))).status, 201);
+    assert.equal((await app.call('lead', 'POST', url, drawingForm({ label: 'phía  500KV' }))).status, 409, 'trùng tên (bỏ qua hoa thường, khoảng trắng)');
+    const items = (await app.call('member', 'GET', url)).body.items;
+    assert.deepEqual(items.map(x => x.label), ['Phía 500kV', 'Phía 220kV']);
+    assert.equal((await app.call('lead', 'PUT', `/drawings/${items[1].id}`, labelForm('Phía 500kV'))).status, 409);
+  } finally { app.close(); }
+});
+
+test('BBKSHT: khung "Khu vực công tác" lưu cùng biên bản và thành hình vẽ trên sơ đồ trong Word', async () => {
+  const app = await startApp();
+  try {
+    const marks = [{ x: 0.1, y: 0.2, w: 0.3, h: 0.25, label: 'Khu vực công tác' }, { x: 2, y: -1, w: 5, h: 0, label: '' }];
+    const id = (await app.call('lead', 'POST', '/surveys', { ...SURVEY, diagramMarks: marks })).body.survey.id;
+    await app.call('lead', 'PUT', `/surveys/${id}/diagram`, pngForm(makePng(400, 200)));
+    const saved = (await app.call('lead', 'GET', `/surveys/${id}`)).body.survey.data.diagramMarks;
+    assert.equal(saved.length, 1, 'bỏ khung không hợp lệ (ngoài ảnh / kích thước 0)');
+    const xml = new PizZip((await app.call('lead', 'GET', `/surveys/${id}/docx`)).body).file('word/document.xml').asText();
+    assert.match(xml, /<wps:wsp>[\s\S]*prst="rect"[\s\S]*FF0000/);
+    assert.match(xml, /Khu vực công tác/);
+  } finally { app.close(); }
+});
+
+const { PLAN } = require('./fixtures/samplePlan');
+
+test('Phương án: số riêng "n/PA-<tổ>.Nhatthu", lập/sửa/xóa, quyền, xuất Word có bản vẽ trạm', async () => {
+  const app = await startApp();
+  try {
+    const { draft, numbering } = (await app.call('lead', 'GET', '/plan-defaults')).body;
+    assert.equal(numbering.preview, '1/PA-TNLĐ.Nhatthu');
+    assert.equal(draft.header.teamName, 'Tổ Thí nghiệm điện Lâm Đồng');
+    assert.equal(draft.preparedBy, 'Nguyễn Hữu Kính');
+    assert.equal(draft.legalBases.length, 5);
+    assert.ok(draft.instruments.length > 5);
+    const devices = (await app.call('member', 'GET', '/tests1901')).body.devices;
+    assert.ok(devices.find(d => d.key === 'MBA').items.length > 20);
+
+    assert.equal((await app.call('member', 'POST', '/plans', PLAN)).status, 403);
+    assert.equal((await app.call('lead', 'POST', '/plans', { ...PLAN, bays: '' })).status, 422);
+    // số phương án không dùng chung bộ đếm với giấy ĐKCT
+    await app.call('lead', 'PUT', '/numbering', { startNumber: 215 });
+    assert.equal((await app.call('lead', 'PUT', '/plan-numbering', { startNumber: 12 })).body.numbering.preview, '12/PA-TNLĐ.Nhatthu');
+
+    const sub = (await app.call('lead', 'GET', '/substations')).body.items.find(s => s.name === 'TBA 500kV Vĩnh Tân');
+    const d500 = (await app.call('lead', 'POST', `/substations/${sub.id}/drawings`, drawingForm({ label: 'Phía 500kV' }))).body.drawing;
+    const d220 = (await app.call('lead', 'POST', `/substations/${sub.id}/drawings`, drawingForm({ label: 'Phía 220kV' }))).body.drawing;
+    const created = await app.call('lead', 'POST', '/plans', { ...PLAN, station: { substationId: sub.id } });
+    assert.equal(created.status, 201);
+    const plan = created.body.plan;
+    assert.equal(plan.docNumber, '12/PA-TNLĐ.Nhatthu');
+    assert.equal(plan.substationId, sub.id);
+    assert.equal(plan.data.preparedBy, 'Nguyễn Hữu Kính');
+    assert.equal(plan.data.station.qlvhShort, 'TBAVT');
+    assert.equal((await app.call('lead', 'GET', '/registrations')).body.items.length, 0);
+
+    const list = (await app.call('member', 'GET', '/plans?search=Vĩnh Tân')).body.items;
+    assert.equal(list.length, 1);
+    assert.equal(list[0].canEdit, false);
+    assert.equal((await app.call('other', 'GET', `/plans/${plan.id}`)).status, 403);
+
+    const edited = await app.call('lead', 'PUT', `/plans/${plan.id}`, { ...PLAN, bays: '530, 532' });
+    assert.equal(edited.body.plan.data.bays, '530, 532');
+    assert.equal(edited.body.plan.docNumber, '12/PA-TNLĐ.Nhatthu', 'số không đổi khi hiệu chỉnh');
+
+    // chưa chọn sơ đồ (phương án cũ): in mọi sơ đồ của trạm
+    assert.equal(plan.data.drawingIds, null);
+    await app.call('lead', 'PUT', `/plans/${plan.id}`, { ...PLAN, station: { substationId: sub.id } });
+    const docx = await app.call('member', 'GET', `/plans/${plan.id}/docx`);
+    assert.equal(docx.status, 200);
+    assert.match(decodeURIComponent(docx.headers.get('content-disposition')), /PhuongAn_12\/PA-TNLĐ\.Nhatthu\.docx/);
+    const zip = new PizZip(docx.body);
+    assert.ok(zip.file('word/media/dkct_station_drawing_2.png'), 'Phụ lục IV có cả hai sơ đồ');
+    assert.match(zip.file('word/document.xml').asText(), /12\/PA-TNLĐ\.Nhatthu/);
+
+    // chỉ chọn sơ đồ phía 220kV (id lạ bị bỏ khi xuất)
+    const only220 = await app.call('lead', 'PUT', `/plans/${plan.id}`, { ...PLAN, station: { substationId: sub.id }, drawingIds: [d220.id, d220.id, 'BV-LA'] });
+    assert.deepEqual(only220.body.plan.data.drawingIds, [d220.id, 'BV-LA']);
+    const zip220 = new PizZip((await app.call('member', 'GET', `/plans/${plan.id}/docx`)).body);
+    assert.ok(zip220.file('word/media/dkct_station_drawing_1.png') && !zip220.file('word/media/dkct_station_drawing_2.png'));
+    const xml220 = zip220.file('word/document.xml').asText();
+    assert.match(xml220, /Phía 220kV/);
+    assert.doesNotMatch(xml220, /Phía 500kV/);
+    // bỏ chọn hết: Phụ lục IV ghi chưa có bản vẽ
+    await app.call('lead', 'PUT', `/plans/${plan.id}`, { ...PLAN, station: { substationId: sub.id }, drawingIds: [] });
+    assert.match(new PizZip((await app.call('member', 'GET', `/plans/${plan.id}/docx`)).body).file('word/document.xml').asText(), /Chưa có bản vẽ/);
+    assert.ok(d500.id);
+
+    assert.equal((await app.call('member', 'DELETE', `/plans/${plan.id}`)).status, 403);
+    assert.equal((await app.call('lead', 'DELETE', `/plans/${plan.id}`)).status, 200);
+    assert.equal((await app.call('lead', 'GET', '/plan-numbering')).body.numbering.nextNumber, 13, 'số đã cấp không cấp lại');
+  } finally { app.close(); }
+});
+
+test('Phương án: nháp từ lịch cắt điện; khóa ngoại tới BBKSHT/lịch (xóa thì bỏ liên kết)', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'TBA 220kV Tháp Chàm', 'Thí nghiệm định kỳ ngăn 232', 'Cô lập MC232\nĐóng DTĐ 232-25', '', '', '']]));
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    const { draft } = (await app.call('lead', 'GET', `/outages/${o.id}/plan-draft`)).body;
+    assert.equal(draft.outageId, o.id);
+    assert.equal(draft.station.qlvhUnitName, 'Tổ Thao tác lưu động Tháp Chàm');
+    assert.equal(draft.station.qlvhShort, 'TTLĐTC');
+    assert.deepEqual(draft.isolationSteps, ['Cô lập MC232', 'Đóng DTĐ 232-25']);
+    assert.equal(draft.time.start, '2024-10-05T07:00');
+
+    const surveyId = (await app.call('lead', 'POST', '/surveys', SURVEY)).body.survey.id;
+    const plan = (await app.call('lead', 'POST', '/plans', { ...PLAN, outageId: o.id, surveyId })).body.plan;
+    assert.deepEqual([plan.outageId, plan.surveyId], [o.id, surveyId]);
+    assert.equal((await app.call('lead', 'POST', '/plans', { ...PLAN, surveyId: 'KHONG-CO' })).body.plan.surveyId, null);
+    await app.call('lead', 'DELETE', `/surveys/${surveyId}`);
+    assert.equal((await app.call('lead', 'GET', `/plans/${plan.id}`)).body.plan.surveyId, null, 'xóa BBKSHT thì phương án bỏ liên kết');
+  } finally { app.close(); }
+});
+
+test('Giấy xác nhận: lập từ giấy ĐKCT (trạm, ngăn lộ, mục kết quả), số riêng "n/GXN-<tổ>", sửa/xóa, quyền, xuất Word', async () => {
+  const app = await startApp();
+  try {
+    const reg = (await app.call('lead', 'POST', '/registrations', await validInput(app.call))).body.registration;
+    const { draft } = (await app.call('lead', 'GET', `/registrations/${reg.id}/confirmation-draft`)).body;
+    assert.equal(draft.registrationId, reg.id);
+    assert.equal(draft.station.name, 'TBA 500kV Vĩnh Tân', 'trạm khớp danh mục TBA từ địa điểm');
+    assert.ok(draft.station.substationId);
+    assert.equal(draft.bays, 'MBA AT1');
+    assert.deepEqual(draft.items, [{ text: 'Thí nghiệm định kỳ ngăn MBA AT1', result: 'đạt' }]);
+    assert.equal(draft.workDate, '2026-10-08', 'ngày kết thúc công tác theo giấy');
+    assert.equal(draft.header.teamName, 'Tổ Thí nghiệm điện Lâm Đồng');
+    assert.equal(draft.signer, 'Nguyễn Hữu Kính');
+    assert.equal((await app.call('other', 'GET', `/registrations/${reg.id}/confirmation-draft`)).status, 403);
+
+    // số riêng, không dùng chung bộ đếm với giấy ĐKCT / phương án
+    assert.equal((await app.call('lead', 'GET', '/confirmation-numbering')).body.numbering.preview, '1/GXN-TNLĐ');
+    await app.call('lead', 'PUT', '/confirmation-numbering', { startNumber: 5 });
+    assert.equal((await app.call('member', 'POST', '/confirmations', draft)).status, 403);
+    assert.equal((await app.call('lead', 'POST', '/confirmations', { ...draft, items: [] })).status, 422);
+    const created = await app.call('lead', 'POST', '/confirmations', draft);
+    assert.equal(created.status, 201);
+    const c = created.body.confirmation;
+    assert.equal(c.docNumber, '5/GXN-TNLĐ');
+    assert.deepEqual([c.registrationId, c.substationId, c.stationName, c.bays], [reg.id, draft.station.substationId, 'TBA 500kV Vĩnh Tân', 'MBA AT1']);
+    assert.equal((await app.call('lead', 'GET', '/registrations')).body.items[0].docNumber, '1/ĐK-TNLĐ');
+
+    const list = (await app.call('member', 'GET', '/confirmations?search=AT1')).body.items;
+    assert.equal(list.length, 1);
+    assert.equal(list[0].canEdit, false);
+    assert.equal((await app.call('other', 'GET', `/confirmations/${c.id}`)).status, 403);
+
+    const edited = await app.call('lead', 'PUT', `/confirmations/${c.id}`, { ...draft, note: 'Đã tháo tiếp địa', registrationId: 'KHONG-CO' });
+    assert.equal(edited.body.confirmation.data.note, 'Đã tháo tiếp địa');
+    assert.equal(edited.body.confirmation.registrationId, null, 'liên kết tới giấy không tồn tại bị bỏ');
+    assert.equal(edited.body.confirmation.docNumber, '5/GXN-TNLĐ');
+
+    const docx = await app.call('member', 'GET', `/confirmations/${c.id}/docx`);
+    assert.equal(docx.status, 200);
+    assert.match(decodeURIComponent(docx.headers.get('content-disposition')), /GiayXacNhan_5\/GXN-TNLĐ\.docx/);
+    const zip = new PizZip(docx.body);
+    assert.match(zip.file('word/header1.xml').asText(), /5\/GXN-TNLĐ/);
+    assert.match(zip.file('word/document.xml').asText(), /Thí nghiệm định kỳ ngăn MBA AT1:/);
+
+    // xóa giấy ĐKCT: giấy xác nhận giữ lại, bỏ liên kết
+    await app.call('lead', 'PUT', `/confirmations/${c.id}`, draft);
+    await app.call('lead', 'DELETE', `/registrations/${reg.id}`);
+    assert.equal((await app.call('lead', 'GET', `/confirmations/${c.id}`)).body.confirmation.registrationId, null);
+
+    assert.equal((await app.call('member', 'DELETE', `/confirmations/${c.id}`)).status, 403);
+    assert.equal((await app.call('lead', 'DELETE', `/confirmations/${c.id}`)).status, 200);
+    assert.equal((await app.call('lead', 'GET', '/confirmation-numbering')).body.numbering.nextNumber, 6);
+  } finally { app.close(); }
+});

@@ -1,0 +1,87 @@
+[
+  {
+    "hazard": "Không nắm rõ nội dung công việc, biện pháp an toàn, các quy định dẫn đến mất an toàn trong quá trình thi công.",
+    "measures": "- Quán triệt nhân viên, đơn vị công tác trong việc thực hiện phương án thi công, biện pháp an toàn, tuân thủ Quy trình an toàn ban hành theo quyết định số 278/QĐ-EVN ngày 25/02/2026 của EVN, Quy trình an toàn trong Tổng công ty Truyền tải điện Quốc gia ban hành theo quyết định số 726/QĐ-EVNNPT ngày 25/5/2026 của EVNNPT và các quy định hiện hành khác có liên quan;\n- Quan sát kỹ trước khi di chuyển vào vị trí làm việc, đặt rào chắn, biển cảnh báo nguy hiểm, cử người giám sát chặt chẽ các đơn vị công tác.",
+    "performer": "Đơn vị công tác."
+  },
+  {
+    "hazard": "Công tác tại vị trí các DTĐ và DCL liên quan.",
+    "measures": "- Sử dụng BHLĐ, PTBVCN theo quy định;\n- Kiểm tra các tiếp đất chống ngắn mạch đã được thực hiện đầy đủ (tại các vị trí tăng cường, vị trí DTĐ cần mở từ đầu để công tác theo phương án).\n- Làm đầy đủ các biện pháp an toàn; thực hiện tiếp đất chống ngắn mạch bổ sung tại vị trí làm việc đúng quy trình: tại DTĐ cần mở, DCL liên quan cần công tác trên đó. Kiểm tra TĐ chắc chắn, tiếp xúc tốt. Nguyên tắc: Công việc có mở DTĐ thì phải nối đất chống ngắn mạch thay cho DTĐ trước khi mở DTĐ đó.",
+    "performer": "Đơn vị QLVH chuẩn bị hiện trường ban đầu;\nĐơn vị công tác thực hiện tiếp đất bổ sung;\nĐơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Tai nạn do phóng điện cảm ứng (Làm việc trên cao, tháo lắp đầu cốt thiết bị nhất thứ để phục vụ thí nghiệm).",
+    "measures": "- Sử dụng BHLĐ, PTBVCN theo quy định;\n- Làm đầy đủ các biện pháp an toàn; tiếp địa chống cảm ứng vị trí làm việc, kiểm tra TĐ chắc chắn, tiếp xúc tốt.\n- Thực hiện tiếp đất chống cảm ứng tại vị trí làm việc đúng quy trình. Nguyên tắc: Công việc có tháo rời dây dẫn thì phải nối đất ở hai phía chỗ định tháo rời trước khi tháo.",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Tai nạn do vật tư dụng cụ rơi từ trên cao xuống dưới (Làm việc tháo lắp đầu cốt thiết bị nhất thứ, dây đo để phục vụ thí nghiệm).",
+    "measures": "Đội mũ BHLĐ, vật tư, dụng cụ phải đựng trong túi đeo trên người. Không đứng ngay bên dưới người đang làm việc trên sứ.",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Tai nạn bị ngã do làm việc trên cao (Làm việc tháo lắp đầu cốt thiết bị nhất thứ, dây đo để phục vụ thí nghiệm).",
+    "measures": "Quan sát kỹ, lựa chọn chỗ đứng chắc chắn, vị trí treo dây an toàn chắc chắn;\nThực hiện BHLĐ đúng\nquy định.",
+    "performer": "Đơn vị công tác."
+  },
+  {
+    "hazard": "Tai nạn phóng điện do vi phạm khoảng cách an toàn (Tai nạn phóng điện do vi phạm khoảng cách an toàn: Mang vác dụng cụ, vật tư để thi công vi phạm khoảng cách với thiết bị đang mang điện).",
+    "measures": "Quan sát kỹ trước khi di chuyển vào vị trí làm việc, đặt rào chắn, biển cảnh báo nguy hiểm, cử người giám sát chặt chẽ đội công tác.",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Tai nạn do thiết bị thí nghiệm cao áp khi thử nghiệm thiết bị nhất thứ (Thiết bị thí nghiệm hư hỏng dẫn điện ra vỏ thiết bị; vi phạm khoảng cách an toàn).",
+    "measures": "Kiểm tra tình trạng thiết bị trước khi sử dụng;\nThực hiện đúng quy trình thử nghiệm cao áp, đặt rào chắn, cử người cảnh giới.",
+    "performer": "Đơn vị công tác."
+  },
+  {
+    "hazard": "Tai nạn do điện hạ áp (Do không tách nguồn điện bảo vệ, điều khiển, chiếu sáng hoặc dụng cụ làm việc không đảm bảo cách điện).",
+    "measures": "Đảm bảo thi công đúng phương án; Cắt các nguồn điện AC-DC cấp đến nơi làm việc nếu cần.\nSử dụng đầy đủ trang bị dụng cụ.",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Tai nạn do điện hạ áp giật (Làm việc với mạch nhị thứ, rơ le, thứ cấp của TI trên máy)",
+    "measures": "Cắt nguồn điện cấp đến, cử người cảnh giới việc đóng cắt các mạch nhị thứ khi công tác.\nTrang bị đủ quần áo, giày BHLĐ, dụng cụ cầm tay (kìm, tovit, cle,…) phải bọc cách điện vị trí cầm tay.",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Tai nạn do thiết bị thí nghiệm (Thiết bị thí nghiệm hư hỏng dẫn điện ra vỏ thiết bị).",
+    "measures": "Thực hiện đúng quy trình, kiểm tra tình trạng máy, thiết bị trước khi sử dụng.",
+    "performer": "Đơn vị công tác."
+  },
+  {
+    "hazard": "Công tác kiểm tra thiết bị nhị thứ: Mục B.II. Công tác kiểm tra thiết bị điện nhị thứ - Mục B. Các công việc cụ thể (Cẩm nang an toàn QLVH&SC trạm biến áp).",
+    "measures": "- Điện giật do chưa cô lập nguồn, chưa kiểm tra mạch nhị thứ trước khi thi công không còn điện: Cần cô lập nguồn và kiểm tra không còn điện cho tất cả mạch nhị thứ trước khi thi công.\n- Điện giật do rò điện ra vỏ thiết bị: Kiểm tra bề mặt cách điện trước khi tiếp xúc; sử dụng đầy đủ PTBV, BHLĐ phù hợp.\n- Điện giật do hở cách điện cáp nhị thứ (do chuột, côn trùng cắn, …): Thiết bị điện phải được nối đất an toàn; sử dụng đầy đủ PTBV, BHLĐ phù hợp.\n- Cháy nổ cáp nhị thứ gây tai nạn: Sử dụng đầy đủ PTBVCN, BHLĐ phù hợp.",
+    "performer": "Đơn vị công tác."
+  },
+  {
+    "hazard": "Giao tiếp rơ le không đúng chỉ danh",
+    "measures": "- Giao tiếp bằng cáp ngay trên mặt trước rơ le. Phải có người giám sát của đơn vị quản lý vận hành xác định đúng chỉ danh thiết bị.\n- Khi thay đổi cấu hình, setting phải thực hiện trên Project lưu tại trạm trên máy Engineer.",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Tách mạch BF, mạch trip, mạch DTT sót, tác động nhầm. Tái lập thiếu mạch.",
+    "measures": "- Lập bảng checklist tách/ tái lập chi tiết. Xác định đúng chỉ danh tủ, hàng kẹp.\n- Có sự kiểm tra, giám sát  xác nhận của đơn vị QLVH.",
+    "performer": "Đơn vị công tác thực hiện;\nĐơn vị QLVH kiểm tra."
+  },
+  {
+    "hazard": "Tai nạn do điện hạ áp (Bị điện giật ở các tủ bảng điện, cáp một chiều, xoay chiều).",
+    "measures": "- Kiểm tra an toàn vị trí làm việc trước khi thực hiện công việc, cắt điện ở các nguồn cấp đến, nếu không cắt được phải thực hiện che chắn cẩn thận, giữ khoảng cách an toàn với thiết bị đang mang điện, các sợi cáp có điện;\n- Kiểm tra kỹ các vị trí cạnh nơi làm việc, phát hiện các hiện tượng không bình thường, dùng bút thử điện,  đồng hồ vạn năng kiểm tra cẩn thận;\n- Sử dụng đúng, đầy đủ dụng cụ an toàn, BHLĐ, ...",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  },
+  {
+    "hazard": "Điện hạ áp giật do va chạm với hàng kẹp mang điện",
+    "measures": "- Tuân thủ phạm vi làm việc đã được đơn vị QLVH cho phép.\n- Giám sát quá trình thi công đảm bảo khoảng cách an toàn điện với thiết bị điện đang mang điện vận hành.",
+    "performer": "Đơn vị công tác."
+  },
+  {
+    "hazard": "Thực hiện công tác tại không gian chật hẹp, thiếu ánh sáng, dễ va chạm vào mạch điện hạ áp, nhìn không rõ chỉ danh.",
+    "measures": "Bố trí ánh sáng đầy đủ (đèn pin đội dầu).\nDùng băng dính dán lại các hàng kẹp mang điện hạ áp để tránh va chạm.",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra, giám sát."
+  },
+  {
+    "hazard": "Tái lập mạch khi rơ le bảo vệ chưa reset về trạng thái ban đầu.",
+    "measures": "Reset tất cả các tín hiệu.\nDùng VOM đo lại áp vào ra, để khẳng định các tiếp điểm thừa hành đã được trở về",
+    "performer": "Đơn vị QLVH, Đơn vị công tác phối hợp cùng kiểm tra."
+  }
+]

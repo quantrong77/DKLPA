@@ -1,0 +1,16 @@
+[
+  { "leader": "Phạm Hồng Chương", "substation": "TBA 500kV Di Linh", "unit": "Tổ QLVH TBA 500kV Di Linh", "unitShort": "TBADL" },
+  { "leader": "Phạm Bá Hà", "substation": "TBA 500kV Vĩnh Tân", "unit": "Tổ QLVH TBA 500kV Vĩnh Tân", "unitShort": "TBAVT" },
+  { "leader": "Lê Quang Trung", "substation": "TBA 500kV Đăk Nông", "unit": "Tổ QLVH TBA 500kV Đăk Nông", "unitShort": "TBADN" },
+  { "leader": "Trần Anh Tuấn", "substation": "TBA 220kV Đăk Nông", "unit": "Tổ Thao tác lưu động Đăk Nông", "unitShort": "TTLĐDN" },
+  { "leader": "Phạm Tấn Cường", "substation": "TBA 220kV Đức Trọng", "unit": "Tổ Thao tác lưu động Đức Trọng", "unitShort": "TTLĐĐT" },
+  { "leader": "Nguyễn Tín Nghĩa", "substation": "TBA 220kV Bảo Lộc", "unit": "Tổ Thao tác lưu động Bảo Lộc", "unitShort": "TTLĐBL" },
+  { "leader": "Từ Trung Nghĩa", "substation": "TBA 220kV Phan Thiết", "unit": "Tổ Thao tác lưu động Phan Thiết", "unitShort": "TTLĐPTH" },
+  { "leader": "Nguyễn Đình Khải", "substation": "TBA 220kV Hàm Tân", "unit": "Tổ Thao tác lưu động Hàm Tân", "unitShort": "TTLĐHT" },
+  { "leader": "Nguyễn Xuân Quý", "substation": "TBA 220kV Phan Rí", "unit": "Tổ Thao tác lưu động Phan Rí", "unitShort": "TTLĐPR" },
+  { "leader": "Nguyễn Công Khang", "substation": "TBA 220kV Vĩnh Hảo", "unit": "Tổ Thao tác lưu động Vĩnh Hảo", "unitShort": "TTLĐVH" },
+  { "leader": "Bùi Quang Đạt", "substation": "TBA 220kV Ninh Phước", "unit": "Tổ Thao tác lưu động Ninh Phước", "unitShort": "TTLĐNP" },
+  { "leader": "Nguyễn Duy Vương", "substation": "TBA 220kV Phước Thái", "unit": "Tổ Thao tác lưu động Phước Thái", "unitShort": "TTLĐPT" },
+  { "leader": "Nguyễn Yên", "substation": "TBA 220kV Tháp Chàm", "unit": "Tổ Thao tác lưu động Tháp Chàm", "unitShort": "TTLĐTC" },
+  { "leader": "Nguyễn Vinh", "substation": "TBA 500kV Thuận Nam", "unit": "Trung tâm vận hành Thuận Nam", "unitShort": "VHTN", "note": "Vận hành Thuận Nam - Trung Nam" }
+]
