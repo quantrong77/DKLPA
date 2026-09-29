@@ -132,6 +132,9 @@ Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Su
 
 Gói miễn phí: Render ngủ sau 15 phút không dùng (lần mở đầu chờ ~1 phút); Supabase tạm dừng dự án sau 7 ngày không có truy cập (bấm *Restore* trên trang Supabase).
 
+Chuyển dữ liệu đang dùng trong ChatLan sang Supabase (chạy ở máy có MySQL của ChatLan, sau khi đã có `standalone/.env`):
+`node standalone/scripts/copy-from-chatlan.js <đường dẫn server/.env của ChatLan>` — chép mọi bảng `dkct_*` trong một giao dịch và tạo sẵn các tổ; Supabase đã có hồ sơ thì dừng (thêm `--force` để ghi đè).
+
 Chạy ở máy: chép `standalone/.env.example` thành `standalone/.env`, rồi `npm ci && cd standalone && npm ci && npm run build && npm start` (http://localhost:3000). Test: `npm test` trong `standalone/`; toàn bộ test module trên Postgres: `npm run test:pg`.
 
 ## Phát triển
