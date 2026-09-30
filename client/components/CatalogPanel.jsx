@@ -26,11 +26,11 @@ const CATALOGS = {
   },
   substations: {
     label: 'Trạm biến áp', icon: Zap,
-    hint: 'Mỗi trạm thuộc một đơn vị QLVH; biên bản khảo sát chọn trạm thì tự điền người phụ trách của đơn vị đó.',
+    hint: 'Mỗi trạm thuộc một đơn vị QLVH; biên bản khảo sát chọn trạm thì tự điền người phụ trách của đơn vị đó. Phương án chọn trạm thì tự điền Truyền tải điện khu vực.',
     columns: [
       { key: 'name', label: 'Tên trạm', required: true, placeholder: 'TBA 220kV …' },
       { key: 'stationId', label: 'Đơn vị QLVH', type: 'select', options: (c) => c.stations, display: (row, c) => c.stations.find(u => u.id === row.stationId)?.name || '' },
-      { key: 'note', label: 'Ghi chú' },
+      { key: 'transmissionName', label: 'Truyền tải điện khu vực', placeholder: 'Truyền tải điện Lâm Đồng', suggest: (c) => [...new Set(c.substations.map(s => s.transmissionName).filter(Boolean))] },
       { key: 'sortOrder', label: 'Thứ tự', width: '!w-20', type: 'number' }
     ]
   },
@@ -68,6 +68,14 @@ function RowEditor({ cfg, value, onChange, catalogs }) {
           <option value="">— {c.label} —</option>
           {c.options(catalogs).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
+      );
+    }
+    if (c.suggest) {
+      return (
+        <React.Fragment key={c.key}>
+          <input type="text" list={`catalog-${c.key}`} {...common} />
+          <datalist id={`catalog-${c.key}`}>{c.suggest(catalogs).map(v => <option key={v} value={v} />)}</datalist>
+        </React.Fragment>
       );
     }
     return c.multiline ? <textarea key={c.key} rows={3} {...common} /> : <input key={c.key} type={c.type || 'text'} {...common} />;

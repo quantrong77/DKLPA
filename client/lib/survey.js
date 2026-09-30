@@ -21,7 +21,7 @@ export function qlvhRoleOptions(unitName) {
 
 /**
  * Trạm khảo sát chọn từ danh mục TBA: kèm đơn vị QLVH quản lý và người phụ trách của đơn vị đó.
- * substations: [{ id, name, stationId }]; stations (đơn vị QLVH): [{ id, name, leaderName }].
+ * substations: [{ id, name, stationId, transmissionName }]; stations (đơn vị QLVH): [{ id, name, leaderName }].
  */
 export function stationFromCatalog(substationId, substations, stations) {
   const sub = substations.find(s => s.id === substationId);
@@ -29,7 +29,8 @@ export function stationFromCatalog(substationId, substations, stations) {
   const unit = stations.find(u => u.id === sub.stationId);
   return {
     station: { substationId: sub.id, name: sub.name, qlvhUnitId: unit?.id || null, qlvhUnitName: unit?.name || '' },
-    leaderName: unit?.leaderName || ''
+    leaderName: unit?.leaderName || '',
+    transmissionName: sub.transmissionName || ''
   };
 }
 

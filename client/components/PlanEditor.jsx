@@ -109,6 +109,7 @@ function GeneralStep({ form, setField, errors, catalogs, departments }) {
     const picked = stationFromCatalog(value, substations, units);
     const unit = units.find(u => u.id === picked?.station.qlvhUnitId);
     if (picked) setField('station', { ...picked.station, qlvhShort: unit?.shortName || '' });
+    if (picked?.transmissionName) setHeader({ transmissionName: picked.transmissionName }); // Truyền tải điện khu vực theo trạm
   };
 
   return (
@@ -126,7 +127,7 @@ function GeneralStep({ form, setField, errors, catalogs, departments }) {
               </select>
             ) : <input id="pa-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''} onChange={e => setHeader({ teamName: e.target.value })} />}
           </Field>
-          <Field label="Truyền tải điện (khu vực)" htmlFor="pa-tt"><input id="pa-tt" className={`${inputCls} ${inputBorder()}`} value={form.header.transmissionName || ''} placeholder="Truyền tải điện Lâm Đồng" onChange={e => setHeader({ transmissionName: e.target.value })} /></Field>
+          <Field label="Truyền tải điện (khu vực)" htmlFor="pa-tt" hint="Tự điền theo trạm (Danh mục → Trạm biến áp)."><input id="pa-tt" className={`${inputCls} ${inputBorder()}`} value={form.header.transmissionName || ''} placeholder="Truyền tải điện Lâm Đồng" onChange={e => setHeader({ transmissionName: e.target.value })} /></Field>
           <Field label="Địa danh" htmlFor="pa-place"><PlaceSelect id="pa-place" value={form.header.place || ''} onChange={place => setHeader({ place })} /></Field>
           <Field label="Ngày văn bản" htmlFor="pa-date"><input id="pa-date" type="date" className={`${inputCls} ${inputBorder()}`} value={form.header.date || ''} onChange={e => setHeader({ date: e.target.value })} /></Field>
           <Field label="Hậu tố số phương án" htmlFor="pa-suffix" hint={`Số: …/PA-${form.header.teamShort || '…'}.${form.header.numberSuffix || ''}`}>
@@ -390,7 +391,11 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
     try {
       const { survey } = await api.get(`/surveys/${id}`);
       if (form.risks.length && !(await confirmAction({ title: 'Thay bảng nhận diện rủi ro?', message: 'Danh sách hiện có sẽ được thay bằng mục 8 của biên bản khảo sát.' }))) return;
-      update(f => planFromSurvey(f, survey));
+      update(f => {
+        const next = planFromSurvey(f, survey);
+        const tt = (catalogs.substations || []).find(s => s.id === next.station?.substationId)?.transmissionName;
+        return tt ? { ...next, header: { ...next.header, transmissionName: tt } } : next;
+      });
       notify('Đã lấy rủi ro và trạm từ biên bản khảo sát.', 'success');
     } catch (err) { notify(err.message, 'error'); }
   };

@@ -36,12 +36,13 @@ function tables(t) {
       active ${t.int} NOT NULL DEFAULT 1,
       createdAt ${t.now},
       updatedAt ${t.now}`,
-    // Trạm biến áp, mỗi trạm thuộc một đơn vị QLVH
+    // Trạm biến áp, mỗi trạm thuộc một đơn vị QLVH và một Truyền tải điện khu vực (tự điền vào phương án khi chọn trạm)
     dkct_substations: `
       id ${t.id} PRIMARY KEY,
       name ${t.str} NOT NULL,
       stationId ${t.id} NOT NULL,
       note ${t.text},
+      transmissionName ${t.str},
       sortOrder ${t.int} NOT NULL DEFAULT 0,
       active ${t.int} NOT NULL DEFAULT 1,
       createdAt ${t.now},
@@ -221,6 +222,7 @@ const INDEXES = [
 const ADDED_COLUMNS = (t) => [
   ['dkct_stations', 'shortName', t.short],
   ['dkct_stations', 'leaderName', t.str],
+  ['dkct_substations', 'transmissionName', t.str],
   ['dkct_surveys', 'substationId', t.id,
     { name: 'fk_dkct_surveys_substation', ref: 'dkct_substations (id)', rule: 'ON UPDATE CASCADE ON DELETE SET NULL' }]
 ];
@@ -308,6 +310,19 @@ async function importSubstations(db) {
   await db.execute('INSERT INTO dkct_settings (name, value) VALUES (?, ?)', [MARK, String(rows.length)]);
 }
 
+/** Nạp Truyền tải điện khu vực của các TBA (seeds/substations.json) MỘT lần; trạm đã ghi thì giữ nguyên. */
+async function importTransmissionNames(db) {
+  const MARK = 'import:substation-transmission-2026-09';
+  if (await db.queryOne('SELECT name FROM dkct_settings WHERE name = ?', [MARK])) return;
+  const rows = require('./seeds/substations.json').filter(r => r.transmission);
+  const subs = await db.query('SELECT id, name, transmissionName FROM dkct_substations');
+  for (const s of subs) {
+    const r = !s.transmissionName && rows.find(x => sameUnitName(x.substation, s.name));
+    if (r) await db.execute('UPDATE dkct_substations SET transmissionName = ? WHERE id = ?', [r.transmission, s.id]);
+  }
+  await db.execute('INSERT INTO dkct_settings (name, value) VALUES (?, ?)', [MARK, String(rows.length)]);
+}
+
 const DEFAULT_DRAWING_LABEL = 'Sơ đồ trạm';
 /** Thứ tự sơ đồ trong một trạm: cấp điện áp cao trước ("Phía 500kV" trước "Phía 220kV"). */
 function drawingSortOrder(label) {
@@ -349,6 +364,7 @@ async function migrate(db) {
   await migrateOldDrawings(db);
   await seed(db);
   await importSubstations(db);
+  await importTransmissionNames(db);
 }
 
 module.exports = { migrate, COLUMN_TEXT, newId, sameUnitName, drawingSortOrder, DEFAULT_DRAWING_LABEL };

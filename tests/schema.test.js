@@ -13,11 +13,14 @@ test('migrate: bảng TBA có khóa ngoại tới đơn vị QLVH; nạp ngườ
   const db = createTestDb();
   try {
     await migrate(db);
-    const subs = await db.query(`SELECT s.name, u.name AS unit, u.shortName, u.leaderName, u.email
+    const subs = await db.query(`SELECT s.name, s.transmissionName, u.name AS unit, u.shortName, u.leaderName, u.email
       FROM dkct_substations s JOIN dkct_stations u ON u.id = s.stationId ORDER BY s.sortOrder`);
     assert.equal(subs.length, 14);
     const thapCham = subs.find(s => s.name === 'TBA 220kV Tháp Chàm');
     assert.deepEqual([thapCham.unit, thapCham.shortName, thapCham.leaderName], ['Tổ Thao tác lưu động Tháp Chàm', 'TTLĐTC', 'Nguyễn Yên']);
+
+    assert.equal(thapCham.transmissionName, 'Truyền tải điện Khánh Hòa');
+    assert.equal(subs.find(s => s.name === 'TBA 220kV Phan Rí').transmissionName, 'Truyền tải điện Lâm Đồng');
 
     // dòng cũ "Trạm 220kV Bảo Lộc" trở thành "Tổ Thao tác lưu động Bảo Lộc", giữ email (giấy cũ vẫn trỏ đúng id)
     const baoLoc = subs.find(s => s.name === 'TBA 220kV Bảo Lộc');
@@ -34,8 +37,9 @@ test('migrate: chạy lại không nạp trùng, không ghi đè chỉnh sửa, 
   try {
     await migrate(db);
     await db.execute("UPDATE dkct_stations SET leaderName = 'Người mới' WHERE name = 'Tổ Thao tác lưu động Tháp Chàm'");
-    await db.execute("UPDATE dkct_substations SET active = 0 WHERE name = 'TBA 220kV Hàm Tân'");
+    await db.execute("UPDATE dkct_substations SET active = 0, transmissionName = 'TTĐ sửa tay' WHERE name = 'TBA 220kV Hàm Tân'");
     await migrate(db);
+    assert.equal((await db.queryOne("SELECT transmissionName FROM dkct_substations WHERE name = 'TBA 220kV Hàm Tân'")).transmissionName, 'TTĐ sửa tay');
     assert.equal((await db.queryOne('SELECT COUNT(*) AS n FROM dkct_substations')).n, 14);
     assert.equal((await db.queryOne("SELECT leaderName FROM dkct_stations WHERE name = 'Tổ Thao tác lưu động Tháp Chàm'")).leaderName, 'Người mới');
     assert.equal((await db.queryOne("SELECT active FROM dkct_substations WHERE name = 'TBA 220kV Hàm Tân'")).active, 0);

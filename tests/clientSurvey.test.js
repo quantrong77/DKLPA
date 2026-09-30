@@ -15,10 +15,11 @@ test('qlvhRoleFor: chức vụ đại diện QLVH gợi ý theo đơn vị quả
 
 test('stationFromCatalog / withQlvhFor: chọn TBA thì điền người phụ trách và chức vụ của đơn vị QLVH', async () => {
   const { stationFromCatalog, withQlvhFor } = await load();
-  const subs = [{ id: 'TBA-1', name: 'TBA 220kV Tháp Chàm', stationId: 'ST-1' }];
+  const subs = [{ id: 'TBA-1', name: 'TBA 220kV Tháp Chàm', stationId: 'ST-1', transmissionName: 'Truyền tải điện Khánh Hòa' }];
   const units = [{ id: 'ST-1', name: 'Tổ Thao tác lưu động Tháp Chàm', leaderName: 'Nguyễn Yên' }];
   const picked = stationFromCatalog('TBA-1', subs, units);
   assert.deepEqual(picked.station, { substationId: 'TBA-1', name: 'TBA 220kV Tháp Chàm', qlvhUnitId: 'ST-1', qlvhUnitName: 'Tổ Thao tác lưu động Tháp Chàm' });
+  assert.equal(picked.transmissionName, 'Truyền tải điện Khánh Hòa');
   assert.equal(stationFromCatalog('KHONG', subs, units), null);
 
   const filled = withQlvhFor([], '', picked.station.qlvhUnitName, picked.leaderName);

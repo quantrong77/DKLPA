@@ -435,8 +435,9 @@ test('danh mục TBA: gắn đơn vị QLVH (khóa ngoại), BBKSHT lưu liên k
 
     assert.equal((await app.call('lead', 'POST', '/substations', { name: 'TBA mới', stationId: 'KHONG-CO' })).status, 400);
     assert.equal((await app.call('member', 'POST', '/substations', { name: 'TBA mới', stationId: thapCham.id })).status, 403);
-    const created = await app.call('lead', 'POST', '/substations', { name: 'TBA 110kV Mới', stationId: thapCham.id });
+    const created = await app.call('lead', 'POST', '/substations', { name: 'TBA 110kV Mới', stationId: thapCham.id, transmissionName: 'Truyền tải điện Khánh Hòa' });
     assert.equal(created.status, 201);
+    assert.equal(created.body.item.transmissionName, 'Truyền tải điện Khánh Hòa');
 
     const sub = subs.find(s => s.name === 'TBA 220kV Tháp Chàm');
     const survey = (await app.call('lead', 'POST', '/surveys', { ...SURVEY, station: { substationId: sub.id } })).body.survey;

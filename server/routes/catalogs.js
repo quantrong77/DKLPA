@@ -24,7 +24,7 @@ const CATALOGS = {
   },
   substations: {
     table: 'dkct_substations', prefix: 'TBA', required: 'name', orderBy: 'sortOrder, name',
-    fields: ['name', 'stationId', 'note', 'sortOrder'], numeric: ['sortOrder'],
+    fields: ['name', 'stationId', 'transmissionName', 'sortOrder'], numeric: ['sortOrder'],
     label: 'Tên trạm biến áp',
     // khóa ngoại tới đơn vị QLVH: báo lỗi dễ hiểu thay vì lỗi ràng buộc của CSDL
     check: async (db, v) => (v.stationId && await db.queryOne('SELECT id FROM dkct_stations WHERE id = ?', [v.stationId])
