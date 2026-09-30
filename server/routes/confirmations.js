@@ -4,6 +4,7 @@
  * Quyền giống giấy ĐKCT.
  */
 const express = require('express');
+const { docxFileName, attachment } = require('../services/fileName');
 const { newId, sameUnitName } = require('../schema');
 const { forbidden } = require('../policy');
 const { normalizeConfirmation, confirmationFromRegistration } = require('../services/confirmation');
@@ -13,12 +14,6 @@ const { vnYear, vnToday } = require('../services/clock');
 const { likePattern, LIKE, safeParse } = require('../util');
 
 const LIST_COLUMNS = 'id, docNumber, docYear, department, stationName, bays, workDate, substationId, registrationId, planId, createdBy, createdAt, updatedAt';
-
-function asciiFileName(docNumber) {
-  const base = String(docNumber || 'moi').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9_-]+/g, '-');
-  return `GiayXacNhan_${base}.docx`;
-}
 
 function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) {
   const router = express.Router();
@@ -208,9 +203,12 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
 
   router.get('/confirmations/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
-    const buffer = renderConfirmationDocx({ docNumber: row.docNumber, data: safeParse(row.data) });
+    const data = safeParse(row.data);
+    const buffer = renderConfirmationDocx({ docNumber: row.docNumber, data });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="${asciiFileName(row.docNumber)}"; filename*=UTF-8''${encodeURIComponent(`GiayXacNhan_${row.docNumber}.docx`)}`);
+    res.setHeader('Content-Disposition', attachment(docxFileName('confirmation', {
+      date: data.workDate || data.header?.date, number: row.docNumber, bays: data.bays, bayText: data.equipment, station: data.station?.name
+    })));
     res.send(buffer);
   }));
 

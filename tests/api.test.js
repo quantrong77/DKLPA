@@ -185,7 +185,7 @@ test('giấy ĐKCT: cấp số theo tổ/năm, đặt số khởi đầu, lỗi 
 
     const docx = await app.call('member', 'GET', `/registrations/${id}/docx`);
     assert.equal(docx.status, 200);
-    assert.match(docx.headers.get('content-disposition'), /DangKyCongTac_215/);
+    assert.match(docx.headers.get('content-disposition'), /filename="20260923_215-DK-TNLD_DKCT_MBA-AT1_Ngan-MBA-AT1\.docx"/);
     const xml = new PizZip(docx.body).file('word/document.xml').asText();
     assert.match(xml, /215\/ĐK-TNLĐ/);
     assert.match(xml, /Ngăn MBA AT1/);
@@ -396,7 +396,7 @@ test('BBKSHT: ảnh sơ đồ tải lên/xem/xóa, xuất Word có ảnh', async
 
     const docx = await app.call('member', 'GET', `/surveys/${id}/docx`);
     assert.equal(docx.status, 200);
-    assert.match(docx.headers.get('content-disposition'), /BienBanKhaoSat_20260721\.docx/);
+    assert.match(docx.headers.get('content-disposition'), /filename="20260721_BBKSHT_TU275-TI275_TBA-220kV-Thap-Cham\.docx"/);
     const zip = new PizZip(docx.body);
     assert.ok(zip.file('word/media/dkct_diagram.png'));
     assert.match(zip.file('word/document.xml').asText(), /Nguyễn Yên/);
@@ -573,7 +573,7 @@ test('Phương án: số riêng "n/PA-<tổ>.Nhatthu", lập/sửa/xóa, quyền
     await app.call('lead', 'PUT', `/plans/${plan.id}`, { ...PLAN, station: { substationId: sub.id } });
     const docx = await app.call('member', 'GET', `/plans/${plan.id}/docx`);
     assert.equal(docx.status, 200);
-    assert.match(decodeURIComponent(docx.headers.get('content-disposition')), /PhuongAn_12\/PA-TNLĐ\.Nhatthu\.docx/);
+    assert.match(docx.headers.get('content-disposition'), /filename="20260821_12-PA-TNLD\.Nhatthu_PA_530-532-MBA-AT2-232-255-342_TBA-500kV-Vinh-Tan\.docx"/);
     const zip = new PizZip(docx.body);
     assert.ok(zip.file('word/media/dkct_station_drawing_2.png'), 'Phụ lục IV có cả hai sơ đồ');
     assert.match(zip.file('word/document.xml').asText(), /12\/PA-TNLĐ\.Nhatthu/);
@@ -703,7 +703,7 @@ test('Giấy xác nhận: lập từ giấy ĐKCT (trạm, ngăn lộ, mục k�
 
     const docx = await app.call('member', 'GET', `/confirmations/${c.id}/docx`);
     assert.equal(docx.status, 200);
-    assert.match(decodeURIComponent(docx.headers.get('content-disposition')), /GiayXacNhan_5\/GXN-TNLĐ\.docx/);
+    assert.match(docx.headers.get('content-disposition'), /filename="20261008_5-GXN-TNLD_GXN_MBA-AT1_TBA-500kV-Vinh-Tan\.docx"/);
     const zip = new PizZip(docx.body);
     assert.match(zip.file('word/header1.xml').asText(), /5\/GXN-TNLĐ/);
     assert.match(zip.file('word/document.xml').asText(), /Thí nghiệm định kỳ ngăn MBA AT1:/);

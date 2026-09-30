@@ -3,6 +3,7 @@
  * Quyền giống giấy ĐKCT: trưởng/phó tổ, trưởng phòng, admin lập; người lập hoặc lãnh đạo tổ sửa; cùng tổ xem.
  */
 const express = require('express');
+const { docxFileName, attachment } = require('../services/fileName');
 const multer = require('multer');
 const { newId, sameUnitName } = require('../schema');
 const { forbidden } = require('../policy');
@@ -20,11 +21,6 @@ const upload = multer({
 });
 
 const LIST_COLUMNS = 'id, department, surveyTime, stationName, substationId, workContent, outageId, diagramType, createdBy, createdAt, updatedAt';
-
-function fileName(row) {
-  const date = String(row.surveyTime || '').slice(0, 10).replace(/-/g, '');
-  return `BienBanKhaoSat_${date || 'moi'}.docx`;
-}
 
 function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) {
   const router = express.Router();
@@ -212,9 +208,12 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }
 
   router.get('/surveys/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
-    const buffer = renderSurveyDocx({ data: safeParse(row.data) }, row.diagram ? { buffer: Buffer.from(row.diagram, 'base64') } : null);
+    const data = safeParse(row.data);
+    const buffer = renderSurveyDocx({ data }, row.diagram ? { buffer: Buffer.from(row.diagram, 'base64') } : null);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName(row)}"`);
+    res.setHeader('Content-Disposition', attachment(docxFileName('survey', {
+      date: data.surveyTime, bayText: [data.equipment, ...(data.scopeItems || []), data.workContent].join(' '), station: data.station?.name
+    })));
     res.send(buffer);
   }));
 

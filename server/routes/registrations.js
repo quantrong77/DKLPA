@@ -4,6 +4,7 @@
  * vài cột tóm tắt (workContent, startTime, recipientName) phục vụ danh sách và tìm kiếm.
  */
 const express = require('express');
+const { docxFileName, attachment } = require('../services/fileName');
 const { newId } = require('../schema');
 const { forbidden } = require('../policy');
 const { normalizeRegistration } = require('../services/registration');
@@ -13,12 +14,6 @@ const { vnYear } = require('../services/clock');
 const { likePattern, LIKE, safeParse } = require('../util');
 
 const toMap = (rows) => new Map(rows.map(r => [r.id, r]));
-
-function asciiFileName(docNumber) {
-  const base = String(docNumber || 'moi').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9_-]+/g, '-');
-  return `DangKyCongTac_${base}.docx`;
-}
 
 function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDefaults, listDepartments }) {
   const router = express.Router();
@@ -171,14 +166,17 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
 
   router.get('/registrations/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
-    const buffer = renderRegistrationDocx({ docNumber: row.docNumber, data: safeParse(row.data) });
-    const fileName = asciiFileName(row.docNumber);
+    const data = safeParse(row.data);
+    const buffer = renderRegistrationDocx({ docNumber: row.docNumber, data });
+    const name = docxFileName('registration', {
+      date: data.header?.date || data.time?.start, number: row.docNumber, bayText: data.workContent?.text, station: data.workLocation
+    });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(`DangKyCongTac_${row.docNumber}.docx`)}`);
+    res.setHeader('Content-Disposition', attachment(name));
     res.send(buffer);
   }));
 
   return router;
 }
 
-module.exports = { registrationRouter, asciiFileName };
+module.exports = { registrationRouter };

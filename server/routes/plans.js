@@ -4,6 +4,7 @@
  * Quyền giống giấy ĐKCT.
  */
 const express = require('express');
+const { docxFileName, attachment } = require('../services/fileName');
 const { newId, sameUnitName } = require('../schema');
 const { forbidden } = require('../policy');
 const { normalizePlan } = require('../services/plan');
@@ -38,12 +39,6 @@ const DEFAULT_INSTRUMENTS = [
   ['Nhất thứ', 'Rulo nguồn', 'Cái', '02'],
   ['Thiết bị nâng', 'Xe chở người 16C', 'Xe', '01']
 ].map(([group, name, unit, qty]) => ({ group, name, unit, qty, note: '' }));
-
-function asciiFileName(docNumber) {
-  const base = String(docNumber || 'moi').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^a-zA-Z0-9_-]+/g, '-');
-  return `PhuongAn_${base}.docx`;
-}
 
 function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) {
   const router = express.Router();
@@ -277,7 +272,9 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
     const data = safeParse(row.data);
     const buffer = renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="${asciiFileName(row.docNumber)}"; filename*=UTF-8''${encodeURIComponent(`PhuongAn_${row.docNumber}.docx`)}`);
+    res.setHeader('Content-Disposition', attachment(docxFileName('plan', {
+      date: data.header?.date, number: row.docNumber, bays: data.bays, bayText: data.equipmentText, station: data.station?.name
+    })));
     res.send(buffer);
   }));
 
