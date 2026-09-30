@@ -453,6 +453,8 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
             </TabButton>
           ))}
         </nav>
+        {/* ngoài vùng cuộn: luôn thấy khi cuộn nội dung bên dưới */}
+        <LinkedOutage outageId={form.outageId} onChange={id => setField('outageId', id)} readOnly={readOnly} />
         <div className="flex-1 overflow-y-auto p-4">
           {errorList.length > 0 && (
             <div className="mb-3 flex gap-2 p-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 text-sm text-red-700 dark:text-red-300" role="alert">
@@ -460,9 +462,6 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
               <ul className="list-disc pl-4 space-y-0.5">{errorList.map((e, i) => <li key={i}>{e.message}</li>)}</ul>
             </div>
           )}
-          <div className="mb-4">
-            <LinkedOutage outageId={form.outageId} onChange={id => setField('outageId', id)} readOnly={readOnly} />
-          </div>
           <fieldset disabled={readOnly} className="space-y-4 min-w-0">
             {step === 'general' && <GeneralStep {...shared} />}
             {step === 'work' && <WorkStep {...shared} onPickSurvey={pickSurvey} surveys={surveys} />}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Zap, Search, Link2, Unlink, Loader2, ChevronDown } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { btnSecondary, btnGhost, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import { btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 
 const todayIso = () => {
   const d = new Date();
@@ -12,9 +12,9 @@ const range = (a, b) => [formatDateTime(a), formatDateTime(b)].filter(Boolean).j
 function Detail({ label, children, wide }) {
   if (!children) return null;
   return (
-    <div className={wide ? 'sm:col-span-2' : ''}>
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="text-sm text-slate-800 dark:text-slate-100 whitespace-pre-line">{children}</dd>
+    <div className={wide ? 'sm:col-span-3' : ''}>
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className="text-xs text-slate-800 dark:text-slate-100 whitespace-pre-line">{children}</dd>
     </div>
   );
 }
@@ -51,7 +51,7 @@ function OutagePicker({ onPick, onCancel }) {
       {items === null ? <Loader2 className="w-4 h-4 animate-spin text-chatlan-600" aria-label="Đang tải" />
         : items.length === 0 ? <p className="text-xs text-slate-500">Không có dòng lịch nào khớp. Đổi ngày hoặc từ khóa.</p>
           : (
-            <ul className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+            <ul className="max-h-48 overflow-y-auto bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
               {items.map(o => (
                 <li key={o.id}>
                   <button type="button" onClick={() => onPick(o)} className="w-full text-left px-3 py-2 hover:bg-chatlan-50 dark:hover:bg-chatlan-900/30">
@@ -67,15 +67,15 @@ function OutagePicker({ onPick, onCancel }) {
 }
 
 /**
- * Khung "Lịch cắt điện liên quan" trong biên bản KSHT / phương án: hiện chi tiết dòng lịch đã gắn (outageId),
- * hoặc cho chọn một dòng lịch khi hồ sơ lập riêng (không từ tab Lịch cắt điện).
+ * Dải "Lịch cắt điện liên quan" của biên bản KSHT / phương án: một dòng tóm tắt, đặt ngoài vùng cuộn nên luôn thấy;
+ * bấm để xem đủ chi tiết (chiều cao giới hạn). Hồ sơ lập riêng (không từ tab Lịch cắt điện) thì chọn dòng lịch để gắn.
  */
 export default function LinkedOutage({ outageId, onChange, readOnly }) {
   const { api } = useDkct();
   const [outage, setOutage] = useState(null);
   const [state, setState] = useState(outageId ? 'loading' : 'none'); // loading | shown | missing | none
   const [picking, setPicking] = useState(false);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!outageId) { setOutage(null); setState('none'); return undefined; }
@@ -88,49 +88,60 @@ export default function LinkedOutage({ outageId, onChange, readOnly }) {
     return () => { alive = false; };
   }, [api, outageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pick = (o) => { setOutage(o); setPicking(false); setOpen(true); onChange(o.id); };
+  const pick = (o) => { setOutage(o); setPicking(false); onChange(o.id); };
+  const shown = state === 'shown' && outage;
+  const iconBtn = 'p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex-shrink-0';
+
+  let summary;
+  if (state === 'loading') summary = <Loader2 className="w-3.5 h-3.5 animate-spin text-chatlan-600" aria-label="Đang tải lịch cắt điện" />;
+  else if (state === 'missing') summary = <span className="text-amber-800 dark:text-amber-300">Dòng lịch đã gắn không còn (có thể đã bị xóa)</span>;
+  else if (state === 'none') summary = <span className="text-slate-500">Chưa gắn lịch cắt điện</span>;
+  else {
+    summary = (
+      <span className="truncate" title={`${range(outage.regStart, outage.regEnd)} · ${outage.location}\n${outage.content}`}>
+        <b className="font-semibold text-slate-900 dark:text-white">{range(outage.regStart, outage.regEnd)}</b>
+        {outage.location ? ` · ${outage.location}` : ''}
+        <span className="text-slate-600 dark:text-slate-300"> · {String(outage.content || '').replace(/\s+/g, ' ')}</span>
+      </span>
+    );
+  }
 
   return (
-    <section className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl p-3" aria-label="Lịch cắt điện liên quan">
-      <div className="flex items-center gap-2">
-        <button type="button" className="flex-1 flex items-center gap-2 text-left" aria-expanded={open} onClick={() => setOpen(v => !v)}>
-          <Zap className="w-4 h-4 text-amber-600 flex-shrink-0" aria-hidden="true" />
-          <span className="text-sm font-bold text-slate-900 dark:text-white">Lịch cắt điện liên quan</span>
-          {state === 'shown' && !open && <span className="text-xs text-slate-600 dark:text-slate-300 truncate">{range(outage.regStart, outage.regEnd)} · {outage.location}</span>}
-          <ChevronDown className={`w-4 h-4 text-slate-500 ml-auto transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </button>
-        {!readOnly && state !== 'none' && !picking && (
+    <div className="border-b border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-1 text-xs" aria-label="Lịch cắt điện liên quan">
+      <div className="flex items-center gap-1.5 min-h-[1.75rem]">
+        <Zap className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" aria-hidden="true" />
+        {shown ? (
+          <button type="button" className="flex-1 min-w-0 flex items-center gap-1 text-left" aria-expanded={open} onClick={() => setOpen(v => !v)}
+            title={open ? 'Thu gọn' : 'Xem chi tiết lịch cắt điện'}>
+            {summary}
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-500 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
+        ) : <span className="flex-1 min-w-0 flex items-center">{summary}</span>}
+        {!readOnly && !picking && (
           <>
-            <button type="button" className={btnSecondary} onClick={() => { setPicking(true); setOpen(true); }}><Link2 className="w-4 h-4" /> Chọn lịch khác</button>
-            <button type="button" className={btnGhost} aria-label="Bỏ gắn lịch cắt điện" title="Bỏ gắn lịch cắt điện" onClick={() => onChange(null)}><Unlink className="w-4 h-4" /></button>
+            <button type="button" className={iconBtn} aria-label={state === 'none' ? 'Chọn từ lịch cắt điện' : 'Chọn lịch khác'}
+              title={state === 'none' ? 'Chọn từ lịch cắt điện' : 'Chọn lịch khác'} onClick={() => { setPicking(true); setOpen(false); }}>
+              <Link2 className="w-3.5 h-3.5" />
+            </button>
+            {state !== 'none' && (
+              <button type="button" className={iconBtn} aria-label="Bỏ gắn lịch cắt điện" title="Bỏ gắn lịch cắt điện" onClick={() => { setOpen(false); onChange(null); }}>
+                <Unlink className="w-3.5 h-3.5" />
+              </button>
+            )}
           </>
         )}
       </div>
 
-      {open && (
-        <div className="mt-2">
-          {picking ? <OutagePicker onPick={pick} onCancel={() => setPicking(false)} />
-            : state === 'loading' ? <Loader2 className="w-4 h-4 animate-spin text-chatlan-600" aria-label="Đang tải" />
-              : state === 'missing' ? <p className="text-xs text-amber-800 dark:text-amber-300">Dòng lịch đã gắn không còn trong lịch cắt điện (có thể đã bị xóa).</p>
-                : state === 'none' ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-xs text-slate-600 dark:text-slate-300 flex-1">Chưa gắn với dòng lịch nào. Gắn để xem thời gian, phạm vi cắt điện và để tab Lịch cắt điện tính tiến độ đúng.</p>
-                    {!readOnly && <button type="button" className={btnSecondary} onClick={() => setPicking(true)}><Link2 className="w-4 h-4" /> Chọn từ lịch cắt điện</button>}
-                  </div>
-                ) : (
-                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                    <Detail label="Thời gian đăng ký">{range(outage.regStart, outage.regEnd)}</Detail>
-                    <Detail label="Thời gian thực tế">{range(outage.actualStart, outage.actualEnd)}</Detail>
-                    <Detail label="Địa điểm">{outage.location}</Detail>
-                    <Detail label="Tình trạng">{outage.status}</Detail>
-                    <Detail label="Nội dung công tác" wide>{outage.content}</Detail>
-                    <Detail label="Phạm vi / điều kiện cắt điện" wide>{outage.scope}</Detail>
-                    <Detail label="Đơn vị đăng ký">{outage.registrationUnit}</Detail>
-                    <Detail label="Đơn vị công tác">{outage.workUnit}</Detail>
-                  </dl>
-                )}
-        </div>
+      {picking && <div className="pb-2 pt-1"><OutagePicker onPick={pick} onCancel={() => setPicking(false)} /></div>}
+      {open && shown && !picking && (
+        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 pb-2 pt-1 max-h-40 overflow-y-auto">
+          <Detail label="Thời gian thực tế">{range(outage.actualStart, outage.actualEnd)}</Detail>
+          <Detail label="Tình trạng">{outage.status}</Detail>
+          <Detail label="Đơn vị đăng ký / công tác">{[outage.registrationUnit, outage.workUnit].filter(Boolean).join(' / ')}</Detail>
+          <Detail label="Nội dung công tác" wide>{outage.content}</Detail>
+          <Detail label="Phạm vi / điều kiện cắt điện" wide>{outage.scope}</Detail>
+        </dl>
       )}
-    </section>
+    </div>
   );
 }
