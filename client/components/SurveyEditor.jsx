@@ -3,6 +3,7 @@ import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ImagePlus, Cli
 import { useDkct } from '../context.jsx';
 import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
+import LinkedOutage from './LinkedOutage.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
 import { fieldErrors } from '../lib/form.js';
 import { suggestDrawings } from '../lib/plan.js';
@@ -297,6 +298,9 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
               <ul className="list-disc pl-4 space-y-0.5">{errorList.map((e, i) => <li key={i}>{e.message}</li>)}</ul>
             </div>
           )}
+          <div className="mb-4">
+            <LinkedOutage outageId={form.outageId} onChange={id => setField('outageId', id)} readOnly={readOnly} />
+          </div>
           <fieldset disabled={readOnly} className="space-y-4 min-w-0">
             <Section title="Thông tin chung">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

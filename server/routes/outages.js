@@ -106,6 +106,15 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults }) {
     });
   }));
 
+  // Chi tiết một dòng lịch (khung "Lịch cắt điện liên quan" của biên bản KSHT, phương án); lịch dùng chung mọi tổ
+  router.get('/outages/:id', wrap(async (req, res) => {
+    await policy.actorOf(req);
+    const outage = await db.queryOne(`SELECT id, regStart, regEnd, actualStart, actualEnd, location, content, scope,
+      registrationUnit, workUnit, status FROM dkct_outages WHERE id = ?`, [req.params.id]);
+    if (!outage) return res.status(404).json({ error: 'Không tìm thấy dòng lịch.' });
+    res.json({ outage });
+  }));
+
   router.delete('/outages/:id', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
     const outage = await db.queryOne('SELECT importedBy FROM dkct_outages WHERE id = ?', [req.params.id]);

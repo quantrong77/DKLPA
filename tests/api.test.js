@@ -634,6 +634,22 @@ test('Lịch cắt điện: đếm biên bản KSHT/phương án/giấy ĐKCT th
   } finally { app.close(); }
 });
 
+test('Chi tiết một dòng lịch (khung "Lịch cắt điện liên quan"); lập biên bản riêng rồi gắn lịch sau', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', 'Cô lập A', 'Đ1', 'Đ2', 'Chờ duyệt']]));
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    const detail = (await app.call('other', 'GET', `/outages/${o.id}`)).body.outage;
+    assert.deepEqual([detail.regStart, detail.location, detail.content, detail.scope, detail.status], ['2024-10-05T07:00', 'Trạm A', 'Việc A', 'Cô lập A', 'Chờ duyệt']);
+    assert.equal((await app.call('lead', 'GET', '/outages/KHONG-CO')).status, 404);
+
+    const survey = (await app.call('lead', 'POST', '/surveys', SURVEY)).body.survey;
+    const { survey: full } = (await app.call('lead', 'GET', `/surveys/${survey.id}`)).body;
+    assert.equal((await app.call('lead', 'PUT', `/surveys/${survey.id}`, { ...full.data, outageId: o.id })).status, 200);
+    assert.equal((await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items[0].surveyCount, 1);
+  } finally { app.close(); }
+});
+
 test('Giấy xác nhận: lập từ giấy ĐKCT (trạm, ngăn lộ, mục kết quả), số riêng "n/GXN-<tổ>", sửa/xóa, quyền, xuất Word', async () => {
   const app = await startApp();
   try {

@@ -3,6 +3,7 @@ import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ArrowUp, Arrow
 import { useDkct } from '../context.jsx';
 import { Field, Section, TabButton, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
+import LinkedOutage from './LinkedOutage.jsx';
 import PersonPicker from './PersonPicker.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
 import { fieldErrors } from '../lib/form.js';
@@ -459,6 +460,9 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
               <ul className="list-disc pl-4 space-y-0.5">{errorList.map((e, i) => <li key={i}>{e.message}</li>)}</ul>
             </div>
           )}
+          <div className="mb-4">
+            <LinkedOutage outageId={form.outageId} onChange={id => setField('outageId', id)} readOnly={readOnly} />
+          </div>
           <fieldset disabled={readOnly} className="space-y-4 min-w-0">
             {step === 'general' && <GeneralStep {...shared} />}
             {step === 'work' && <WorkStep {...shared} onPickSurvey={pickSurvey} surveys={surveys} />}
