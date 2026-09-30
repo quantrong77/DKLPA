@@ -9,6 +9,7 @@ const { forbidden } = require('../policy');
 const { normalizePlan } = require('../services/plan');
 const { renderPlanDocx } = require('../services/planRender');
 const { createNumbering, formatPlanNumber } = require('../services/numbering');
+const { createPlaces, DEFAULT_PLACE } = require('../services/places');
 const { vnYear, vnToday } = require('../services/clock');
 const { likePattern, LIKE, safeParse } = require('../util');
 const TESTS_1901 = require('../seeds/tests1901.json');
@@ -47,6 +48,7 @@ function asciiFileName(docNumber) {
 function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) {
   const router = express.Router();
   const numbering = createNumbering(db, undefined, { table: 'dkct_plans', prefix: 'PA:' });
+  const places = createPlaces(db);
 
   const present = async (row, actor) => ({
     ...row,
@@ -118,7 +120,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
         teamName: actor.department || '',
         teamShort,
         transmissionName: lh.transmissionName || '',
-        place: lh.place || '',
+        place: DEFAULT_PLACE,
         date: vnToday(),
         numberSuffix: lh.numberSuffix || 'Nhatthu'
       },
@@ -220,12 +222,19 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
     res.json({ plan: await present(row, actor) });
   }));
 
+  // địa danh cho ô chọn của phương án (mặc định + địa danh người dùng đã thêm)
+  router.get('/places', wrap(async (req, res) => {
+    await policy.actorOf(req);
+    res.json({ items: await places.list(), defaultPlace: DEFAULT_PLACE });
+  }));
+
   router.post('/plans', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
     if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
     data.preparedBy = (await getProfile(actor.id))?.fullName || '';
+    await places.remember(data.header.place);
     const unit = await getUnit(actor.id);
     const year = vnYear();
     const seq = await numbering.takeNext(unit.department, year);
@@ -247,6 +256,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
     const data = await normalize(req.body, res);
     if (!data) return;
     data.preparedBy = safeParse(row.data).preparedBy || '';  // người lập giữ nguyên khi hiệu chỉnh
+    await places.remember(data.header.place);
     await db.execute(`
       UPDATE dkct_plans SET workTitle = ?, stationName = ?, startTime = ?, substationId = ?, surveyId = ?, outageId = ?,
         data = ?, updatedBy = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,

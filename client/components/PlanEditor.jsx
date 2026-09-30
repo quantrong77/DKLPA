@@ -4,6 +4,7 @@ import { useDkct } from '../context.jsx';
 import { Field, Section, TabButton, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
+import PlaceSelect from './PlaceSelect.jsx';
 import PersonPicker from './PersonPicker.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
 import { fieldErrors } from '../lib/form.js';
@@ -126,7 +127,7 @@ function GeneralStep({ form, setField, errors, catalogs, departments }) {
             ) : <input id="pa-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''} onChange={e => setHeader({ teamName: e.target.value })} />}
           </Field>
           <Field label="Truyền tải điện (khu vực)" htmlFor="pa-tt"><input id="pa-tt" className={`${inputCls} ${inputBorder()}`} value={form.header.transmissionName || ''} placeholder="Truyền tải điện Lâm Đồng" onChange={e => setHeader({ transmissionName: e.target.value })} /></Field>
-          <Field label="Địa danh" htmlFor="pa-place"><input id="pa-place" className={`${inputCls} ${inputBorder()}`} value={form.header.place || ''} placeholder="Lâm Đồng" onChange={e => setHeader({ place: e.target.value })} /></Field>
+          <Field label="Địa danh" htmlFor="pa-place"><PlaceSelect id="pa-place" value={form.header.place || ''} onChange={place => setHeader({ place })} /></Field>
           <Field label="Ngày văn bản" htmlFor="pa-date"><input id="pa-date" type="date" className={`${inputCls} ${inputBorder()}`} value={form.header.date || ''} onChange={e => setHeader({ date: e.target.value })} /></Field>
           <Field label="Hậu tố số phương án" htmlFor="pa-suffix" hint={`Số: …/PA-${form.header.teamShort || '…'}.${form.header.numberSuffix || ''}`}>
             <input id="pa-suffix" className={`${inputCls} ${inputBorder()}`} value={form.header.numberSuffix || ''} placeholder="Nhatthu" onChange={e => setHeader({ numberSuffix: e.target.value })} />

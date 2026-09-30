@@ -650,6 +650,20 @@ test('Chi tiết một dòng lịch (khung "Lịch cắt điện liên quan"); l
   } finally { app.close(); }
 });
 
+test('Địa danh phương án: mặc định Lâm Đồng; danh sách Lâm Đồng, Khánh Hòa; địa danh mới được nhớ', async () => {
+  const app = await startApp();
+  try {
+    assert.equal((await app.call('lead', 'GET', '/plan-defaults')).body.draft.header.place, 'Lâm Đồng');
+    assert.deepEqual((await app.call('member', 'GET', '/places')).body.items, ['Lâm Đồng', 'Khánh Hòa']);
+    const sub = (await app.call('lead', 'GET', '/substations')).body.items[0];
+    const created = await app.call('lead', 'POST', '/plans', { ...PLAN, station: { substationId: sub.id }, header: { ...PLAN.header, place: ' Ninh  Thuận ' } });
+    assert.equal(created.status, 201);
+    await app.call('lead', 'POST', '/plans', { ...PLAN, station: { substationId: sub.id }, header: { ...PLAN.header, place: 'ninh thuận' } });
+    await app.call('lead', 'POST', '/plans', { ...PLAN, station: { substationId: sub.id }, header: { ...PLAN.header, place: 'Khánh Hòa' } });
+    assert.deepEqual((await app.call('other', 'GET', '/places')).body.items, ['Lâm Đồng', 'Khánh Hòa', 'Ninh Thuận']);
+  } finally { app.close(); }
+});
+
 test('Giấy xác nhận: lập từ giấy ĐKCT (trạm, ngăn lộ, mục kết quả), số riêng "n/GXN-<tổ>", sửa/xóa, quyền, xuất Word', async () => {
   const app = await startApp();
   try {
