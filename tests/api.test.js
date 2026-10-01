@@ -707,3 +707,32 @@ test('luồng chuẩn bị công tác: từ hồ sơ bất kỳ thấy đủ l�
     assert.equal((await app.call('lead', 'GET', '/workflow/khac/1')).status, 400);
   } finally { app.close(); }
 });
+
+test('xem trước bản Word từ dữ liệu đang soạn: không lưu, không cấp số; dữ liệu sai báo 422; chỉ người lập được xem trước', async () => {
+  const app = await startApp();
+  try {
+    const text = (buf) => new PizZip(buf).file('word/document.xml').asText().replace(/<[^>]+>/g, '');
+    const before = (await app.call('lead', 'GET', '/plan-numbering')).body.numbering.nextNumber;
+    const pv = await app.call('lead', 'POST', `/plans/preview?docNumber=${encodeURIComponent('7/PA-TNLĐ.Nhatthu')}`, PLAN);
+    assert.equal(pv.status, 200);
+    assert.match(pv.headers.get('content-type'), /wordprocessingml/);
+    assert.equal(pv.headers.get('cache-control'), 'private, no-store');
+    assert.match(text(pv.body), /Số: 7\/PA-TNLĐ\.Nhatthu/);
+    assert.equal((await app.call('lead', 'GET', '/plans')).body.items.length, 0, 'không lưu');
+    assert.equal((await app.call('lead', 'GET', '/plan-numbering')).body.numbering.nextNumber, before, 'không cấp số');
+    assert.equal((await app.call('lead', 'POST', '/plans/preview', { ...PLAN, bays: '' })).status, 422);
+    assert.equal((await app.call('member', 'POST', '/plans/preview', PLAN)).status, 403);
+
+    // hồ sơ đã lưu: in số đã cấp, dữ liệu đang sửa (chưa lưu)
+    const plan = (await app.call('lead', 'POST', '/plans', PLAN)).body.plan;
+    const edited = await app.call('lead', 'POST', `/plans/${plan.id}/preview`, { ...PLAN, equipmentText: 'ngăn 999 sửa thử' });
+    assert.match(text(edited.body), new RegExp(`Số: ${plan.docNumber.replace(/[.]/g, '\.')}`));
+    assert.match(text(edited.body), /ngăn 999 sửa thử/);
+    assert.doesNotMatch(text((await app.call('lead', 'GET', `/plans/${plan.id}/docx`)).body), /ngăn 999 sửa thử/, 'bản đã lưu không đổi');
+    assert.equal((await app.call('other', 'POST', `/plans/${plan.id}/preview`, PLAN)).status, 403);
+
+    assert.equal((await app.call('lead', 'POST', '/surveys/preview', SURVEY)).status, 200);
+    assert.equal((await app.call('lead', 'POST', '/registrations/preview', await validInput(app.call))).status, 200);
+    assert.equal((await app.call('lead', 'GET', '/registrations')).body.items.length, 0);
+  } finally { app.close(); }
+});

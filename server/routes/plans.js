@@ -13,7 +13,7 @@ const { renderPlanDocx } = require('../services/planRender');
 const { createNumbering, formatPlanNumber } = require('../services/numbering');
 const { createPlaces, DEFAULT_PLACE } = require('../services/places');
 const { vnYear, vnToday } = require('../services/clock');
-const { likePattern, LIKE, safeParse } = require('../util');
+const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('../util');
 const TESTS_1901 = require('../seeds/tests1901.json');
 
 const LIST_COLUMNS = 'id, docNumber, docYear, department, workTitle, stationName, startTime, substationId, surveyId, outageId, createdBy, createdAt, updatedAt';
@@ -269,6 +269,25 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được xóa phương án.');
     await db.execute('DELETE FROM dkct_plans WHERE id = ?', [row.id]);
     res.json({ success: true });
+  }));
+
+  // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu): không cấp số, không ghi gì
+  router.post('/plans/preview', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    data.preparedBy = (await getProfile(actor.id))?.fullName || '';
+    sendPreview(res, renderPlanDocx({ docNumber: previewNumber(null, req.query), data }, await drawingsFor(data)));
+  }));
+
+  router.post('/plans/:id/preview', wrap(async (req, res) => {
+    const { actor, row } = await loadVisible(req, `${LIST_COLUMNS}, data`);
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa phương án.');
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    data.preparedBy = safeParse(row.data).preparedBy || '';
+    sendPreview(res, renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data)));
   }));
 
   router.get('/plans/:id/docx', wrap(async (req, res) => {

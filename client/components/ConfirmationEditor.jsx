@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, Save, FileDown, Loader2, AlertTriangle, Eye, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import DocPreview from './DocPreview.jsx';
 import { fieldErrors } from '../lib/form.js';
 import { confirmationFromPlan, emptyItem } from '../lib/confirmation.js';
 
@@ -48,6 +49,7 @@ export default function ConfirmationEditor({ initial, confirmation, catalogs, de
   const [current, setCurrent] = useState(confirmation);
   const [errorList, setErrorList] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [plans, setPlans] = useState([]);
   const readOnly = !!current && !current.canEdit;
@@ -87,11 +89,15 @@ export default function ConfirmationEditor({ initial, confirmation, catalogs, de
     } catch (err) { notify(err.message, 'error'); }
   }
 
+  const payload = () => {
+    const { manual, ...station } = form.station || {};
+    return { ...form, station };
+  };
+
   async function save({ andDownload = false } = {}) {
     setSaving(true);
     try {
-      const { manual, ...station } = form.station || {};
-      const body = { ...form, station };
+      const body = payload();
       const res = current ? await api.put(`/confirmations/${current.id}`, body) : await api.post('/confirmations', body);
       setCurrent(res.confirmation);
       setErrorList([]);
@@ -190,6 +196,9 @@ export default function ConfirmationEditor({ initial, confirmation, catalogs, de
           </fieldset>
         </div>
         <footer className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 md:rounded-b-2xl">
+          <button type="button" className={`${btnSecondary} mr-auto`} onClick={() => setPreviewing(true)} disabled={saving} title="Xem bản Word trước khi lưu/tải">
+            <Eye className="w-4 h-4" /> Xem trước
+          </button>
           {current && (
             <button type="button" className={btnSecondary} onClick={() => download()} disabled={saving || dirty} title={dirty ? 'Lưu thay đổi trước khi tải' : undefined}>
               <FileDown className="w-4 h-4" /> Tải Word
@@ -205,6 +214,18 @@ export default function ConfirmationEditor({ initial, confirmation, catalogs, de
             </>
           )}
         </footer>
+        {previewing && (
+          <DocPreview
+            title={current ? `Giấy xác nhận ${current.docNumber}` : 'Giấy xác nhận (chưa lưu)'}
+            note={(readOnly || (current && !dirty)) ? 'Bản đã lưu' : `Bản dựng từ dữ liệu đang soạn — chưa lưu${current ? '' : ', số chỉ là dự kiến'}`}
+            load={() => ((readOnly || (current && !dirty))
+              ? api.blob(`/confirmations/${current.id}/docx`)
+              : api.previewDocx(current ? `/confirmations/${current.id}/preview` : `/confirmations/preview?docNumber=${encodeURIComponent(numberPreview || '')}`, payload()))}
+            onDownload={(readOnly || (current && !dirty)) ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
+            downloadLabel={(readOnly || (current && !dirty)) ? 'Tải Word' : 'Lưu & tải Word'}
+            pdf={(readOnly || (current && !dirty))}
+            onClose={() => setPreviewing(false)} />
+        )}
       </div>
     </ModalOverlay>
   );

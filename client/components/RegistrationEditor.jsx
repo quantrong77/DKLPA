@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Save, FileDown, Loader2, AlertTriangle } from 'lucide-react';
+import { X, Save, FileDown, Loader2, AlertTriangle, Eye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import EditorWork from './EditorWork.jsx';
 import EditorPeople from './EditorPeople.jsx';
 import EditorAppendix from './EditorAppendix.jsx';
 import { TabButton, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import DocPreview from './DocPreview.jsx';
 import { fieldErrors, pruneAfterChange } from '../lib/form.js';
 
 const STEPS = [
@@ -29,6 +30,8 @@ export default function RegistrationEditor({ initial, registration, outage, cata
   const [step, setStep] = useState('work');
   const [errorList, setErrorList] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const payload = () => payloadOf(form);
   const [dirty, setDirty] = useState(false);
   const readOnly = registration && !registration.canEdit;
   const errors = useMemo(() => fieldErrors(errorList), [errorList]);
@@ -125,6 +128,9 @@ export default function RegistrationEditor({ initial, registration, outage, cata
         </div>
 
         <footer className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 md:rounded-b-2xl">
+          <button type="button" className={`${btnSecondary} mr-auto`} onClick={() => setPreviewing(true)} disabled={saving} title="Xem bản Word trước khi lưu/tải">
+            <Eye className="w-4 h-4" /> Xem trước
+          </button>
           {registration && (
             <button type="button" className={btnSecondary} onClick={() => download()} disabled={saving || dirty}
               title={dirty ? 'Lưu thay đổi trước khi tải' : undefined}>
@@ -143,6 +149,18 @@ export default function RegistrationEditor({ initial, registration, outage, cata
             </>
           )}
         </footer>
+        {previewing && (
+          <DocPreview
+            title={registration ? `Giấy ĐKCT ${registration.docNumber}` : 'Giấy ĐKCT (chưa lưu)'}
+            note={(readOnly || (registration && !dirty)) ? 'Bản đã lưu' : `Bản dựng từ dữ liệu đang soạn — chưa lưu${registration ? '' : ', số chỉ là dự kiến'}`}
+            load={() => ((readOnly || (registration && !dirty))
+              ? api.blob(`/registrations/${registration.id}/docx`)
+              : api.previewDocx(registration ? `/registrations/${registration.id}/preview` : `/registrations/preview?docNumber=${encodeURIComponent(docNumberPreview || '')}`, payload()))}
+            onDownload={(readOnly || (registration && !dirty)) ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
+            downloadLabel={(readOnly || (registration && !dirty)) ? 'Tải Word' : 'Lưu & tải Word'}
+            pdf={(readOnly || (registration && !dirty))}
+            onClose={() => setPreviewing(false)} />
+        )}
       </div>
     </ModalOverlay>
   );

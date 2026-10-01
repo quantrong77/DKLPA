@@ -11,7 +11,7 @@ export default defineConfig({
   resolve: {
     // giao diện module ĐKCT (../client) dùng chung react / lucide-react / pdfjs-dist của standalone
     alias: { '@dkct': path.join(here, '..', 'client') },
-    dedupe: ['react', 'react-dom', 'lucide-react', 'pdfjs-dist']
+    dedupe: ['react', 'react-dom', 'lucide-react', 'pdfjs-dist', 'docx-preview']
   },
   build: { outDir: path.join(here, 'dist'), emptyOutDir: true },
   server: {

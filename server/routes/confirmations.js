@@ -11,7 +11,7 @@ const { normalizeConfirmation, confirmationFromRegistration } = require('../serv
 const { renderConfirmationDocx } = require('../services/confirmationRender');
 const { createNumbering, formatConfirmationNumber } = require('../services/numbering');
 const { vnYear, vnToday } = require('../services/clock');
-const { likePattern, LIKE, safeParse } = require('../util');
+const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('../util');
 
 const LIST_COLUMNS = 'id, docNumber, docYear, department, stationName, bays, workDate, substationId, registrationId, planId, createdBy, createdAt, updatedAt';
 
@@ -199,6 +199,23 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được xóa giấy xác nhận.');
     await db.execute('DELETE FROM dkct_confirmations WHERE id = ?', [row.id]);
     res.json({ success: true });
+  }));
+
+  // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu): không cấp số, không ghi gì
+  router.post('/confirmations/preview', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy xác nhận.');
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    sendPreview(res, renderConfirmationDocx({ docNumber: previewNumber(null, req.query), data }));
+  }));
+
+  router.post('/confirmations/:id/preview', wrap(async (req, res) => {
+    const { actor, row } = await loadVisible(req, LIST_COLUMNS);
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa giấy xác nhận.');
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    sendPreview(res, renderConfirmationDocx({ docNumber: row.docNumber, data }));
   }));
 
   router.get('/confirmations/:id/docx', wrap(async (req, res) => {

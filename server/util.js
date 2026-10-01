@@ -15,4 +15,14 @@ function safeParse(json, fallback = {}) {
 
 const changedRows = (result) => Number(result?.changes ?? result?.affectedRows) || 0;
 
-module.exports = { likePattern, LIKE, safeParse, changedRows };
+const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+/** Gửi bản Word xem trước (không lưu, không cấp số, không cache). */
+function sendPreview(res, buffer) {
+  res.setHeader('Content-Type', DOCX_TYPE);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(buffer);
+}
+/** Số văn bản in trên bản xem trước: số đã cấp, hoặc số dự kiến người dùng đang thấy (chỉ để hiển thị). */
+const previewNumber = (row, query) => row?.docNumber || String(query?.docNumber || '').slice(0, 60) || '…';
+
+module.exports = { likePattern, LIKE, safeParse, changedRows, sendPreview, previewNumber };

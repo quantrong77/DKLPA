@@ -11,7 +11,7 @@ const { normalizeRegistration } = require('../services/registration');
 const { renderRegistrationDocx } = require('../services/docxRender');
 const { formatNumber } = require('../services/numbering');
 const { vnYear } = require('../services/clock');
-const { likePattern, LIKE, safeParse } = require('../util');
+const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('../util');
 
 const toMap = (rows) => new Map(rows.map(r => [r.id, r]));
 
@@ -162,6 +162,23 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó tổ, trưởng phòng hoặc admin được xóa.');
     await db.execute('DELETE FROM dkct_registrations WHERE id = ?', [row.id]);
     res.json({ success: true });
+  }));
+
+  // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu): không cấp số, không ghi gì
+  router.post('/registrations/preview', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy đăng ký công tác.');
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    sendPreview(res, renderRegistrationDocx({ docNumber: previewNumber(null, req.query), data }));
+  }));
+
+  router.post('/registrations/:id/preview', wrap(async (req, res) => {
+    const { actor, row } = await loadVisible(req);
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó tổ, trưởng phòng hoặc admin được sửa.');
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    sendPreview(res, renderRegistrationDocx({ docNumber: row.docNumber, data }));
   }));
 
   router.get('/registrations/:id/docx', wrap(async (req, res) => {

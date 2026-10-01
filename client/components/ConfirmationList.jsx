@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, Search, FileDown, Trash2, Eye, Pencil, Hash } from 'lucide-react';
+import { BadgeCheck, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder } from './ui.jsx';
+import DocPreview from './DocPreview.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 
 const dmy = (iso) => (/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '') || []).slice(1).reverse().join('/');
@@ -11,6 +12,7 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewItem, setPreviewItem] = useState(null);
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [numbering, setNumbering] = useState(null);
@@ -50,6 +52,9 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
       notify('Đã đặt số khởi đầu giấy xác nhận.', 'success');
     } catch (err) { notify(err.message, 'error'); }
   };
+
+  const download = (item) => downloadAuthenticatedFile(`/api/dkct/confirmations/${item.id}/docx`, `GiayXacNhan_${String(item.docNumber).replace(/\//g, '-')}.docx`)
+    .catch(e => notify(e.message, 'error'));
 
   return (
     <div className="space-y-3">
@@ -103,8 +108,11 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
                 ) : (
                   <button type="button" className={btnGhost} aria-label="Xem" onClick={() => onOpen(item)}><Eye className="w-4 h-4" /></button>
                 )}
+                <button type="button" className={btnGhost} aria-label="Xem trước bản Word" title="Xem trước bản Word" onClick={() => setPreviewItem(item)}>
+                  <ScanEye className="w-4 h-4" />
+                </button>
                 <button type="button" className={btnGhost} aria-label="Tải Word"
-                  onClick={() => downloadAuthenticatedFile(`/api/dkct/confirmations/${item.id}/docx`, `GiayXacNhan_${String(item.docNumber).replace(/\//g, '-')}.docx`).catch(e => notify(e.message, 'error'))}>
+                  onClick={() => download(item)}>
                   <FileDown className="w-4 h-4" />
                 </button>
                 {item.canEdit && <button type="button" className={btnGhost} aria-label="Xóa" onClick={() => remove(item)}><Trash2 className="w-4 h-4" /></button>}
@@ -114,6 +122,10 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
         </ul>
       )}
       {loading && items.length === 0 && <p className="text-xs text-slate-500">Đang tải…</p>}
+      {previewItem && (
+        <DocPreview title={`Giấy xác nhận ${previewItem.docNumber}`} load={() => api.blob(`/confirmations/${previewItem.id}/docx`)}
+          onDownload={() => download(previewItem)} onClose={() => setPreviewItem(null)} />
+      )}
     </div>
   );
 }

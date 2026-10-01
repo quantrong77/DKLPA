@@ -71,6 +71,10 @@ test('renderConfirmationDocx: điền đủ nội dung như mẫu, mục kết q
   assert.ok(ps.some(p => p.includes('Ngày 27/9/2026, toán công tác thuộc Tổ Thí nghiệm điện Lâm Đồng – Đội Sửa chữa, thí nghiệm điện 3 đã thực hiện công tác thí nghiệm MC 212')));
   assert.ok(ps.includes('Thí nghiệm định kỳ máy cắt MC 212, các hạng mục theo QĐ 1901:\tđạt'));
   assert.ok(ps.includes('Thí nghiệm TI 212:\tđạt'));
+  // không có ghi chú thì bỏ hẳn dòng "Ghi chú"
+  const { data: noNote } = normalizeConfirmation({ ...CONFIRMATION, note: '' }, ctx);
+  const noNoteXml = new PizZip(renderConfirmationDocx({ docNumber: '5/GXN-TNLĐ', data: noNote })).file('word/document.xml').asText();
+  assert.ok(!paragraphs(noNoteXml).some(p => p.startsWith('Ghi chú')), 'không ghi chú thì không in dòng Ghi chú');
   // hai mục cùng danh sách đánh số của mẫu
   assert.equal((xml.match(/<w:numId w:val="20"\/>/g) || []).length, 2);
   assert.doesNotMatch(plain(xml) + header, /[<>]|tự động|nhập tay|option/);

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FileText, Search, FileDown, Trash2, Eye, Hash, Pencil, BadgeCheck } from 'lucide-react';
+import { FileText, Search, FileDown, Trash2, Eye, Hash, Pencil, BadgeCheck, ScanEye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import DocPreview from './DocPreview.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 
 /** Danh sách giấy ĐKCT của tổ (admin thấy tất cả). */
@@ -9,6 +10,7 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewItem, setPreviewItem] = useState(null);
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
 
@@ -48,6 +50,9 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
       onNumberingChanged();
     } catch (err) { notify(err.message, 'error'); }
   };
+
+  const download = (item) => downloadAuthenticatedFile(`/api/dkct/registrations/${item.id}/docx`, `DangKyCongTac_${item.docNumber}.docx`)
+    .catch(e => notify(e.message, 'error'));
 
   return (
     <div className="space-y-3">
@@ -112,8 +117,11 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
                 ) : (
                   <button type="button" className={btnGhost} aria-label="Xem" onClick={() => onOpen(item)}><Eye className="w-4 h-4" /></button>
                 )}
+                <button type="button" className={btnGhost} aria-label="Xem trước bản Word" title="Xem trước bản Word" onClick={() => setPreviewItem(item)}>
+                  <ScanEye className="w-4 h-4" />
+                </button>
                 <button type="button" className={btnGhost} aria-label="Tải Word"
-                  onClick={() => downloadAuthenticatedFile(`/api/dkct/registrations/${item.id}/docx`, `DangKyCongTac_${item.docNumber}.docx`).catch(e => notify(e.message, 'error'))}>
+                  onClick={() => download(item)}>
                   <FileDown className="w-4 h-4" />
                 </button>
                 {item.canEdit && (
@@ -125,6 +133,10 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
         </ul>
       )}
       {loading && items.length === 0 && <p className="text-xs text-slate-500">Đang tải…</p>}
+      {previewItem && (
+        <DocPreview title={`Giấy ĐKCT ${previewItem.docNumber}`} load={() => api.blob(`/registrations/${previewItem.id}/docx`)}
+          onDownload={() => download(previewItem)} onClose={() => setPreviewItem(null)} />
+      )}
     </div>
   );
 }

@@ -10,7 +10,7 @@ const { forbidden } = require('../policy');
 const { normalizeSurvey, surveyFromOutage } = require('../services/survey');
 const { renderSurveyDocx, imageInfo } = require('../services/surveyRender');
 const { vnNow } = require('../services/clock');
-const { likePattern, LIKE, safeParse } = require('../util');
+const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('../util');
 
 const MAX_DIAGRAM_BYTES = 10 * 1024 * 1024;
 const MAX_DIAGRAM_SIDE = 12000;
@@ -204,6 +204,24 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }
     res.setHeader('Content-Type', `image/${row.diagramType}`);
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(Buffer.from(row.diagram, 'base64'));
+  }));
+
+  // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu). Ảnh sơ đồ: ảnh đã lưu (?noDiagram=1 khi đang gỡ ảnh);
+  // ảnh mới chọn chỉ có sau khi lưu.
+  router.post('/surveys/preview', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập biên bản khảo sát.');
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    sendPreview(res, renderSurveyDocx({ data }, null));
+  }));
+
+  router.post('/surveys/:id/preview', wrap(async (req, res) => {
+    const { row } = await loadEditable(req, `${LIST_COLUMNS}, diagram`);
+    const data = await normalize(req.body, res);
+    if (!data) return;
+    const diagram = row.diagram && req.query.noDiagram !== '1' ? { buffer: Buffer.from(row.diagram, 'base64') } : null;
+    sendPreview(res, renderSurveyDocx({ data }, diagram));
   }));
 
   router.get('/surveys/:id/docx', wrap(async (req, res) => {

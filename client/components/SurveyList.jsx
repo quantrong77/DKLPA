@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardList, Search, FileDown, Trash2, Eye, Pencil, FilePlus2, FileStack, Image as ImageIcon } from 'lucide-react';
+import { ClipboardList, Search, FileDown, Trash2, Eye, Pencil, FilePlus2, FileStack, Image as ImageIcon, ScanEye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder } from './ui.jsx';
+import DocPreview from './DocPreview.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 import { surveyTimeLabel } from '../lib/survey.js';
 
@@ -10,6 +11,7 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewItem, setPreviewItem] = useState(null);
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
 
@@ -91,6 +93,9 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
                 ) : (
                   <button type="button" className={btnGhost} aria-label="Xem" onClick={() => onOpen(item)}><Eye className="w-4 h-4" /></button>
                 )}
+                <button type="button" className={btnGhost} aria-label="Xem trước bản Word" title="Xem trước bản Word" onClick={() => setPreviewItem(item)}>
+                  <ScanEye className="w-4 h-4" />
+                </button>
                 <button type="button" className={btnGhost} aria-label="Tải Word" onClick={() => download(item)}><FileDown className="w-4 h-4" /></button>
                 {item.canEdit && (
                   <button type="button" className={btnGhost} aria-label="Xóa" onClick={() => remove(item)}><Trash2 className="w-4 h-4" /></button>
@@ -101,6 +106,10 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
         </ul>
       )}
       {loading && items.length === 0 && <p className="text-xs text-slate-500">Đang tải…</p>}
+      {previewItem && (
+        <DocPreview title={'Biên bản khảo sát hiện trường'} load={() => api.blob(`/surveys/${previewItem.id}/docx`)}
+          onDownload={() => download(previewItem)} onClose={() => setPreviewItem(null)} />
+      )}
     </div>
   );
 }

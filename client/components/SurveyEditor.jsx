@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ImagePlus, ClipboardPaste, FileImage, ExternalLink, SquareDashedMousePointer } from 'lucide-react';
+import { X, Save, FileDown, Loader2, AlertTriangle, Eye, Plus, Trash2, ImagePlus, ClipboardPaste, FileImage, ExternalLink, SquareDashedMousePointer } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import DocPreview from './DocPreview.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
@@ -179,6 +180,7 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
   const [diagram, setDiagram] = useState({ status: survey?.hasDiagram ? 'saved' : 'none', hadSaved: !!survey?.hasDiagram, file: null, url: null });
   const [errorList, setErrorList] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const readOnly = !!current && !current.canEdit;
   const errors = useMemo(() => fieldErrors(errorList), [errorList]);
@@ -247,11 +249,15 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
     } catch (err) { notify(err.message, 'error'); }
   }
 
+  const payload = () => {
+    const { station, ...rest } = form;
+    return { ...rest, station: { substationId: station?.substationId || null, name: station?.name || '' } };
+  };
+
   async function save({ andDownload = false } = {}) {
     setSaving(true);
     try {
-      const { station, ...rest } = form;
-      const body = { ...rest, station: { substationId: station?.substationId || null, name: station?.name || '' } };
+      const body = payload();
       const res = current ? await api.put(`/surveys/${current.id}`, body) : await api.post('/surveys', body);
       let saved = res.survey;
       setCurrent(saved);
@@ -399,6 +405,9 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
         </div>
 
         <footer className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 md:rounded-b-2xl">
+          <button type="button" className={`${btnSecondary} mr-auto`} onClick={() => setPreviewing(true)} disabled={saving} title="Xem bản Word trước khi lưu/tải">
+            <Eye className="w-4 h-4" /> Xem trước
+          </button>
           {current && (
             <button type="button" className={btnSecondary} onClick={() => download()} disabled={saving || dirty || diagram.status === 'new' || diagram.status === 'removed'}
               title={dirty ? 'Lưu thay đổi trước khi tải' : undefined}>
@@ -417,6 +426,18 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
             </>
           )}
         </footer>
+        {previewing && (
+          <DocPreview
+            title={current ? `Biên bản KSHT` : 'Biên bản KSHT (chưa lưu)'}
+            note={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? 'Bản đã lưu' : `Bản dựng từ dữ liệu đang soạn — chưa lưu${current ? '' : ', số chỉ là dự kiến'}${diagram.status === 'new' ? ' · ảnh sơ đồ mới chọn chỉ có sau khi lưu' : ''}`}
+            load={() => ((readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed'))
+              ? api.blob(`/surveys/${current.id}/docx`)
+              : api.previewDocx(current ? `/surveys/${current.id}/preview${diagram.status === 'removed' ? '?noDiagram=1' : ''}` : `/surveys/preview?docNumber=${encodeURIComponent('' || '')}`, payload()))}
+            onDownload={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
+            downloadLabel={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? 'Tải Word' : 'Lưu & tải Word'}
+            pdf={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed'))}
+            onClose={() => setPreviewing(false)} />
+        )}
       </div>
     </ModalOverlay>
   );

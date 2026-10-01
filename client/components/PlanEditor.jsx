@@ -8,6 +8,7 @@ import PlaceSelect from './PlaceSelect.jsx';
 import PersonPicker from './PersonPicker.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
 import { SourceDialog } from './CtSource.jsx';
+import DocPreview from './DocPreview.jsx';
 import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
@@ -481,6 +482,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
   const [step, setStep] = useState('general');
   const [errorList, setErrorList] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [devices, setDevices] = useState([]);
   const [surveys, setSurveys] = useState([]);
@@ -524,13 +526,17 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
     } catch (err) { notify(err.message, 'error'); }
   }
 
+  // dữ liệu gửi máy chủ (lưu / xem trước): lưu đúng các sơ đồ đang thấy được chọn (kể cả khi đang tự gợi ý)
+  const payload = () => {
+    const { station, ...rest } = form;
+    const { manual, ...cleanStation } = station || {};
+    return { ...rest, station: cleanStation, drawingIds: drawingSelection(form, catalogs).ids };
+  };
+
   async function save({ andDownload = false } = {}) {
     setSaving(true);
     try {
-      const { station, ...rest } = form;
-      const { manual, ...cleanStation } = station || {};
-      // lưu đúng các sơ đồ đang thấy được chọn (kể cả khi đang tự gợi ý)
-      const body = { ...rest, station: cleanStation, drawingIds: drawingSelection(form, catalogs).ids };
+      const body = payload();
       const res = current ? await api.put(`/plans/${current.id}`, body) : await api.post('/plans', body);
       setCurrent(res.plan);
       setErrorList([]);
@@ -626,6 +632,9 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
           </fieldset>
         </div>
         <footer className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 md:rounded-b-2xl">
+          <button type="button" className={`${btnSecondary} mr-auto`} onClick={() => setPreviewing(true)} disabled={saving} title="Xem bản Word trước khi lưu/tải">
+            <Eye className="w-4 h-4" /> Xem trước
+          </button>
           {current && (
             <button type="button" className={btnSecondary} onClick={() => download()} disabled={saving || dirty} title={dirty ? 'Lưu thay đổi trước khi tải' : undefined}>
               <FileDown className="w-4 h-4" /> Tải Word
@@ -641,6 +650,18 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
             </>
           )}
         </footer>
+        {previewing && (
+          <DocPreview
+            title={current ? `Phương án ${current.docNumber}` : 'Phương án (chưa lưu)'}
+            note={(readOnly || (current && !dirty)) ? 'Bản đã lưu' : `Bản dựng từ dữ liệu đang soạn — chưa lưu${current ? '' : ', số chỉ là dự kiến'}`}
+            load={() => ((readOnly || (current && !dirty))
+              ? api.blob(`/plans/${current.id}/docx`)
+              : api.previewDocx(current ? `/plans/${current.id}/preview` : `/plans/preview?docNumber=${encodeURIComponent(numberPreview || '')}`, payload()))}
+            onDownload={(readOnly || (current && !dirty)) ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
+            downloadLabel={(readOnly || (current && !dirty)) ? 'Tải Word' : 'Lưu & tải Word'}
+            pdf={(readOnly || (current && !dirty))}
+            onClose={() => setPreviewing(false)} />
+        )}
       </div>
     </ModalOverlay>
   );
