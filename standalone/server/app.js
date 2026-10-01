@@ -1,5 +1,5 @@
 /**
- * Ứng dụng Đăng ký công tác chạy độc lập (không cần ChatLan):
+ * Ứng dụng Chuẩn bị công tác chạy độc lập (không cần ChatLan):
  *  - đăng nhập bằng Supabase Auth (email + mật khẩu); server chỉ tin token đã được Supabase xác minh;
  *  - người dùng, tổ và vai trò (admin / trưởng-phó tổ / thành viên) lưu ở bảng dkct_app_*;
  *  - người mới đăng ký chưa thuộc tổ nào nên chưa xem được gì cho tới khi admin xếp tổ;

@@ -1,6 +1,9 @@
-# dkct-module — Đăng ký công tác cho ChatLan
+# dkct-module — Chuẩn bị công tác cho ChatLan
 
-Module gồm phần server (Express router) và giao diện (React/Tailwind), gắn vào ChatLan. Chức năng:
+Module gồm phần server (Express router) và giao diện (React/Tailwind), gắn vào ChatLan. Giao diện là một luồng công việc 5 bước:
+**Lịch cắt điện → Khảo sát → Phương án → Giấy ĐKCT → Giấy xác nhận**. Bấm biểu tượng luồng ở một hồ sơ (hoặc mở hồ sơ) để theo dõi:
+thanh luồng cho biết bước nào đã có hồ sơ, bước nào là bước tiếp theo, và tô các hồ sơ cùng luồng trong từng danh sách.
+Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`). Chức năng:
 
 - Import **lịch cắt điện** (Excel, mẫu 8 hoặc 10 cột) thành kế hoạch công tác. Có bước xem trước và chống nhập trùng.
 - Lập **giấy đăng ký công tác** từ một dòng lịch hoặc tự ghi:
@@ -97,6 +100,7 @@ Server nhận các tham số sau (ChatLan truyền trong `server/src/dkct.js`):
 | Phương án | `GET /plan-defaults`, `GET /outages/:id/plan-draft`, `GET/PUT /plan-numbering`, `GET /tests1901`, `GET/POST /plans`, `GET/PUT/DELETE /plans/:id`, `GET /plans/:id/docx` |
 | Giấy xác nhận | `GET /confirmation-defaults`, `GET /registrations/:id/confirmation-draft`, `GET/PUT /confirmation-numbering`, `GET/POST /confirmations`, `GET/PUT/DELETE /confirmations/:id`, `GET /confirmations/:id/docx` |
 | Mạch dòng TI | `GET/POST /ct-library` (`?substationId=`), `GET/PUT/DELETE /ct-library/:id` (PUT gửi cả TI kèm `cores[].points[6]`), `POST /ct-library/:id/verify`, `GET /ct-library/:id/audit`, `POST /ct-library/:id/pages` (multipart `image` + `pageLabel`, `fileName`, `newRevision=1`), `GET /ct-pages/:id/image`, `DELETE /ct-pages/:id`; ghi: chỉ admin |
+| Luồng công việc | `GET /workflow/:type/:id` (`type`: `outage`, `survey`, `plan`, `registration`, `confirmation`): các hồ sơ cùng luồng theo liên kết lịch/KSHT/phương án/giấy ĐKCT/giấy xác nhận; chỉ trả hồ sơ người xem được phép xem |
 | Bản vẽ trạm | `GET /substation-drawings`, `GET/POST /substations/:id/drawings` (POST multipart `label` + `pdf` + `image` + `page`, `pageCount`), `PUT/DELETE /drawings/:id` (PUT: `label`, kèm file thì thay file), `GET /drawings/:id/image`, `GET /drawings/:id/pdf` |
 
 Quan hệ bảng: `dkct_substations.stationId` → `dkct_stations.id` (TBA thuộc đơn vị QLVH; không xóa được đơn vị còn TBA),

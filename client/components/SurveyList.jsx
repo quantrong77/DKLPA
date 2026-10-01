@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ClipboardList, Search, FileDown, Trash2, Eye, Pencil, FilePlus2, FileStack, Image as ImageIcon } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder } from './ui.jsx';
+import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 import { surveyTimeLabel } from '../lib/survey.js';
 
 /** Danh sách biên bản khảo sát hiện trường của tổ (admin thấy tất cả). */
-export default function SurveyList({ reloadKey, onOpen, canCreate, onCreateRegistration, onCreatePlan }) {
+export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onOpen, canCreate, onCreateRegistration, onCreatePlan }) {
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,8 @@ export default function SurveyList({ reloadKey, onOpen, canCreate, onCreateRegis
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (
-            <li key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm flex flex-wrap items-start gap-3">
+            <li key={item.id} className={`${rowFrame(item.id, selectedId, linked)} rounded-xl p-3 shadow-sm flex flex-wrap items-start gap-3`}>
+              {onTrack && <TrackButton active={item.id === selectedId} linked={linked?.has(item.id)} onClick={() => onTrack(item)} />}
               <span className="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-chatlan-50 dark:bg-chatlan-900/60 text-chatlan-700 dark:text-chatlan-300 border border-chatlan-200 dark:border-chatlan-900">
                 {surveyTimeLabel(item.surveyTime)}
               </span>

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 
 const todayIso = () => {
   const d = new Date();
@@ -155,7 +156,7 @@ function StepTracker({ outage }) {
 }
 
 /** Lịch cắt điện = kế hoạch công tác: import Excel, lọc, theo dõi tiến độ, lập biên bản/phương án/giấy từ một dòng. */
-export default function OutagePanel({ canCreate, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
+export default function OutagePanel({ selectedId, linked, onTrack, canCreate, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
   const { api, notify, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -207,8 +208,9 @@ export default function OutagePanel({ canCreate, onCreateFromOutage, onCreateSur
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {shown.map(o => (
-            <li key={o.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-2">
+            <li key={o.id} className={`${rowFrame(o.id, selectedId, linked)} rounded-xl p-3 shadow-sm`}>
+              <div className="flex flex-wrap items-start gap-2">
+                {onTrack && <TrackButton active={o.id === selectedId} linked={linked?.has(o.id)} onClick={() => onTrack(o)} />}
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-chatlan-700 dark:text-chatlan-300">
                     {formatDateTime(o.regStart)} → {formatDateTime(o.regEnd)} · {o.location}

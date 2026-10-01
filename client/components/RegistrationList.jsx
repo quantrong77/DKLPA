@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FileText, Search, FileDown, Trash2, Eye, Hash, Pencil, BadgeCheck } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 
 /** Danh sách giấy ĐKCT của tổ (admin thấy tất cả). */
-export default function RegistrationList({ reloadKey, onOpen, numbering, canCreate, onNumberingChanged, onCreateConfirmation }) {
+export default function RegistrationList({ selectedId, linked, onTrack, reloadKey, onOpen, numbering, canCreate, onNumberingChanged, onCreateConfirmation }) {
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +88,8 @@ export default function RegistrationList({ reloadKey, onOpen, numbering, canCrea
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (
-            <li key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-sm flex flex-wrap items-start gap-3">
+            <li key={item.id} className={`${rowFrame(item.id, selectedId, linked)} rounded-xl p-3 shadow-sm flex flex-wrap items-start gap-3`}>
+              {onTrack && <TrackButton active={item.id === selectedId} linked={linked?.has(item.id)} onClick={() => onTrack(item)} />}
               <span className="font-mono font-bold text-sm px-2.5 py-0.5 rounded-lg bg-chatlan-50 dark:bg-chatlan-900/60 text-chatlan-700 dark:text-chatlan-300 border border-chatlan-200 dark:border-chatlan-900">
                 {item.docNumber}
               </span>

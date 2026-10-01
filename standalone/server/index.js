@@ -56,7 +56,7 @@ const { app, migrate } = createApp({
 migrate()
   .then(() => {
     const port = Number(process.env.PORT) || 3000;
-    app.listen(port, () => console.log(`ĐKCT đang chạy ở cổng ${port}`));
+    app.listen(port, () => console.log(`Chuẩn bị công tác đang chạy ở cổng ${port}`));
   })
   .catch((err) => {
     console.error('Không tạo được bảng trong CSDL:', err);

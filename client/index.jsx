@@ -3,7 +3,7 @@ import { DkctProvider } from './context.jsx';
 import DkctApp from './DkctApp.jsx';
 
 /**
- * Màn hình module Đăng ký công tác, nhúng vào ChatLan:
+ * Màn hình module Chuẩn bị công tác (ĐKCT), nhúng vào ChatLan:
  *
  *   <DkctModule services={{ apiFetch, downloadAuthenticatedFile, notify, confirmAction, ModalOverlay, EmptyState }} />
  *

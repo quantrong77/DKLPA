@@ -27,6 +27,7 @@ const { drawingRouter } = require('./routes/drawings');
 const { planRouter } = require('./routes/plans');
 const { confirmationRouter } = require('./routes/confirmations');
 const { ctLibraryRouter } = require('./routes/ctLibrary');
+const { workflowRouter } = require('./routes/workflow');
 const { vnToday } = require('./services/clock');
 const { safeParse } = require('./util');
 
@@ -104,6 +105,7 @@ function createDkctModule(deps) {
   router.use(planRouter(shared));
   router.use(confirmationRouter(shared));
   router.use(ctLibraryRouter(shared));
+  router.use(workflowRouter(shared));
   // eslint-disable-next-line no-unused-vars
   router.use((err, req, res, next) => {
     const status = err.status || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);

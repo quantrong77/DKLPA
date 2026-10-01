@@ -679,3 +679,31 @@ test('Giấy xác nhận: lập từ giấy ĐKCT (trạm, ngăn lộ, mục k�
     assert.equal((await app.call('lead', 'GET', '/confirmation-numbering')).body.numbering.nextNumber, 6);
   } finally { app.close(); }
 });
+
+test('luồng chuẩn bị công tác: từ hồ sơ bất kỳ thấy đủ lịch → KSHT → phương án → giấy ĐKCT → giấy xác nhận; không lộ hồ sơ tổ khác', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'TBA 220kV Tháp Chàm', 'TNĐK ngăn 232', 'Cô lập MC232', '', '', '']]));
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    const survey = (await app.call('lead', 'POST', '/surveys', { ...SURVEY, outageId: o.id })).body.survey;
+    const plan = (await app.call('lead', 'POST', '/plans', { ...PLAN, surveyId: survey.id })).body.plan;
+    const reg = (await app.call('lead', 'POST', '/registrations', { ...(await validInput(app.call)), outageId: o.id })).body.registration;
+    const { draft } = (await app.call('lead', 'GET', `/registrations/${reg.id}/confirmation-draft`)).body;
+    const conf = (await app.call('lead', 'POST', '/confirmations', { ...draft, planId: plan.id })).body.confirmation;
+    // hồ sơ tổ khác cùng lịch: không hiện
+    await app.call('admin', 'POST', '/surveys', { ...SURVEY, outageId: o.id });
+
+    const ids = (w) => [w.outages, w.surveys, w.plans, w.registrations, w.confirmations].map(l => l.map(x => x.id));
+    const all = [[o.id], [survey.id], [plan.id], [reg.id], [conf.id]];
+    for (const [type, id] of [['outage', o.id], ['plan', plan.id], ['confirmation', conf.id], ['registration', reg.id]]) {
+      const w = (await app.call('member', 'GET', `/workflow/${type}/${id}`)).body;
+      assert.deepEqual(ids(w), all, `chọn ${type}`);
+      assert.deepEqual(w.selected, { type, id });
+    }
+    assert.equal((await app.call('member', 'GET', `/workflow/plan/${plan.id}`)).body.plans[0].docNumber, plan.docNumber);
+    assert.equal((await app.call('other', 'GET', `/workflow/plan/${plan.id}`)).status, 403);
+    assert.deepEqual(ids((await app.call('other', 'GET', `/workflow/outage/${o.id}`)).body), [[o.id], [], [], [], []], 'tổ khác chỉ thấy lịch');
+    assert.equal((await app.call('lead', 'GET', '/workflow/plan/KHONG-CO')).status, 404);
+    assert.equal((await app.call('lead', 'GET', '/workflow/khac/1')).status, 400);
+  } finally { app.close(); }
+});

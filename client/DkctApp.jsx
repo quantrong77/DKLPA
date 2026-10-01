@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FileSignature, FileText, Zap, BookUser, Archive, Plus, RefreshCw, Loader2, ClipboardList, FileStack, BadgeCheck } from 'lucide-react';
+import { ClipboardCheck, BookUser, Archive, Plus, RefreshCw, Loader2 } from 'lucide-react';
 import { useDkct } from './context.jsx';
 import { TabButton, btnPrimary, btnGhost } from './components/ui.jsx';
 import RegistrationList from './components/RegistrationList.jsx';
@@ -13,6 +13,8 @@ import PlanList from './components/PlanList.jsx';
 import PlanEditor from './components/PlanEditor.jsx';
 import ConfirmationList from './components/ConfirmationList.jsx';
 import ConfirmationEditor from './components/ConfirmationEditor.jsx';
+import WorkflowBar from './components/WorkflowBar.jsx';
+import { APP_NAME, linkedIds } from './lib/workflow.js';
 import { defaultWorkload, planFromSurvey } from './lib/plan.js';
 import { fromSaved } from './lib/form.js';
 import { emptyRep, qlvhRoleFor, registrationFromSurvey, withQlvhFor } from './lib/survey.js';
@@ -34,6 +36,20 @@ export default function DkctApp() {
   const [editor, setEditor] = useState(null); // { initial, registration, outage }
   const [reloadKey, setReloadKey] = useState(0);
   const [opening, setOpening] = useState(false);
+  // hồ sơ đang theo dõi luồng { type, id } và các hồ sơ cùng luồng (kết quả /workflow)
+  const [selection, setSelection] = useState(null);
+  const [chain, setChain] = useState(null);
+  const track = (type, item) => setSelection(s => (s?.type === type && s.id === item.id ? null : { type, id: item.id }));
+  const follow = (type, item) => { if (item?.id) setSelection({ type, id: item.id }); };
+
+  useEffect(() => {
+    if (!selection) { setChain(null); return undefined; }
+    let alive = true;
+    api.get(`/workflow/${selection.type}/${encodeURIComponent(selection.id)}`)
+      .then(r => { if (alive) setChain(r); })
+      .catch(() => { if (alive) { setChain(null); setSelection(null); } }); // hồ sơ đã xóa / không còn quyền xem
+    return () => { alive = false; };
+  }, [api, selection, reloadKey]);
 
   const loadMeta = useCallback(() => api.get('/meta').then(setMeta).catch(err => notify(err.message, 'error')), [api, notify]);
   const loadCatalog = useCallback(async (name) => {
@@ -59,6 +75,7 @@ export default function DkctApp() {
     setEditor({ initial: fromSaved(draft), registration: null, outage });
   });
   const openExisting = (item) => withOpening(async () => {
+    follow('registration', item);
     const { registration } = await api.get(`/registrations/${item.id}`);
     setEditor({ initial: fromSaved(registration.data), registration, outage: null });
   });
@@ -83,6 +100,7 @@ export default function DkctApp() {
     setSurveyEditor({ initial: surveyForm(draft), survey: null });
   });
   const openSurvey = (item) => withOpening(async () => {
+    follow('survey', item);
     const { survey } = await api.get(`/surveys/${item.id}`);
     setSurveyEditor({ initial: surveyForm(survey.data), survey });
   });
@@ -105,6 +123,7 @@ export default function DkctApp() {
     setPlanEditor({ initial: planForm(draft), plan: null, numberPreview: numbering.preview });
   });
   const openPlan = (item) => withOpening(async () => {
+    follow('plan', item);
     const { plan } = await api.get(`/plans/${item.id}`);
     setPlanEditor({ initial: planForm(plan.data), plan, numberPreview: plan.docNumber });
   });
@@ -120,6 +139,7 @@ export default function DkctApp() {
     setConfirmationEditor({ initial: draft, confirmation: null, numberPreview: numbering.preview });
   });
   const openConfirmation = (item) => withOpening(async () => {
+    follow('confirmation', item);
     const { confirmation } = await api.get(`/confirmations/${item.id}`);
     setConfirmationEditor({ initial: confirmation.data, confirmation, numberPreview: confirmation.docNumber });
   });
@@ -135,17 +155,19 @@ export default function DkctApp() {
   });
 
   const permissions = meta?.permissions || {};
+  const linked = linkedIds(chain);
+  const pick = (type) => ({ selectedId: selection?.type === type ? selection.id : null, linked, onTrack: (item) => track(type, item) });
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
       <div className="px-4 pt-4 pb-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg bg-chatlan-50 dark:bg-chatlan-900/50 text-chatlan-600 dark:text-chatlan-400 flex items-center justify-center">
-              <FileSignature className="w-5 h-5" />
+              <ClipboardCheck className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-slate-900 dark:text-white">Đăng ký công tác</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Lịch cắt điện → khảo sát → phương án → giấy ĐKCT → giấy xác nhận</p>
+              <h1 className="text-base font-bold text-slate-900 dark:text-white">{APP_NAME}</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Từ lịch cắt điện đến giấy xác nhận đủ điều kiện đóng điện</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -164,31 +186,26 @@ export default function DkctApp() {
             </button>
           </div>
         </div>
-        <nav className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 overflow-x-auto -mx-1 px-1" aria-label="Đăng ký công tác">
-          {/* theo trình tự công việc: lịch cắt điện -> khảo sát -> phương án -> đăng ký */}
-          <TabButton icon={Zap} active={tab === 'outages'} onClick={() => setTab('outages')}>Lịch cắt điện</TabButton>
-          <TabButton icon={ClipboardList} active={tab === 'surveys'} onClick={() => setTab('surveys')}>Biên bản KSHT</TabButton>
-          <TabButton icon={FileStack} active={tab === 'plans'} onClick={() => setTab('plans')}>Phương án</TabButton>
-          <TabButton icon={FileText} active={tab === 'registrations'} onClick={() => setTab('registrations')}>Giấy ĐKCT</TabButton>
-          <TabButton icon={BadgeCheck} active={tab === 'confirmations'} onClick={() => setTab('confirmations')}>Giấy xác nhận</TabButton>
-          <TabButton icon={BookUser} active={tab === 'catalogs'} onClick={() => setTab('catalogs')}>Danh mục</TabButton>
-          <TabButton icon={Archive} active={tab === 'legacy'} onClick={() => setTab('legacy')}>Giấy cũ</TabButton>
-        </nav>
+        <WorkflowBar tab={tab} onTab={setTab} chain={chain} selection={selection} onClearSelection={() => setSelection(null)}
+          extraTabs={<>
+            <TabButton icon={BookUser} active={tab === 'catalogs'} onClick={() => setTab('catalogs')}>Danh mục</TabButton>
+            <TabButton icon={Archive} active={tab === 'legacy'} onClick={() => setTab('legacy')}>Giấy cũ</TabButton>
+          </>} />
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4">
         {tab === 'registrations' && (
-          <RegistrationList reloadKey={reloadKey} onOpen={openExisting} numbering={meta?.numbering}
+          <RegistrationList {...pick('registration')} reloadKey={reloadKey} onOpen={openExisting} numbering={meta?.numbering}
             canCreate={permissions.canCreate} onNumberingChanged={loadMeta} onCreateConfirmation={openConfirmationFromRegistration} />
         )}
-        {tab === 'confirmations' && <ConfirmationList reloadKey={reloadKey} onOpen={openConfirmation} canCreate={permissions.canCreate} />}
+        {tab === 'confirmations' && <ConfirmationList {...pick('confirmation')} reloadKey={reloadKey} onOpen={openConfirmation} canCreate={permissions.canCreate} />}
         {tab === 'surveys' && (
-          <SurveyList reloadKey={reloadKey} onOpen={openSurvey} canCreate={permissions.canCreate} onCreateRegistration={registrationFromSurveyItem}
+          <SurveyList {...pick('survey')} reloadKey={reloadKey} onOpen={openSurvey} canCreate={permissions.canCreate} onCreateRegistration={registrationFromSurveyItem}
             onCreatePlan={(item) => openNewPlan(item)} />
         )}
-        {tab === 'plans' && <PlanList reloadKey={reloadKey} onOpen={openPlan} canCreate={permissions.canCreate} />}
+        {tab === 'plans' && <PlanList {...pick('plan')} reloadKey={reloadKey} onOpen={openPlan} canCreate={permissions.canCreate} />}
         {tab === 'outages' && (
-          <OutagePanel canCreate={permissions.canCreate} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
+          <OutagePanel {...pick('outage')} canCreate={permissions.canCreate} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
             onCreatePlanFromOutage={openPlanFromOutage} />
         )}
         {tab === 'catalogs' && <CatalogPanel catalogs={catalogs} canManage={permissions.canManageCatalog} isAdmin={permissions.isAdmin} onChanged={loadCatalog} />}
@@ -202,7 +219,7 @@ export default function DkctApp() {
           departments={meta?.departments || []}
           docNumberPreview={editor.registration?.docNumber || meta?.numbering?.preview || ''}
           onClose={() => setEditor(null)}
-          onSaved={() => { setEditor(null); setTab('registrations'); setReloadKey(k => k + 1); loadMeta(); }}
+          onSaved={(saved) => { follow('registration', saved); setEditor(null); setTab('registrations'); setReloadKey(k => k + 1); loadMeta(); }}
         />
       )}
       {surveyEditor && (
@@ -211,7 +228,7 @@ export default function DkctApp() {
           catalogs={catalogs}
           departments={meta?.departments || []}
           onClose={() => setSurveyEditor(null)}
-          onSaved={() => { setSurveyEditor(null); setTab('surveys'); setReloadKey(k => k + 1); }}
+          onSaved={(saved) => { follow('survey', saved); setSurveyEditor(null); setTab('surveys'); setReloadKey(k => k + 1); }}
         />
       )}
       {confirmationEditor && (
@@ -220,7 +237,7 @@ export default function DkctApp() {
           catalogs={catalogs}
           departments={meta?.departments || []}
           onClose={() => setConfirmationEditor(null)}
-          onSaved={() => { setConfirmationEditor(null); setTab('confirmations'); setReloadKey(k => k + 1); }}
+          onSaved={(saved) => { follow('confirmation', saved); setConfirmationEditor(null); setTab('confirmations'); setReloadKey(k => k + 1); }}
         />
       )}
       {planEditor && (
@@ -229,7 +246,7 @@ export default function DkctApp() {
           catalogs={catalogs}
           departments={meta?.departments || []}
           onClose={() => setPlanEditor(null)}
-          onSaved={() => { setPlanEditor(null); setTab('plans'); setReloadKey(k => k + 1); }}
+          onSaved={(saved) => { follow('plan', saved); setPlanEditor(null); setTab('plans'); setReloadKey(k => k + 1); }}
         />
       )}
     </div>

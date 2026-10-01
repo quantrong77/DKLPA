@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FileSignature, LogOut, Settings, UserRound, Loader2, Hourglass, X } from 'lucide-react';
+import { ClipboardCheck, LogOut, Settings, UserRound, Loader2, Hourglass, X } from 'lucide-react';
 import DkctModule from '@dkct/index.jsx';
 import { btnPrimary, btnSecondary, btnGhost, inputCls, inputBorder } from '@dkct/components/ui.jsx';
 import ModalOverlay from './ui/ModalOverlay.jsx';
@@ -78,7 +78,7 @@ export default function App() {
   }, [logout]);
 
   let body;
-  if (bootError) body = <EmptyState icon={FileSignature} title="Không kết nối được máy chủ" description={bootError} />;
+  if (bootError) body = <EmptyState icon={ClipboardCheck} title="Không kết nối được máy chủ" description={bootError} />;
   else if (!ready || (session && !me)) body = <div className="h-full flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-chatlan-600" aria-label="Đang tải" /></div>;
   else if (!session) body = <Login />;
   else {
@@ -87,8 +87,8 @@ export default function App() {
     body = (
       <div className="h-full flex flex-col">
         <header className="flex items-center gap-2 px-4 py-2 bg-chatlan-600 text-white">
-          <FileSignature className="w-5 h-5" aria-hidden="true" />
-          <span className="font-bold text-sm flex-1 truncate">Đăng ký công tác{me.department ? ` · ${me.department}` : ''}</span>
+          <ClipboardCheck className="w-5 h-5" aria-hidden="true" />
+          <span className="font-bold text-sm flex-1 truncate">Chuẩn bị công tác{me.department ? ` · ${me.department}` : ''}</span>
           {isAdmin && (
             <button type="button" onClick={() => setView(view === 'admin' ? 'dkct' : 'admin')}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${view === 'admin' ? 'bg-white text-chatlan-700' : 'hover:bg-white/15'}`}>
