@@ -105,6 +105,9 @@ export function suggestDrawings(drawings, text) {
   return picked.length ? picked : all;
 }
 
+/** "Ngăn lộ cắt điện cô lập" lấy từ "Phạm vi / điều kiện cắt điện" của lịch: gộp các dòng (bỏ gạch đầu dòng) thành một dòng. */
+export const baysFromScope = (scope) => String(scope || '').split(/\r?\n/).map(s => s.replace(/^\s*[-–•+*]\s*/, '').trim()).filter(Boolean).join('; ');
+
 /** Khối lượng thi công mặc định từ ngăn lộ. */
 export const defaultWorkload = (form) => `Kiểm tra thí nghiệm định kỳ các thiết bị nhất thứ thuộc ngăn lộ ${form.bays || '…'}.`;
 

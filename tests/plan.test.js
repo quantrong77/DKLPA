@@ -116,7 +116,10 @@ test('renderPlanDocx: điền đủ nội dung, không còn chú thích <…> ha
   assert.match(text, /Gởi đăng ký công tác đến Tổ QLVH TBA 500kV Vĩnh Tân/);
   assert.match(text, /Thực hiện từ 15h00 ngày 22\/8\/2026 – 06h00 ngày 23\/8\/2026/);
   assert.match(text, /Hoàng Trần Quản Trọng/);
-  assert.match(text, /Nguyễn Hữu Kính/);
+  // chỗ ký giữ nguyên nhãn của app ký số công ty (điền khi import phương án)
+  for (const tag of ['nguoilap', 'ld_dtc', 'nv_pkt.dvkt', 'ld_pkt.dvkt', 'bgd.dvkt', 'tram.ttd', 'nv_pkt.ttd', 'ld_pkt.ttd', 'bgd.ttd', 'nv_pkt.ctyttd', 'ld_pkt.ctyttd', 'bgd.ctyttd']) {
+    assert.ok(text.includes(`((${tag}))`), `giữ nhãn ký số ((${tag}))`);
+  }
   assert.ok(ps.includes('- Lưu: VT, Tổ TNLĐ.'));
   assert.match(text, /Tách các link hàng kẹp mạch dòng XA2/);
   assert.match(text, /=B02\+SV1/);
@@ -124,7 +127,7 @@ test('renderPlanDocx: điền đủ nội dung, không còn chú thích <…> ha
   assert.match(text, /Thiết bị nâng/);
   assert.match(text, /Trần Văn Hoàng/);
   assert.doesNotMatch(text, /Đo tổn hao ngắn mạch|Không chọn gì/, 'hạng mục bỏ tick không in');
-  assert.doesNotMatch(text, /[<>]|\(\(|nhập tay|tự động/);
+  assert.doesNotMatch(text.replace(/\(\([\w.]+\)\)/g, ''), /[<>]|\(\(|nhập tay|tự động/);
   assert.doesNotMatch(xml, /\{[#/@^]?[\w.]+\}/);
   assert.match(text, /Chưa có bản vẽ sơ đồ của trạm/);
 });

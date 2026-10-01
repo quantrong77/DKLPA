@@ -70,7 +70,7 @@ function OutagePicker({ onPick, onCancel }) {
  * Dải "Lịch cắt điện liên quan" của biên bản KSHT / phương án: một dòng tóm tắt, đặt ngoài vùng cuộn nên luôn thấy;
  * bấm để xem đủ chi tiết (chiều cao giới hạn). Hồ sơ lập riêng (không từ tab Lịch cắt điện) thì chọn dòng lịch để gắn.
  */
-export default function LinkedOutage({ outageId, onChange, readOnly }) {
+export default function LinkedOutage({ outageId, onChange, onOutage, readOnly }) {
   const { api } = useDkct();
   const [outage, setOutage] = useState(null);
   const [state, setState] = useState(outageId ? 'loading' : 'none'); // loading | shown | missing | none
@@ -88,7 +88,10 @@ export default function LinkedOutage({ outageId, onChange, readOnly }) {
     return () => { alive = false; };
   }, [api, outageId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pick = (o) => { setOutage(o); setPicking(false); onChange(o.id); };
+  // báo dòng lịch đang gắn (đủ nội dung) cho biểu mẫu tự điền; không gắn/không còn -> null
+  useEffect(() => { onOutage?.(state === 'shown' ? outage : null); }, [state, outage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = (o) => { setOutage(o); setPicking(false); onChange(o.id, o); };
   const shown = state === 'shown' && outage;
   const iconBtn = 'p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex-shrink-0';
 

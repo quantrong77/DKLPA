@@ -20,6 +20,9 @@ const intIn = (v, min, max, fallback) => {
   return Number.isInteger(n) ? Math.max(min, Math.min(max, n)) : fallback;
 };
 
+/** "Ngăn lộ cắt điện cô lập" lấy từ "Phạm vi / điều kiện cắt điện" của lịch: gộp các dòng (bỏ gạch đầu dòng) thành một dòng. */
+const baysFromScope = (scope) => String(scope || '').split(/\r?\n/).map(s => s.replace(/^\s*[-–•+*]\s*/, '').trim()).filter(Boolean).join('; ');
+
 function checkLimits(input) {
   for (const [key, max] of Object.entries(LIMITS)) {
     if (Array.isArray(input[key]) && input[key].length > max) return { field: key, message: `Danh sách "${key}" vượt quá ${max} mục.` };
@@ -170,4 +173,4 @@ function normalizePlan(input = {}, { personnel, substations }) {
   return { data, errors };
 }
 
-module.exports = { normalizePlan, LIMITS, CYCLES };
+module.exports = { normalizePlan, baysFromScope, LIMITS, CYCLES };

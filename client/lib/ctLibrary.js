@@ -5,8 +5,8 @@ export const ROW_TERMINALS = [1, 4, 2, 5, 3, 6];
 export const ROW_PHASES = ['L1', 'L1', 'L2', 'L2', 'L3', 'L3'];
 export const DEFAULT_CORES_SHOWN = 4;
 export const INSUFFICIENT = 'CHƯA ĐỦ DỮ LIỆU';
-/** Cặp đầu cuộn phía TI có đấu dây hay gặp; vẫn gõ được cặp khác (vd kS3-kS4). */
-export const CT_SIDE_PRESETS = ['S1-S2', 'S1-S3', 'S1-S4', 'S1-S5', 'S2-S3', 'S2-S4', 'S2-S5'];
+/** Cặp đầu cuộn phía TI trong combo box; cặp khác (vd kS2-kS3) gõ ở mục "Khác…". */
+export const CT_SIDE_PRESETS = ['S1-S2', 'S1-S3', 'S1-S4', 'S1-S5'];
 
 /** "kS1-kS4", "S1-S4", "s1 / s4", "S1S4" -> ["S1", "S4"]; sai -> null. */
 export function parseSide(v) {

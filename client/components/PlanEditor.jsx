@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink, Eye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { Field, Section, TabButton, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import { Field, Section, TabButton, SourceBadge, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
 import PlaceSelect from './PlaceSelect.jsx';
@@ -12,7 +12,7 @@ import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
 import { stationFromCatalog } from '../lib/survey.js';
-import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings } from '../lib/plan.js';
+import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope } from '../lib/plan.js';
 
 const STEPS = [
   { id: 'general', label: '1. Chung & pháp lý', owns: /^(header|workType|year|equipmentText|bays|station|drawingIds|time|approvalRef|legalBases)/ },
@@ -97,7 +97,7 @@ function DrawingChoice({ form, setField, catalogs }) {
   );
 }
 
-function GeneralStep({ form, setField, errors, catalogs, departments }) {
+function GeneralStep({ form, setField, errors, catalogs, departments, outage }) {
   const substations = catalogs.substations || [];
   const units = catalogs.stations || [];
   const choice = form.station?.substationId || (form.station?.manual || form.station?.name ? '__manual' : '');
@@ -149,7 +149,10 @@ function GeneralStep({ form, setField, errors, catalogs, departments }) {
         <Field label="Thiết bị công tác (in ở dòng Công tác, mục A)" htmlFor="pa-equip" required error={errors.equipmentText}>
           <input id="pa-equip" className={`${inputCls} ${inputBorder(errors.equipmentText)}`} value={form.equipmentText || ''} placeholder="các thiết bị nhất thứ ngăn 530, 532, MBA AT2, 232, 255, 342" onChange={e => setField('equipmentText', e.target.value)} />
         </Field>
-        <Field label="Ngăn lộ cắt điện cô lập" htmlFor="pa-bays" required error={errors.bays} hint="Dùng ở mục D, E.3, E.4 và Phụ lục I.">
+        <Field label={<>Ngăn lộ cắt điện cô lập{' '}
+          {outage?.scope && <SourceBadge source={form.bays === baysFromScope(outage.scope) ? 'outage' : 'manual'}
+            onReset={form.bays !== baysFromScope(outage.scope) ? () => setField('bays', baysFromScope(outage.scope)) : null} />}</>}
+          htmlFor="pa-bays" required error={errors.bays} hint="Dùng ở mục D, E.3, E.4 và Phụ lục I.">
           <input id="pa-bays" className={`${inputCls} ${inputBorder(errors.bays)}`} value={form.bays || ''} placeholder="530, 532, MBA AT2, 232, 255, 342" onChange={e => setField('bays', e.target.value)} />
         </Field>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -439,7 +442,7 @@ function CtBlocks({ form, setField }) {
           <CoreSides block={b} onChange={coreSides => set(i, { coreSides })} />
         </div>
       )))}
-      <button type="button" className={btnSecondary} onClick={() => setField('ctBlocks', l => [...l, { title: '', panel: '', prefix: 'XA', firstCore: 1, cores: 4, side: 'S2-S3', coreSides: {} }])}>
+      <button type="button" className={btnSecondary} onClick={() => setField('ctBlocks', l => [...l, { title: '', panel: '', prefix: 'XA', firstCore: 1, cores: 4, side: 'S1-S2', coreSides: {} }])}>
         <Plus className="w-4 h-4" /> Bảng theo quy ước XAk (không dùng thư viện)
       </button>
     </Section>
@@ -481,6 +484,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
   const [dirty, setDirty] = useState(false);
   const [devices, setDevices] = useState([]);
   const [surveys, setSurveys] = useState([]);
+  const [outage, setOutage] = useState(null);
   const readOnly = !!current && !current.canEdit;
   const errors = useMemo(() => fieldErrors(errorList), [errorList]);
   const update = (fn) => { setDirty(true); setForm(fn); };
@@ -547,7 +551,12 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
   }
 
   const stepErrors = (s) => errorList.filter(e => s.owns.test(e.field)).length;
-  const shared = { form, setField, update, errors, catalogs, departments };
+  const shared = { form, setField, update, errors, catalogs, departments, outage };
+  // gắn dòng lịch: điền ngăn lộ từ phạm vi cắt điện nếu đang trống hoặc vẫn theo lịch cũ
+  const linkOutage = (id, o) => update(f => ({
+    ...f, outageId: id,
+    bays: o?.scope && (!String(f.bays || '').trim() || (outage && f.bays === baysFromScope(outage.scope))) ? baysFromScope(o.scope) : f.bays
+  }));
 
   return (
     <ModalOverlay onClose={close} className="fixed inset-0 z-50 bg-slate-900/40 flex items-stretch md:items-center justify-center md:p-4">
@@ -569,7 +578,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
           ))}
         </nav>
         {/* ngoài vùng cuộn: luôn thấy khi cuộn nội dung bên dưới */}
-        <LinkedOutage outageId={form.outageId} onChange={id => setField('outageId', id)} readOnly={readOnly} />
+        <LinkedOutage outageId={form.outageId} onChange={linkOutage} onOutage={setOutage} readOnly={readOnly} />
         <div className="flex-1 overflow-y-auto p-4">
           {errorList.length > 0 && (
             <div className="mb-3 flex gap-2 p-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 text-sm text-red-700 dark:text-red-300" role="alert">

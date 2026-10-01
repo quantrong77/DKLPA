@@ -8,21 +8,37 @@ import { CropView, SourceDialog, RegionPicker } from './CtSource.jsx';
 
 const MAX_PDF = 50 * 1024 * 1024;
 
+const OTHER_SIDE = 'other';
+
 /**
- * Cặp đầu cuộn phía TI có đấu dây: chọn trong danh sách (kS1-kS2 … kS2-kS5) hoặc gõ cặp khác (vd kS3-kS4).
+ * Cặp đầu cuộn phía TI có đấu dây: combo box kS1-kS2 … kS1-kS5; chọn "Khác…" để gõ cặp khác (vd kS2-kS3).
  * onChange nhận dạng lưu "S1-S4" khi hợp lệ, còn lại nhận nguyên chữ đang gõ.
  */
 export function SideInput({ value, onChange, ariaLabel, className = '' }) {
-  const [textValue, setText] = useState(sideLabel(value));
-  useEffect(() => { if (normalizeSide(textValue) !== normalizeSide(value)) setText(sideLabel(value)); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  const preset = CT_SIDE_PRESETS.includes(normalizeSide(value)) ? normalizeSide(value) : null;
+  const [other, setOther] = useState(!preset);
+  const [textValue, setText] = useState(preset ? '' : sideLabel(value));
+  useEffect(() => {
+    if (preset) setOther(false);
+    else if (normalizeSide(textValue) !== normalizeSide(value)) { setOther(true); setText(sideLabel(value)); }
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
   const valid = !!parseSide(textValue);
   return (
-    <>
-      <input aria-label={ariaLabel} list="dkct-ct-sides" className={`${inputCls} ${inputBorder(!valid)} !w-28 ${className}`} value={textValue} placeholder="kS1-kS2"
-        title={valid ? undefined : 'Ghi cặp đầu cuộn, vd kS1-kS4'}
-        onChange={e => { setText(e.target.value); onChange(normalizeSide(e.target.value) || e.target.value); }} />
-      <datalist id="dkct-ct-sides">{CT_SIDE_PRESETS.map(s => <option key={s} value={sideLabel(s)} />)}</datalist>
-    </>
+    <span className={`inline-flex items-center gap-1 ${className}`}>
+      <select aria-label={ariaLabel} className={`${inputCls} ${inputBorder()} !w-28 !px-1`} value={other ? OTHER_SIDE : preset || OTHER_SIDE}
+        onChange={e => {
+          if (e.target.value === OTHER_SIDE) { setOther(true); setText(sideLabel(value)); return; }
+          setOther(false); onChange(e.target.value);
+        }}>
+        {CT_SIDE_PRESETS.map(s => <option key={s} value={s}>{sideLabel(s)}</option>)}
+        <option value={OTHER_SIDE}>Khác…</option>
+      </select>
+      {other && (
+        <input aria-label={`${ariaLabel} (khác)`} className={`${inputCls} ${inputBorder(!valid)} !w-24`} value={textValue} placeholder="kS2-kS3"
+          title={valid ? undefined : 'Ghi cặp đầu cuộn, vd kS2-kS3'}
+          onChange={e => { setText(e.target.value); onChange(normalizeSide(e.target.value) || e.target.value); }} />
+      )}
+    </span>
   );
 }
 

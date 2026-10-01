@@ -7,7 +7,7 @@ const express = require('express');
 const { docxFileName, attachment } = require('../services/fileName');
 const { newId, sameUnitName } = require('../schema');
 const { forbidden } = require('../policy');
-const { normalizePlan } = require('../services/plan');
+const { normalizePlan, baysFromScope } = require('../services/plan');
 const { libraryBlockStatus } = require('./ctLibrary');
 const { renderPlanDocx } = require('../services/planRender');
 const { createNumbering, formatPlanNumber } = require('../services/numbering');
@@ -171,6 +171,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
         ...draft,
         outageId: outage.id,
         equipmentText: outage.content || '',
+        bays: baysFromScope(outage.scope),
         station: sub
           ? { substationId: sub.id, name: sub.name, qlvhUnitId: sub.stationId, qlvhUnitName: sub.unitName, qlvhShort: sub.unitShort || '' }
           : { ...draft.station, name: outage.location || '' },

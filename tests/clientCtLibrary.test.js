@@ -62,9 +62,9 @@ test('libraryChanges: so bản chụp trong phương án với thư viện hiệ
   assert.match(changes[0], /Core 1 L1: 1S2 → 1S4/);
 });
 
-test('Đầu phía TI: danh sách chọn sẵn kS1-kS2 … kS2-kS5; gõ tay nhiều kiểu đều đọc được; sai thì null', async () => {
+test('Đầu phía TI: combo box kS1-kS2 … kS1-kS5; gõ tay nhiều kiểu đều đọc được; sai thì null', async () => {
   const { CT_SIDE_PRESETS, parseSide, sideLabel } = await load();
-  assert.deepEqual(CT_SIDE_PRESETS, ['S1-S2', 'S1-S3', 'S1-S4', 'S1-S5', 'S2-S3', 'S2-S4', 'S2-S5']);
+  assert.deepEqual(CT_SIDE_PRESETS, ['S1-S2', 'S1-S3', 'S1-S4', 'S1-S5']);
   assert.deepEqual(parseSide('kS1-kS4'), ['S1', 'S4']);
   assert.deepEqual(parseSide(' s2 / s5 '), ['S2', 'S5']);
   assert.deepEqual(parseSide('S1S4'), ['S1', 'S4']);

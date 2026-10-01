@@ -567,6 +567,7 @@ test('Phương án: nháp từ lịch cắt điện; khóa ngoại tới BBKSHT/
     assert.equal(draft.station.qlvhUnitName, 'Tổ Thao tác lưu động Tháp Chàm');
     assert.equal(draft.station.qlvhShort, 'TTLĐTC');
     assert.deepEqual(draft.isolationSteps, ['Cô lập MC232', 'Đóng DTĐ 232-25']);
+    assert.equal(draft.bays, 'Cô lập MC232; Đóng DTĐ 232-25', 'ngăn lộ cắt điện cô lập lấy từ phạm vi cắt điện');
     assert.equal(draft.time.start, '2024-10-05T07:00');
 
     const surveyId = (await app.call('lead', 'POST', '/surveys', SURVEY)).body.survey.id;

@@ -79,3 +79,10 @@ test('planFromSurvey: đổi trạm thì bỏ lựa chọn sơ đồ cũ để g
   assert.equal(planFromSurvey(draft, { id: 'KS', data: { station: { substationId: 'TBA-2', name: 'X' }, risks: [] } }).drawingIds, null);
   assert.deepEqual(planFromSurvey(draft, { id: 'KS', data: { station: { substationId: 'TBA-1', name: 'X' }, risks: [] } }).drawingIds, ['A']);
 });
+
+test('baysFromScope: ngăn lộ cắt điện cô lập từ phạm vi cắt điện của lịch, gộp dòng và bỏ gạch đầu dòng', async () => {
+  const { baysFromScope } = await load();
+  assert.equal(baysFromScope('- Cô lập MC232\r\n\n• Đóng DTĐ 232-25 '), 'Cô lập MC232; Đóng DTĐ 232-25');
+  assert.equal(baysFromScope('Ngăn 272'), 'Ngăn 272');
+  assert.equal(baysFromScope(null), '');
+});
