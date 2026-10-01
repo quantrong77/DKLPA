@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp, Cable } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import DrawingDialog from './DrawingDialog.jsx';
+import CtLibraryPanel from './CtLibraryPanel.jsx';
 import { TabButton, btnGhost, btnPrimary, btnSecondary, inputCls, inputBorder } from './ui.jsx';
 
 const CATALOGS = {
@@ -82,15 +83,15 @@ function RowEditor({ cfg, value, onChange, catalogs }) {
   });
 }
 
-/** Quản lý các danh mục; thành viên thường chỉ xem. */
-export default function CatalogPanel({ catalogs, canManage, onChanged }) {
+/** Quản lý các danh mục; thành viên thường chỉ xem. Thư viện mạch dòng: tạm thời chỉ admin sửa. */
+export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }) {
   const { api, notify, confirmAction } = useDkct();
   const [tab, setTab] = useState('personnel');
   const [editing, setEditing] = useState(null); // { id?, ...values }
   const [drawingOf, setDrawingOf] = useState(null); // trạm đang mở bản vẽ
   const drawingsOf = (substationId) => (catalogs.drawings || []).filter(d => d.substationId === substationId);
   const cfg = CATALOGS[tab];
-  const rows = catalogs[tab] || [];
+  const rows = (cfg && catalogs[tab]) || [];
 
   const save = async () => {
     try {
@@ -116,7 +117,10 @@ export default function CatalogPanel({ catalogs, canManage, onChanged }) {
             {c.label} ({(catalogs[key] || []).length})
           </TabButton>
         ))}
+        <TabButton icon={Cable} active={tab === 'ctLibrary'} onClick={() => { setTab('ctLibrary'); setEditing(null); }}>Mạch dòng TI</TabButton>
       </div>
+      {tab === 'ctLibrary' && <CtLibraryPanel catalogs={catalogs} canManage={!!isAdmin} />}
+      {cfg && <>
       {cfg.hint && <p className="text-xs text-slate-500 dark:text-slate-400">{cfg.hint}</p>}
       {canManage && !editing && (
         <button type="button" className={btnSecondary} onClick={() => setEditing({})}><Plus className="w-4 h-4" /> Thêm</button>
@@ -171,6 +175,7 @@ export default function CatalogPanel({ catalogs, canManage, onChanged }) {
         <DrawingDialog substation={drawingOf} drawings={drawingsOf(drawingOf.id)} canManage={canManage}
           onClose={() => setDrawingOf(null)} onChanged={() => onChanged('drawings')} />
       )}
+      </>}
     </div>
   );
 }

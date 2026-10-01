@@ -52,8 +52,55 @@ test('planView: tiêu đề, thời gian, Bảng 1 đánh số nhóm/hạng mụ
 
 test('ctBlockView: 7 dòng mỗi core như mẫu (XAk-1/-4, -2/-5, -3/-6; kS2/kS3)', () => {
   const b = ctBlockView({ title: 'TI 232', panel: 'D12+MK', prefix: 'XA', firstCore: 3, cores: 1, side: 'S1S4' });
-  assert.equal(b.panel, '=D12+MK');
+  assert.equal(b.panel, 'Tại tủ =D12+MK');
   assert.deepEqual(b.cores[0], { no: '3', block: 'XA3', a1: 'XA3-1', b1: '3S1', a2: 'XA3-4', b2: '3S4', a3: 'XA3-2', b3: '3S1', a4: 'XA3-5', b4: '3S4', a5: 'XA3-3', b5: '3S1', a6: 'XA3-6', b6: '3S4' });
+});
+
+/** Khối Phụ lục II lấy từ thư viện mạch dòng (bản chụp lúc chọn; dữ liệu thử). */
+const libCore = (no, ct2 = 'S2') => ({
+  coreId: `C${no}`, coreNo: no, terminalBlock: `X4${no}`, drawingRef: `=D02+MK202/11${no}`, pageId: 'P1', region: { x: 0.1, y: 0.1, w: 0.3, h: 0.5 },
+  points: [1, 4, 2, 5, 3, 6].map((t, i) => ({ terminal: `X4${no}-${t}`, ctTerminal: `${no}${i % 2 ? ct2 : 'S1'}` }))
+});
+const LIB_BLOCK = { ctId: 'TI-1', revision: 1, status: 'VERIFIED', name: 'TI 272', panel: '=D02+MK202', coresShown: 4, updatedAt: 't', cores: [1, 2, 3, 4, 5].map(n => libCore(n)) };
+
+test('normalizePlan: khối mạch dòng từ thư viện giữ bản chụp, số core in trong khoảng hợp lệ; khối cũ vẫn dùng được', () => {
+  const { data, errors } = normalizePlan({ ...PLAN, ctBlocks: [{ ...LIB_BLOCK, coresShown: 99, extra: 'x' }, PLAN.ctBlocks[0]] }, ctx);
+  assert.deepEqual(errors, []);
+  const [lib, legacy] = data.ctBlocks;
+  assert.equal(lib.ctId, 'TI-1');
+  assert.equal(lib.coresShown, 5);
+  assert.equal(lib.extra, undefined);
+  assert.equal(lib.cores[0].points.length, 6);
+  assert.deepEqual(lib.cores[0].points[1], { terminal: 'X41-4', ctTerminal: '1S2' });
+  assert.equal(legacy.cores, 2);
+  const blank = normalizePlan({ ...PLAN, ctBlocks: [{ ...LIB_BLOCK, cores: [{ coreNo: 1, points: [] }] }] }, ctx).data.ctBlocks[0];
+  assert.deepEqual(blank.cores[0].points[0], { terminal: '', ctTerminal: '' });
+});
+
+test('ctBlockView (thư viện): theo mẫu cô lập mạch dòng — tủ, khối kẹp kèm tham chiếu bản vẽ, in số core đã chọn', () => {
+  const b = ctBlockView(LIB_BLOCK);
+  assert.equal(b.title, 'TI 272 tại tủ =D02+MK202');
+  assert.equal(b.panel, 'Tại tủ =D02+MK202');
+  assert.equal(b.sideHeader, 'Đầu phía CT');
+  assert.equal(b.cores.length, 4, 'mặc định 4 core');
+  assert.deepEqual(b.cores[0], { no: '1', block: 'X41 (bản vẽ =D02+MK202/111)', a1: 'X41-1', b1: '1S1', a2: 'X41-4', b2: '1S2', a3: 'X41-2', b3: '1S1', a4: 'X41-5', b4: '1S2', a5: 'X41-3', b5: '1S1', a6: 'X41-6', b6: '1S2' });
+  assert.equal(ctBlockView({ ...LIB_BLOCK, coresShown: 5 }).cores.length, 5);
+});
+
+test('ctBlockView (thư viện): ô trống in "CHƯA ĐỦ DỮ LIỆU"; TI chưa xác nhận in ghi chú bản nháp', () => {
+  const core = libCore(1);
+  core.points[3].ctTerminal = '';
+  const b = ctBlockView({ ...LIB_BLOCK, status: 'DRAFT', cores: [core] });
+  assert.equal(b.cores[0].b4, 'CHƯA ĐỦ DỮ LIỆU');
+  assert.match(b.title, /^TI 272 tại tủ =D02\+MK202 \(BẢN NHÁP – chưa xác nhận\)$/);
+});
+
+test('renderPlanDocx: Phụ lục II in bảng từ thư viện mạch dòng', () => {
+  const text = plain(docXml(renderPlanDocx({ docNumber: '1/PA', data: { ...PLAN, ctBlocks: [LIB_BLOCK] } })));
+  assert.match(text, /Cô lập mạch dòng TI 272 tại tủ =D02\+MK202 như sau:/);
+  assert.match(text, /Tại tủ =D02\+MK202/);
+  assert.match(text, /Tách các link hàng kẹp mạch dòng X44 \(bản vẽ =D02\+MK202\/114\)/);
+  assert.doesNotMatch(text, /X45/, 'core thứ 5 chưa chọn in');
 });
 
 test('renderPlanDocx: điền đủ nội dung, không còn chú thích <…> hay thẻ chưa điền', () => {
@@ -109,3 +156,21 @@ test('renderPlanDocx: TBA 500kV in cả sơ đồ phía 500kV và phía 220kV, m
   assert.doesNotMatch(plain(xml), /Chưa có bản vẽ/);
 });
 
+
+test('Đầu phía TI (bảng theo quy ước XAk): chọn hoặc gõ cặp đầu cuộn; từng core chọn riêng được; dữ liệu cũ S2S3/S1S4 vẫn đọc được', () => {
+  const { data } = normalizePlan({ ...PLAN, ctBlocks: [
+    { title: 'TI 272', panel: 'D02+MK202', prefix: 'X4', firstCore: 1, cores: 3, side: 'kS1 - kS3', coreSides: { 2: 'S2-S5', 3: 'rác', 9: 'S1-S4' } },
+    { title: 'TI cũ', panel: 'B02', prefix: 'XA', firstCore: 1, cores: 1, side: 'S1S4' },
+    { title: 'TI lỗi', panel: 'B02', prefix: 'XA', firstCore: 1, cores: 1, side: 'không rõ' }
+  ] }, ctx);
+  const [b, old, bad] = data.ctBlocks;
+  assert.equal(b.side, 'S1-S3');
+  assert.deepEqual(b.coreSides, { 2: 'S2-S5' }, 'chỉ giữ core trong bảng và cặp đầu hợp lệ');
+  assert.equal(old.side, 'S1-S4');
+  assert.equal(bad.side, 'S2-S3', 'không đọc được thì về mặc định như trước');
+  const v = ctBlockView(b);
+  assert.deepEqual([v.cores[0].b1, v.cores[0].b2], ['1S1', '1S3']);
+  assert.deepEqual([v.cores[1].b1, v.cores[1].b2, v.cores[1].b6], ['2S2', '2S5', '2S5']);
+  assert.deepEqual([v.cores[2].b1, v.cores[2].b2], ['3S1', '3S3']);
+  assert.deepEqual([ctBlockView(old).cores[0].b1, ctBlockView(old).cores[0].b2], ['1S1', '1S4']);
+});

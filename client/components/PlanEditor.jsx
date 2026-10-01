@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink } from 'lucide-react';
+import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink, Eye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { Field, Section, TabButton, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
@@ -7,6 +7,9 @@ import LinkedOutage from './LinkedOutage.jsx';
 import PlaceSelect from './PlaceSelect.jsx';
 import PersonPicker from './PersonPicker.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
+import { SourceDialog } from './CtSource.jsx';
+import { StatusBadge, SideInput } from './CtEditor.jsx';
+import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
 import { stationFromCatalog } from '../lib/survey.js';
 import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings } from '../lib/plan.js';
@@ -311,27 +314,133 @@ function Instruments({ form, setField }) {
   );
 }
 
-function CtBlocks({ form, setField }) {
-  const set = (i, patch) => setField('ctBlocks', l => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+/** Một bảng Phụ lục II lấy từ thư viện mạch dòng: số core in (mặc định 4), xem lại nguồn từng core, đối chiếu thư viện. */
+function LibraryCtBlock({ block, index, set, remove }) {
+  const { api, notify, confirmAction } = useDkct();
+  const [viewing, setViewing] = useState(null);
+  const total = block.cores.length;
+  const refresh = async () => {
+    try {
+      const { ct } = await api.get(`/ct-library/${block.ctId}`);
+      const changes = libraryChanges(block, ct);
+      if (!changes.length) return notify(`${block.name}: khớp với thư viện.`, 'success');
+      const list = changes.slice(0, 15).join('\n') + (changes.length > 15 ? `\n… và ${changes.length - 15} thay đổi khác` : '');
+      if (await confirmAction({ title: `Cập nhật ${block.name} theo thư viện?`, message: list, confirmLabel: 'Cập nhật' })) set(blockFromLibrary(ct, block.coresShown));
+    } catch (err) { notify(err.status === 404 ? 'Biến dòng này không còn trong thư viện.' : err.message, 'error'); }
+  };
   return (
-    <Section title="Phụ lục II — Cô lập mạch dòng" subtitle='Mỗi dòng một bảng (mỗi core 6 đầu nối: XAk-1…6, đầu phía TI kS2/kS3 hoặc kS1/kS4). Không có dòng nào: in "Không.". Chỉnh chi tiết thêm trong Word nếu cần.'>
-      {form.ctBlocks.map((b, i) => (
+    <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{block.name}{block.panel ? ` tại tủ ${block.panel}` : ''}</p>
+          <p className="text-xs text-slate-500 flex flex-wrap items-center gap-2">
+            <StatusBadge status={block.status} /> phiên bản bản vẽ {block.revision}
+            {block.status !== 'VERIFIED' && <span className="text-amber-700 dark:text-amber-400">· in bản nháp</span>}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <label className="text-xs text-slate-600 dark:text-slate-300 inline-flex items-center gap-1">
+            Số core in
+            <select aria-label={`Số core in của ${block.name}`} className={`${inputCls} ${inputBorder()} !w-16 !px-1`} value={block.coresShown}
+              onChange={e => set({ ...block, coresShown: Number(e.target.value) })}>
+              {block.cores.map((_, k) => <option key={k} value={k + 1}>{k + 1}</option>)}
+            </select>
+            / {total}
+          </label>
+          <button type="button" className={btnSecondary} disabled={block.coresShown >= total} onClick={() => set({ ...block, coresShown: block.coresShown + 1 })}><Plus className="w-4 h-4" /> Thêm core</button>
+          <button type="button" className={btnSecondary} onClick={refresh} title="So với thư viện hiện tại"><RefreshCw className="w-4 h-4" /> Đối chiếu thư viện</button>
+          <button type="button" className={btnGhost} aria-label={`Xóa bảng mạch dòng ${index + 1}`} onClick={remove}><Trash2 className="w-4 h-4" /></button>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {block.cores.map((c, k) => (
+          <button key={k} type="button" disabled={!c.pageId}
+            className={`px-2 py-1 rounded-lg border text-xs inline-flex items-center gap-1 ${k < block.coresShown ? 'border-chatlan-200 bg-chatlan-50 text-chatlan-700 dark:bg-chatlan-900/40 dark:border-chatlan-900 dark:text-chatlan-300' : 'border-slate-200 dark:border-slate-700 text-slate-400'} disabled:cursor-default`}
+            title={c.pageId ? 'Xem lại mạch dòng của core trên bản vẽ' : 'Core chưa có vùng bản vẽ'} onClick={() => setViewing(c)}>
+            {c.pageId && <Eye className="w-3.5 h-3.5" />} Core {c.coreNo ?? '?'} · {c.terminalBlock || '—'}
+            {c.points.some(p => !p.terminal || !p.ctTerminal) && <AlertTriangle className="w-3.5 h-3.5 text-amber-600" aria-label="Có ô chưa đủ dữ liệu" />}
+          </button>
+        ))}
+      </div>
+      {viewing && (
+        <SourceDialog title={`${block.name} — core ${viewing.coreNo ?? ''}`} subtitle={[viewing.terminalBlock, viewing.drawingRef].filter(Boolean).join(' · ')}
+          pageId={viewing.pageId} region={viewing.region} onClose={() => setViewing(null)} />
+      )}
+    </div>
+  );
+}
+
+/** Bảng theo quy ước XAk: tick core có đầu phía TI khác đầu chung của bảng, rồi chọn đầu riêng cho core đó. */
+function CoreSides({ block, onChange }) {
+  const sides = block.coreSides || {};
+  const nos = Array.from({ length: Math.max(1, Number(block.cores) || 1) }, (_, k) => (Number(block.firstCore) || 1) + k);
+  const toggle = (no) => {
+    const next = { ...sides };
+    if (next[no]) delete next[no]; else next[no] = block.side;
+    onChange(next);
+  };
+  return (
+    <div className="col-span-full flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+      <span>Core có đầu phía TI khác:</span>
+      {nos.map(no => (
+        <span key={no} className="inline-flex items-center gap-1">
+          <label className="inline-flex items-center gap-1"><input type="checkbox" checked={!!sides[no]} onChange={() => toggle(no)} /> Core {no}</label>
+          {sides[no] && <SideInput ariaLabel={`Đầu phía TI core ${no}`} value={sides[no]} onChange={side => onChange({ ...sides, [no]: side })} />}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function CtBlocks({ form, setField }) {
+  const { api, notify } = useDkct();
+  const [library, setLibrary] = useState(null);
+  const substationId = form.station?.substationId || '';
+  useEffect(() => {
+    api.get(`/ct-library${substationId ? `?substationId=${encodeURIComponent(substationId)}` : ''}`)
+      .then(r => setLibrary(r.items)).catch(() => setLibrary([]));
+  }, [api, substationId]);
+  const set = (i, patch) => setField('ctBlocks', l => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const remove = (i) => setField('ctBlocks', l => l.filter((_, j) => j !== i));
+  const addFromLibrary = async (id) => {
+    try {
+      const { ct } = await api.get(`/ct-library/${id}`);
+      setField('ctBlocks', l => [...l, blockFromLibrary(ct)]);
+      // mục E.3 "Cô lập mạch dòng …": thêm tên TI nếu chưa có trong danh sách
+      setField('ctIsolation', v => {
+        const names = String(v || '').split(',').map(x => x.trim()).filter(Boolean);
+        return names.includes(ct.name) ? v : [...names, ct.name].join(', ');
+      });
+    } catch (err) { notify(err.message, 'error'); }
+  };
+  const used = new Set(form.ctBlocks.map(b => b.ctId).filter(Boolean));
+  return (
+    <Section title="Phụ lục II — Cô lập mạch dòng"
+      subtitle='Chọn biến dòng trong thư viện (Danh mục → Mạch dòng TI); mặc định in 4 core. Bấm vào core để xem lại mạch dòng trên bản vẽ. Không có bảng nào: in "Không.".'>
+      <select aria-label="Lấy biến dòng từ thư viện" className={`${inputCls} ${inputBorder()} !w-80`} value="" onChange={e => e.target.value && addFromLibrary(e.target.value)}>
+        <option value="">{library === null ? 'Đang tải thư viện…' : library.length ? '— Thêm biến dòng từ thư viện —' : `Thư viện chưa có biến dòng${substationId ? ' của trạm này' : ''}`}</option>
+        {(library || []).filter(x => !used.has(x.id)).map(x => (
+          <option key={x.id} value={x.id}>{x.name}{substationId ? '' : ` — ${x.substationName}`} ({x.coreCount} core{x.status === 'VERIFIED' ? '' : ', cần kiểm tra'})</option>
+        ))}
+      </select>
+      {form.ctBlocks.map((b, i) => (b.ctId ? (
+        <LibraryCtBlock key={`lib-${b.ctId}-${i}`} block={b} index={i} set={next => set(i, next)} remove={() => remove(i)} />
+      ) : (
         <div key={i} className="grid grid-cols-2 sm:grid-cols-[1.4fr_1fr_4rem_4rem_4rem_7rem_auto] gap-1.5 items-end">
           <Field label="TI / vị trí" htmlFor={`ct-t-${i}`}><input id={`ct-t-${i}`} className={`${inputCls} ${inputBorder()}`} value={b.title} placeholder="TI 532 tại tủ =B02+SV1" onChange={e => set(i, { title: e.target.value })} /></Field>
           <Field label="Tủ" htmlFor={`ct-p-${i}`}><input id={`ct-p-${i}`} className={`${inputCls} ${inputBorder()}`} value={b.panel} placeholder="B02+SV1" onChange={e => set(i, { panel: e.target.value })} /></Field>
           <Field label="Hàng kẹp" htmlFor={`ct-x-${i}`}><input id={`ct-x-${i}`} className={`${inputCls} ${inputBorder()}`} value={b.prefix} onChange={e => set(i, { prefix: e.target.value })} /></Field>
           <Field label="Từ core" htmlFor={`ct-f-${i}`}><input id={`ct-f-${i}`} type="number" min={1} className={`${inputCls} ${inputBorder()}`} value={b.firstCore} onChange={e => set(i, { firstCore: Number(e.target.value) || 1 })} /></Field>
           <Field label="Số core" htmlFor={`ct-n-${i}`}><input id={`ct-n-${i}`} type="number" min={1} max={20} className={`${inputCls} ${inputBorder()}`} value={b.cores} onChange={e => set(i, { cores: Number(e.target.value) || 1 })} /></Field>
-          <Field label="Đầu phía TI" htmlFor={`ct-s-${i}`}>
-            <select id={`ct-s-${i}`} className={`${inputCls} ${inputBorder()}`} value={b.side} onChange={e => set(i, { side: e.target.value })}>
-              <option value="S2S3">kS2 / kS3</option><option value="S1S4">kS1 / kS4</option>
-            </select>
+          <Field label="Đầu phía TI">
+            <SideInput ariaLabel={`Đầu phía TI bảng ${i + 1}`} value={b.side} className="!w-full" onChange={side => set(i, { side })} />
           </Field>
-          <button type="button" className={btnGhost} aria-label={`Xóa bảng mạch dòng ${i + 1}`} onClick={() => setField('ctBlocks', l => l.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" /></button>
+          <button type="button" className={btnGhost} aria-label={`Xóa bảng mạch dòng ${i + 1}`} onClick={() => remove(i)}><Trash2 className="w-4 h-4" /></button>
+          <CoreSides block={b} onChange={coreSides => set(i, { coreSides })} />
         </div>
-      ))}
-      <button type="button" className={btnSecondary} onClick={() => setField('ctBlocks', l => [...l, { title: '', panel: '', prefix: 'XA', firstCore: 1, cores: 6, side: 'S2S3' }])}>
-        <Plus className="w-4 h-4" /> Thêm bảng cô lập mạch dòng
+      )))}
+      <button type="button" className={btnSecondary} onClick={() => setField('ctBlocks', l => [...l, { title: '', panel: '', prefix: 'XA', firstCore: 1, cores: 4, side: 'S2-S3', coreSides: {} }])}>
+        <Plus className="w-4 h-4" /> Bảng theo quy ước XAk (không dùng thư viện)
       </button>
     </Section>
   );

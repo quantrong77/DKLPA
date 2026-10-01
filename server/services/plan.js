@@ -5,6 +5,7 @@
  * lập từ QĐ 1901 (seeds/tests1901.json) rồi người lập tick bỏ/thêm; phương án lưu bản chụp này.
  */
 const { text, time, checkLength, resolvePerson } = require('./registration');
+const { normalizeRegion, normalizeSide, MAX_CORES } = require('./ctLibrary');
 
 const LIMITS = {
   legalBases: 20, workloads: 30, isolationSteps: 50, risks: 100, people: 100, recipients: 20,
@@ -45,6 +46,56 @@ function drawingIds(value, station) {
   if (!Array.isArray(value)) return null;
   if (!station.substationId) return [];
   return [...new Set(value.map(v => text(v).slice(0, 64)).filter(Boolean))].slice(0, MAX_DRAWINGS);
+}
+
+/**
+ * Phụ lục II, khối lấy từ thư viện mạch dòng: bản chụp TI lúc chọn (in lại không đổi khi thư viện sửa sau).
+ * Ô trống giữ rỗng để in "CHƯA ĐỦ DỮ LIỆU".
+ */
+function libraryBlock(b) {
+  const cores = list(b.cores).slice(0, MAX_CORES).map(c => ({
+    coreId: c?.coreId ? text(c.coreId).slice(0, 64) : null,
+    coreNo: intIn(c?.coreNo, 1, 99, null),
+    terminalBlock: text(c?.terminalBlock).slice(0, 40),
+    drawingRef: text(c?.drawingRef).slice(0, 100),
+    pageId: c?.pageId ? text(c.pageId).slice(0, 64) : null,
+    region: c?.pageId ? normalizeRegion(c?.region) : null,
+    points: Array.from({ length: 6 }, (_, i) => ({
+      terminal: text(c?.points?.[i]?.terminal).slice(0, 40),
+      ctTerminal: text(c?.points?.[i]?.ctTerminal).slice(0, 20)
+    }))
+  }));
+  return {
+    ctId: text(b.ctId).slice(0, 64),
+    revision: intIn(b.revision, 1, 100000, 1),
+    status: b.status === 'VERIFIED' ? 'VERIFIED' : 'DRAFT',
+    updatedAt: text(b.updatedAt).slice(0, 40),
+    name: text(b.name).slice(0, 100),
+    panel: text(b.panel).slice(0, 100),
+    coresShown: intIn(b.coresShown, 1, Math.max(1, cores.length), Math.min(4, Math.max(1, cores.length))),
+    cores
+  };
+}
+
+/** Bảng theo quy ước XAk: đầu phía TI chung ("S1-S4"…) và đầu riêng của từng core (coreSides: { số core: "S2-S5" }). */
+function legacyBlock(b) {
+  const firstCore = intIn(b?.firstCore, 1, 99, 1);
+  const cores = intIn(b?.cores, 1, 20, 1);
+  const coreSides = {};
+  for (const [no, side] of Object.entries(b?.coreSides && typeof b.coreSides === 'object' ? b.coreSides : {})) {
+    const n = Number(no);
+    const s = normalizeSide(side);
+    if (Number.isInteger(n) && n >= firstCore && n < firstCore + cores && s) coreSides[n] = s;
+  }
+  return {
+    title: text(b?.title),
+    panel: text(b?.panel).slice(0, 100),
+    prefix: text(b?.prefix || 'XA').slice(0, 10),
+    firstCore,
+    cores,
+    side: normalizeSide(b?.side) || 'S2-S3',
+    coreSides
+  };
 }
 
 function normalizePlan(input = {}, { personnel, substations }) {
@@ -109,14 +160,10 @@ function normalizePlan(input = {}, { personnel, substations }) {
     instruments: list(input.instruments)
       .map(x => ({ group: text(x?.group).slice(0, 100), name: text(x?.name), unit: text(x?.unit).slice(0, 20), qty: text(x?.qty).slice(0, 20), note: text(x?.note) }))
       .filter(x => x.name),
-    ctBlocks: list(input.ctBlocks).map(b => ({
-      title: text(b?.title),
-      panel: text(b?.panel).slice(0, 100),
-      prefix: text(b?.prefix || 'XA').slice(0, 10),
-      firstCore: intIn(b?.firstCore, 1, 99, 1),
-      cores: intIn(b?.cores, 1, 20, 1),
-      side: b?.side === 'S1S4' ? 'S1S4' : 'S2S3'
-    })).filter(b => b.title || b.panel),
+    // khối lấy từ thư viện mạch dòng (ctId) hoặc khối cũ sinh theo quy ước XAk-1…6
+    ctBlocks: list(input.ctBlocks)
+      .map(b => (b?.ctId ? libraryBlock(b) : legacyBlock(b)))
+      .filter(b => (b.ctId ? b.cores.length : b.title || b.panel)),
     surveyId: input.surveyId ? text(input.surveyId).slice(0, 64) : null,
     outageId: input.outageId ? text(input.outageId).slice(0, 64) : null
   };

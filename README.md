@@ -22,7 +22,8 @@ Module gồm phần server (Express router) và giao diện (React/Tailwind), g�
   - Bảng 1 "Hạng mục thí nghiệm" tự lập khi chọn loại thiết bị + chu kỳ, theo bảng khối lượng của **QĐ 1901/QĐ-EVNNPT**
     (`server/seeds/tests1901.json`, trích từ PDF gốc bằng `scripts/extract_1901.py`, giữ đúng cột chu kỳ);
     định kỳ 3 năm gồm hạng mục 1 năm, 6 năm gồm 3 năm (Điều 3). Bỏ tick / thêm hạng mục riêng được.
-  - Nhận diện rủi ro lấy từ BBKSHT; Phụ lục II cô lập mạch dòng (bảng theo core); Phụ lục III lực lượng thi công;
+  - Nhận diện rủi ro lấy từ BBKSHT; Phụ lục II cô lập mạch dòng (chọn biến dòng trong thư viện mạch dòng, mặc định in 4 core,
+    bấm core để xem lại mạch trên bản vẽ; hoặc bảng theo quy ước XAk); Phụ lục III lực lượng thi công;
     Phụ lục IV chèn các sơ đồ trạm được chọn, mỗi sơ đồ một trang (TBA 500kV: phía 500kV, phía 220kV hoặc cả hai;
     chưa chọn thì gợi ý theo ngăn lộ 5xx/2xx, MBA AT chọn cả hai). Xuất Word theo `templates/template_pa.docx`.
 - Lập **Giấy xác nhận đủ điều kiện đóng điện**, tự ghi hoặc từ một giấy ĐKCT (nút "Giấy xác nhận" ở tab Giấy ĐKCT):
@@ -34,6 +35,16 @@ Module gồm phần server (Express router) và giao diện (React/Tailwind), g�
   sơ đồ đặt tên riêng (tối đa 10; vd "Phía 500kV", "Phía 220kV"), cấp điện áp cao xếp trước. Trình duyệt dựng trang đó
   thành ảnh (pdf.js, ~200 dpi); CSDL lưu cả PDF gốc và ảnh. ChatLan cần gói `pdfjs-dist` (peer dependency).
   - Xuất Word theo mẫu `templates/template_bbksht.docx`; lập giấy ĐKCT từ biên bản (căn cứ, nội dung, địa điểm, rủi ro).
+- **Thư viện cô lập mạch dòng** (Danh mục → Mạch dòng TI; tạm thời chỉ admin sửa): mỗi biến dòng (TI) của trạm có các core,
+  mỗi core 6 dòng theo `templates/template_co_lap_mach_dong.docx`: L1 kẹp 1, 4; L2 kẹp 2, 5; L3 kẹp 3, 6 tại tủ trung gian,
+  kèm đầu phía CT đúng nhãn trên bản vẽ (điểm N không in).
+  - Tải trang mạch dòng (PDF: chọn trang, chỉ lưu ảnh trang; hoặc ảnh chụp). Khung tên đọc từ lớp chữ PDF (tủ, số trang,
+    số bản vẽ, ngăn). Nhãn hàng kẹp/đầu CT trong mạch thường là nét vẽ nên nhập tay; "Điền theo mẫu" chỉ điền ô trống để kiểm tra lại.
+  - Khoanh vùng từng core trên trang để xem lại khi lập phương án. Ô trống in "CHƯA ĐỦ DỮ LIỆU", không tự suy diễn.
+  - Xác nhận khi đủ dữ liệu; sửa sau xác nhận thì về "cần kiểm tra". TI chưa xác nhận vẫn in được, ghi "BẢN NHÁP – chưa xác nhận".
+  - Bản vẽ cập nhật: thêm trang với "phiên bản mới", trang cũ giữ lại. Phương án lưu bản chụp TI lúc chọn (thư viện sửa sau
+    không đổi phương án đã lập); nút "Đối chiếu thư viện" liệt kê khác biệt và cập nhật khi đồng ý. Mọi thay đổi ghi nhật ký.
+  - Ảnh trang tối đa 10 MB lưu trong CSDL: MySQL cần `max_allowed_packet` ≥ 16 MB (mặc định MySQL 8 là 64 MB).
 
 ## Cấu trúc
 
@@ -85,6 +96,7 @@ Server nhận các tham số sau (ChatLan truyền trong `server/src/dkct.js`):
 | BBKSHT | `GET /survey-defaults`, `GET /outages/:id/survey-draft`, `GET/POST /surveys`, `GET/PUT/DELETE /surveys/:id`, `GET/PUT/DELETE /surveys/:id/diagram` (PUT multipart `file`), `GET /surveys/:id/docx` |
 | Phương án | `GET /plan-defaults`, `GET /outages/:id/plan-draft`, `GET/PUT /plan-numbering`, `GET /tests1901`, `GET/POST /plans`, `GET/PUT/DELETE /plans/:id`, `GET /plans/:id/docx` |
 | Giấy xác nhận | `GET /confirmation-defaults`, `GET /registrations/:id/confirmation-draft`, `GET/PUT /confirmation-numbering`, `GET/POST /confirmations`, `GET/PUT/DELETE /confirmations/:id`, `GET /confirmations/:id/docx` |
+| Mạch dòng TI | `GET/POST /ct-library` (`?substationId=`), `GET/PUT/DELETE /ct-library/:id` (PUT gửi cả TI kèm `cores[].points[6]`), `POST /ct-library/:id/verify`, `GET /ct-library/:id/audit`, `POST /ct-library/:id/pages` (multipart `image` + `pageLabel`, `fileName`, `newRevision=1`), `GET /ct-pages/:id/image`, `DELETE /ct-pages/:id`; ghi: chỉ admin |
 | Bản vẽ trạm | `GET /substation-drawings`, `GET/POST /substations/:id/drawings` (POST multipart `label` + `pdf` + `image` + `page`, `pageCount`), `PUT/DELETE /drawings/:id` (PUT: `label`, kèm file thì thay file), `GET /drawings/:id/image`, `GET /drawings/:id/pdf` |
 
 Quan hệ bảng: `dkct_substations.stationId` → `dkct_stations.id` (TBA thuộc đơn vị QLVH; không xóa được đơn vị còn TBA),
@@ -93,6 +105,8 @@ Quan hệ bảng: `dkct_substations.stationId` → `dkct_stations.id` (TBA thu�
 biên bản giữ bản sao ảnh đã dùng; bảng cũ `dkct_substation_drawings` được chuyển sang khi migrate, tên "Sơ đồ trạm"),
 `dkct_plans.substationId / surveyId / outageId` → TBA / biên bản / lịch cắt điện (xóa thì phương án bỏ liên kết);
 `dkct_confirmations.substationId / registrationId / planId` → TBA / giấy ĐKCT / phương án (xóa thì giấy xác nhận bỏ liên kết);
+`dkct_ct_transformers.substationId` → TBA; `dkct_ct_pages / dkct_ct_cores.transformerId` → TI, `dkct_ct_points.coreId` → core
+(xóa thì xóa theo; `transformerId` vì `ctid` trùng cột hệ thống của Postgres), `dkct_ct_cores.pageId` → trang (xóa trang thì bỏ liên kết);
 sơ đồ in ở Phụ lục IV lưu trong `data.drawingIds` (null: phương án cũ, in mọi sơ đồ của trạm). Danh sách TBA – đơn vị QLVH –
 người phụ trách ban đầu ở `server/seeds/substations.json`, nạp một lần khi migrate (dấu mốc trong `dkct_settings`).
 

@@ -20,6 +20,14 @@ export async function openPdf(file) {
   return { doc, pageCount: doc.numPages };
 }
 
+/** Lớp chữ của trang (khung tên bản vẽ); nhãn vẽ bằng nét (font CAD) không có trong lớp này. */
+export async function pageText(doc, pageNo) {
+  const page = await doc.getPage(pageNo);
+  const content = await page.getTextContent();
+  page.cleanup();
+  return content.items.map(it => it.str).join(' ');
+}
+
 /** Trang `pageNo` -> { blob (image/jpeg), width, height }; nền trắng, ~200 dpi. */
 export async function renderPdfPage(doc, pageNo) {
   const page = await doc.getPage(pageNo);

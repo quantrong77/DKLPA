@@ -191,6 +191,82 @@ function tables(t) {
         ON UPDATE CASCADE ON DELETE SET NULL,
       CONSTRAINT fk_dkct_confirmations_plan FOREIGN KEY (planId) REFERENCES dkct_plans (id)
         ON UPDATE CASCADE ON DELETE SET NULL`,
+    // Thư viện cô lập mạch dòng (Phụ lục II của phương án): biến dòng (TI) của trạm; revision tăng khi bản vẽ cập nhật.
+    // status: DRAFT (cần kiểm tra) | VERIFIED (kỹ sư đã đối chiếu bản vẽ). Ẩn thay vì xóa (active = 0).
+    dkct_ct_transformers: `
+      id ${t.id} PRIMARY KEY,
+      substationId ${t.id} NOT NULL,
+      bay ${t.short},
+      name ${t.str} NOT NULL,
+      panel ${t.str},
+      drawingNumber ${t.str},
+      note ${t.text},
+      status ${t.short} NOT NULL DEFAULT 'DRAFT',
+      revision ${t.int} NOT NULL DEFAULT 1,
+      verifiedBy ${t.id},
+      verifiedAt ${t.time},
+      active ${t.int} NOT NULL DEFAULT 1,
+      createdBy ${t.id},
+      updatedBy ${t.id},
+      createdAt ${t.now},
+      updatedAt ${t.now},
+      CONSTRAINT fk_dkct_ct_substation FOREIGN KEY (substationId) REFERENCES dkct_substations (id)
+        ON UPDATE CASCADE ON DELETE CASCADE`,
+    // Ảnh các trang mạch dòng (trình duyệt dựng từ PDF, hoặc ảnh chụp); chỉ lưu trang mạch dòng, không lưu cả bộ PDF.
+    // Trang của revision cũ giữ lại: phương án đã lập vẫn xem lại được nguồn.
+    dkct_ct_pages: `
+      id ${t.id} PRIMARY KEY,
+      transformerId ${t.id} NOT NULL,
+      revision ${t.int} NOT NULL DEFAULT 1,
+      pageLabel ${t.short},
+      fileName ${t.str},
+      image ${t.blob} NOT NULL,
+      imageType ${t.short} NOT NULL,
+      width ${t.int},
+      height ${t.int},
+      uploadedBy ${t.id},
+      createdAt ${t.now},
+      CONSTRAINT fk_dkct_ct_pages_ct FOREIGN KEY (transformerId) REFERENCES dkct_ct_transformers (id)
+        ON UPDATE CASCADE ON DELETE CASCADE`,
+    // Core của TI: khối hàng kẹp tại tủ trung gian, tham chiếu bản vẽ, vùng nguồn trên ảnh trang (phần vạn, 0..10000)
+    dkct_ct_cores: `
+      id ${t.id} PRIMARY KEY,
+      transformerId ${t.id} NOT NULL,
+      sortOrder ${t.int} NOT NULL DEFAULT 0,
+      coreNo ${t.int},
+      terminalBlock ${t.short},
+      drawingRef ${t.str},
+      spec ${t.str},
+      pageId ${t.id},
+      regionX ${t.int},
+      regionY ${t.int},
+      regionW ${t.int},
+      regionH ${t.int},
+      createdAt ${t.now},
+      updatedAt ${t.now},
+      CONSTRAINT fk_dkct_ct_cores_ct FOREIGN KEY (transformerId) REFERENCES dkct_ct_transformers (id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+      CONSTRAINT fk_dkct_ct_cores_page FOREIGN KEY (pageId) REFERENCES dkct_ct_pages (id)
+        ON UPDATE CASCADE ON DELETE SET NULL`,
+    // 6 dòng mỗi core (seq 1..6 = L1 kẹp 1, L1 kẹp 4, L2 2, L2 5, L3 3, L3 6); null = CHƯA ĐỦ DỮ LIỆU
+    dkct_ct_points: `
+      id ${t.id} PRIMARY KEY,
+      coreId ${t.id} NOT NULL,
+      seq ${t.int} NOT NULL,
+      phase ${t.short} NOT NULL,
+      terminal ${t.short},
+      ctTerminal ${t.short},
+      UNIQUE (coreId, seq),
+      CONSTRAINT fk_dkct_ct_points_core FOREIGN KEY (coreId) REFERENCES dkct_ct_cores (id)
+        ON UPDATE CASCADE ON DELETE CASCADE`,
+    // Nhật ký thay đổi thư viện mạch dòng (chỉ ghi thêm; giữ cả khi TI bị ẩn)
+    dkct_ct_audit: `
+      id ${t.id} PRIMARY KEY,
+      transformerId ${t.id} NOT NULL,
+      action ${t.short} NOT NULL,
+      detail ${t.long},
+      userId ${t.id},
+      createdAt ${t.now}`,
     // Cài đặt/dấu mốc của module (vd đã nạp dữ liệu bổ sung nào)
     dkct_settings: `
       name ${t.short} PRIMARY KEY,
@@ -215,7 +291,11 @@ const INDEXES = [
   ['idx_dkct_substation_station', 'dkct_substations', 'stationId'],
   ['idx_dkct_survey_substation', 'dkct_surveys', 'substationId'],
   ['idx_dkct_plan_department', 'dkct_plans', 'department'],
-  ['idx_dkct_confirmation_department', 'dkct_confirmations', 'department']
+  ['idx_dkct_confirmation_department', 'dkct_confirmations', 'department'],
+  ['idx_dkct_ct_substation', 'dkct_ct_transformers', 'substationId'],
+  ['idx_dkct_ct_pages_ct', 'dkct_ct_pages', 'transformerId'],
+  ['idx_dkct_ct_cores_ct', 'dkct_ct_cores', 'transformerId'],
+  ['idx_dkct_ct_audit_ct', 'dkct_ct_audit', 'transformerId']
 ];
 
 // Cột thêm sau khi bảng đã có dữ liệu (CSDL cài từ bản trước): [bảng, cột, kiểu, khóa ngoại?]

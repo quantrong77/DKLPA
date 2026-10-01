@@ -8,6 +8,7 @@ const { docxFileName, attachment } = require('../services/fileName');
 const { newId, sameUnitName } = require('../schema');
 const { forbidden } = require('../policy');
 const { normalizePlan } = require('../services/plan');
+const { libraryBlockStatus } = require('./ctLibrary');
 const { renderPlanDocx } = require('../services/planRender');
 const { createNumbering, formatPlanNumber } = require('../services/numbering');
 const { createPlaces, DEFAULT_PLACE } = require('../services/places');
@@ -75,6 +76,8 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
     // chỉ giữ liên kết tới biên bản/lịch còn tồn tại (khóa ngoại)
     if (data.surveyId && !(await db.queryOne('SELECT id FROM dkct_surveys WHERE id = ?', [data.surveyId]))) data.surveyId = null;
     if (data.outageId && !(await db.queryOne('SELECT id FROM dkct_outages WHERE id = ?', [data.outageId]))) data.outageId = null;
+    // bảng mạch dòng từ thư viện: "đã xác nhận" do máy chủ đối chiếu thư viện, không lấy theo dữ liệu gửi lên
+    for (const b of data.ctBlocks) if (b.ctId) b.status = await libraryBlockStatus(db, b);
     return data;
   }
 

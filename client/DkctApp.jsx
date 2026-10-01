@@ -191,7 +191,7 @@ export default function DkctApp() {
           <OutagePanel canCreate={permissions.canCreate} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
             onCreatePlanFromOutage={openPlanFromOutage} />
         )}
-        {tab === 'catalogs' && <CatalogPanel catalogs={catalogs} canManage={permissions.canManageCatalog} onChanged={loadCatalog} />}
+        {tab === 'catalogs' && <CatalogPanel catalogs={catalogs} canManage={permissions.canManageCatalog} isAdmin={permissions.isAdmin} onChanged={loadCatalog} />}
         {tab === 'legacy' && <LegacyPanel />}
       </div>
 

@@ -3,6 +3,7 @@
  */
 const { splitHeaderLine } = require('./docxView');
 const { formatPlanNumber } = require('./numbering');
+const { parseSide } = require('./ctLibrary');
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX'];
 const roman = (i) => ROMAN[i] || String(i + 1);
@@ -69,12 +70,42 @@ function instrumentRows(instruments) {
   return rows;
 }
 
-/** Phụ lục II: mỗi core 7 dòng như mẫu — XAk-1/-4 (L1), -2/-5 (L2), -3/-6 (L3), đầu phía TI kS2/kS3 hoặc kS1/kS4. */
+const INSUFFICIENT = 'CHƯA ĐỦ DỮ LIỆU';
+const panelEq = (p) => (p ? `=${String(p).replace(/^=/, '')}` : '');
+
+/**
+ * Phụ lục II, khối từ thư viện mạch dòng (theo templates/template_co_lap_mach_dong.docx): in coresShown core đầu,
+ * mỗi core "Tách các link hàng kẹp mạch dòng X41 (bản vẽ =D02+MK202/115)" + 6 dòng L1/L2/L3; ô trống in "CHƯA ĐỦ DỮ LIỆU".
+ */
+function libraryBlockView(b) {
+  const panel = panelEq(b.panel);
+  const draft = b.status === 'VERIFIED' ? '' : ' (BẢN NHÁP – chưa xác nhận)';
+  const cores = (b.cores || []).slice(0, b.coresShown || 4).map(c => {
+    const core = {
+      no: c.coreNo ? String(c.coreNo) : INSUFFICIENT,
+      block: `${c.terminalBlock || INSUFFICIENT}${c.drawingRef ? ` (bản vẽ ${c.drawingRef})` : ''}`
+    };
+    for (let k = 0; k < 6; k++) {
+      core[`a${k + 1}`] = c.points?.[k]?.terminal || INSUFFICIENT;
+      core[`b${k + 1}`] = c.points?.[k]?.ctTerminal || INSUFFICIENT;
+    }
+    return core;
+  });
+  return {
+    title: `${[b.name, panel && `tại tủ ${panel}`].filter(Boolean).join(' ')}${draft}`,
+    panel: panel ? `Tại tủ ${panel}` : 'Tại tủ',
+    coreHeader: 'Core', sideHeader: 'Đầu phía CT', cores
+  };
+}
+
+/** Phụ lục II: mỗi core 7 dòng như mẫu — XAk-1/-4 (L1), -2/-5 (L2), -3/-6 (L3), đầu phía TI theo cặp đã chọn (kS1-kS4…). */
 function ctBlockView(b) {
-  const [s1, s2] = b.side === 'S1S4' ? ['S1', 'S4'] : ['S2', 'S3'];
+  if (b.ctId) return libraryBlockView(b);
   const cores = [];
   for (let i = 0; i < b.cores; i++) {
     const no = b.firstCore + i;
+    // đầu riêng của core (nếu có), không thì đầu chung của bảng
+    const [s1, s2] = parseSide(b.coreSides?.[no]) || parseSide(b.side) || ['S2', 'S3'];
     const block = `${b.prefix}${no}`;
     const core = { no: String(no), block };
     [1, 4, 2, 5, 3, 6].forEach((t, k) => {
@@ -83,7 +114,7 @@ function ctBlockView(b) {
     });
     cores.push(core);
   }
-  return { title: b.title, panel: b.panel ? `=${b.panel.replace(/^=/, '')}` : '', coreHeader: 'Core', sideHeader: 'Đầu phía TI', cores };
+  return { title: b.title, panel: b.panel ? `Tại tủ ${panelEq(b.panel)}` : '', coreHeader: 'Core', sideHeader: 'Đầu phía TI', cores };
 }
 
 function toPlanView({ docNumber, data }) {
