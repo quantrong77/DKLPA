@@ -99,6 +99,8 @@ function tables(t) {
       registrationUnit ${t.str},
       workUnit ${t.str},
       status ${t.str},
+      changeKind ${t.short},
+      changeAt ${t.time},
       rowHash VARCHAR(40) NOT NULL UNIQUE,
       sourceFile ${t.str},
       importedBy ${t.id},
@@ -303,6 +305,9 @@ const ADDED_COLUMNS = (t) => [
   ['dkct_stations', 'shortName', t.short],
   ['dkct_stations', 'leaderName', t.str],
   ['dkct_substations', 'transmissionName', t.str],
+  // so sánh khi nạp lại lịch: NEW (phát sinh) | POSTPONED (hoãn); thời điểm so sánh
+  ['dkct_outages', 'changeKind', t.short],
+  ['dkct_outages', 'changeAt', t.time],
   ['dkct_surveys', 'substationId', t.id,
     { name: 'fk_dkct_surveys_substation', ref: 'dkct_substations (id)', rule: 'ON UPDATE CASCADE ON DELETE SET NULL' }]
 ];

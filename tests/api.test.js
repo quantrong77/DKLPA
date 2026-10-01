@@ -736,3 +736,107 @@ test('xem trước bản Word từ dữ liệu đang soạn: không lưu, không
     assert.equal((await app.call('lead', 'GET', '/registrations')).body.items.length, 0);
   } finally { app.close(); }
 });
+
+test('nạp lại lịch: so với lịch cùng khoảng đã nạp -> hoãn (không còn / tình trạng Hoãn), phát sinh, không đổi; đánh dấu dòng lịch', async () => {
+  const app = await startApp();
+  try {
+    const A = ['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', 'Cô lập A', 'Đ1', 'Đ1', 'Đã duyệt'];
+    const B = ['06/10/2024 07h00', '06/10/2024 17h00', 'Trạm B', 'Việc B', 'Cô lập B', 'Đ1', 'Đ1', 'Đã duyệt'];
+    const C = ['07/10/2024 07h00', '07/10/2024 17h00', 'Trạm C', 'Việc C', 'Cô lập C', 'Đ1', 'Đ1', 'Đã duyệt'];
+    const D = ['08/10/2024 07h00', '08/10/2024 17h00', 'Trạm D', 'Việc D', 'Cô lập D', 'Đ1', 'Đ1', 'Chờ duyệt'];
+    const OUT = ['20/10/2024 07h00', '20/10/2024 17h00', 'Trạm X', 'Việc ngoài khoảng', '', 'Đ1', 'Đ1', ''];
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([A, B, C, OUT]));
+    // lịch mới 05–08/10: A không đổi, B hoãn (tình trạng), C không còn (hoãn), D phát sinh; dòng 20/10 ngoài khoảng không xét
+    const withRange = (rows) => { const f = excelFrom(rows); f.append('compareFrom', '2024-10-05'); f.append('compareTo', '2024-10-08'); return f; };
+    const next = [A, [...B.slice(0, 7), 'Hoãn do thời tiết'], D];
+    const pv = (await app.call('lead', 'POST', '/outages/import/preview', withRange(next))).body;
+    assert.deepEqual(pv.span, { from: '2024-10-05', to: '2024-10-08' });
+    assert.deepEqual(pv.compare.added.map(r => r.location), ['Trạm D']);
+    assert.deepEqual(pv.compare.postponed.map(r => r.location).sort(), ['Trạm B', 'Trạm C']);
+    assert.equal(pv.compare.unchanged, 1);
+    assert.equal(pv.compare.previous, 3);
+    assert.equal((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items.filter(o => o.changeKind).length, 0, 'xem trước không ghi gì');
+
+    const res = (await app.call('lead', 'POST', '/outages/import/commit', withRange(next))).body;
+    assert.equal(res.inserted, 1);
+    assert.ok(res.compare.added[0].id, 'dòng phát sinh có id để liên kết tới');
+    const items = (await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items;
+    const kind = Object.fromEntries(items.map(o => [o.location, o.changeKind || null]));
+    assert.deepEqual(kind, { 'Trạm A': null, 'Trạm B': 'POSTPONED', 'Trạm C': 'POSTPONED', 'Trạm D': 'NEW', 'Trạm X': null });
+
+    // không chọn khoảng so sánh: nạp như cũ, không đổi dấu đã có
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([A]));
+    assert.equal((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items.find(o => o.location === 'Trạm D').changeKind, 'NEW');
+    // nạp lại cùng lịch trong khoảng: bỏ dấu cũ (hết hoãn/phát sinh)
+    await app.call('lead', 'POST', '/outages/import/commit', withRange([A, B, C, D]));
+    const again = (await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items;
+    assert.equal(again.filter(o => o.changeKind).length, 0);
+  } finally { app.close(); }
+});
+
+test('nạp lịch lần đầu cho một khoảng: không so sánh, không đánh dấu cả file là phát sinh', async () => {
+  const app = await startApp();
+  try {
+    const f = excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', '', 'Đ1', 'Đ1', '']]);
+    f.append('compareFrom', '2024-10-05'); f.append('compareTo', '2024-10-05');
+    const res = (await app.call('lead', 'POST', '/outages/import/commit', f)).body;
+    assert.equal(res.compare, null);
+    assert.equal((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items[0].changeKind ?? null, null);
+  } finally { app.close(); }
+});
+
+test('tải lịch từ trang Công ty: đăng nhập Basic, gửi biểu mẫu ASP.NET với khoảng ngày dd/mm/yyyy, nạp và so sánh luôn', async () => {
+  const rowsOf = (status) => [
+    ['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', 'Cô lập A', 'Đ1', 'Đ1', 'Đã duyệt'],
+    ['06/10/2024 07h00', '06/10/2024 17h00', 'Trạm B', 'Việc B', 'Cô lập B', 'Đ1', 'Đ1', status]
+  ];
+  let status = 'Đã duyệt';
+  const seen = [];
+  // trang giả: GET trả biểu mẫu có ô ẩn; POST đúng tài khoản + ô ngày -> file Excel
+  const fakeFetch = async (url, init) => {
+    seen.push({ method: init.method, auth: init.headers.Authorization, body: init.body ? String(init.body) : '' });
+    if (init.headers.Authorization !== `Basic ${Buffer.from('tnld:bi-mat').toString('base64')}`) return new Response('no', { status: 401 });
+    if (init.method === 'GET') {
+      return new Response('<form><input type="hidden" name="__VIEWSTATE" value="vs&amp;1" /><input type="hidden" name="__EVENTVALIDATION" value="ev" />'
+        + '<input name="txtTuNgay" type="text" /><input name="txtDenNgay" type="text" /></form>', { headers: { 'content-type': 'text/html', 'set-cookie': 'ASP.NET_SessionId=abc; path=/' } });
+    }
+    const ws = XLSX.utils.aoa_to_sheet([['LỊCH CẮT ĐIỆN'], [], ['Thời gian bắt đầu', 'Thời gian kết thúc', 'Địa điểm', 'Nội dung', 'Phạm vi', 'Đơn vị đăng ký', 'Đơn vị công tác', 'Tình trạng đăng ký'], ...rowsOf(status)]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    return new Response(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }), { headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
+  };
+  const app = await startApp({ outageSource: { url: 'https://lich.test/lcd.aspx', user: 'tnld', password: 'bi-mat', fetch: fakeFetch } });
+  try {
+    assert.equal((await app.call('member', 'GET', '/outages/source')).body.configured, true);
+    assert.equal((await app.call('member', 'POST', '/outages/fetch', { from: '2024-10-05', to: '2024-10-06' })).status, 403, 'chỉ người được import');
+    assert.equal((await app.call('lead', 'POST', '/outages/fetch', { from: '2024-10-06', to: '2024-10-05' })).status, 400);
+    const first = (await app.call('lead', 'POST', '/outages/fetch', { from: '2024-10-05', to: '2024-10-06' })).body;
+    assert.equal(first.inserted, 2);
+    assert.equal(first.compare, null, 'lần đầu chưa có gì để so');
+    const post = new URLSearchParams(seen.find(s => s.method === 'POST').body);
+    assert.equal(post.get('txtTuNgay'), '05/10/2024');
+    assert.equal(post.get('txtDenNgay'), '06/10/2024');
+    assert.equal(post.get('__VIEWSTATE'), 'vs&1', 'gửi lại ô ẩn của trang');
+    assert.equal(post.get('Submit'), 'Kết xuất file');
+    // lần sau: trang báo hoãn -> đánh dấu đỏ
+    status = 'Hoãn công tác (A2 đề nghị)';
+    const again = (await app.call('lead', 'POST', '/outages/fetch', { from: '2024-10-05', to: '2024-10-06' })).body;
+    assert.deepEqual(again.compare.postponed.map(r => r.location), ['Trạm B']);
+    const items = (await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items;
+    assert.equal(items.find(o => o.location === 'Trạm B').changeKind, 'POSTPONED');
+    assert.match(items[0].sourceFile, /^Tải tự động 2024-10-05\.\.2024-10-06/);
+  } finally { app.close(); }
+
+  // sai mật khẩu / chưa cấu hình: báo rõ, không treo
+  const wrong = await startApp({ outageSource: { url: 'https://lich.test/lcd.aspx', user: 'tnld', password: 'sai', fetch: fakeFetch } });
+  try {
+    const r = await wrong.call('lead', 'POST', '/outages/fetch', { from: '2024-10-05', to: '2024-10-06' });
+    assert.equal(r.status, 424);
+    assert.match(r.body.error, /từ chối tài khoản/);
+  } finally { wrong.close(); }
+  const none = await startApp({ outageSource: { user: '', password: '' } });
+  try {
+    assert.equal((await none.call('lead', 'GET', '/outages/source')).body.configured, false);
+    assert.equal((await none.call('lead', 'POST', '/outages/fetch', { from: '2024-10-05', to: '2024-10-06' })).status, 424);
+  } finally { none.close(); }
+});

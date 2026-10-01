@@ -14,6 +14,7 @@
  *  - legacyLastIssued(department, year) -> số lớn nhất module ĐKCT cũ đã cấp (tùy chọn)
  *  - defaultUnitName: đơn vị cấp trên mặc định khi tổ chưa có giấy nào (tùy chọn)
  *  - listDepartments() -> [{ name, shortName }]: danh sách tổ cho ô "Tổ đăng ký" (tùy chọn)
+ *  - outageSource: { url, user, password, fetch } tải lịch cắt điện từ trang Công ty (tùy chọn; mặc định OUTAGE_SOURCE_* trong env)
  */
 const express = require('express');
 const { migrate } = require('./schema');
@@ -91,7 +92,8 @@ function createDkctModule(deps) {
 
   const shared = {
     db, policy, wrap, numbering, getUnit, getProfile, buildDraftDefaults, listDepartments,
-    defaultUnitName: deps.defaultUnitName || DEFAULT_UNIT_NAME
+    defaultUnitName: deps.defaultUnitName || DEFAULT_UNIT_NAME,
+    outageSource: deps.outageSource // { url, user, password, fetch } (tùy chọn; mặc định đọc OUTAGE_SOURCE_* trong biến môi trường)
   };
   let migrated = null; // Promise của migrate(): request đến sớm chờ tạo bảng xong
   const router = express.Router();
@@ -110,7 +112,7 @@ function createDkctModule(deps) {
   router.use((err, req, res, next) => {
     const status = err.status || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);
     if (status >= 500) console.error('[dkct]', err);
-    res.status(status).json({ error: status >= 500 ? 'Lỗi máy chủ khi xử lý đăng ký công tác.' : err.message });
+    res.status(status).json({ error: status >= 500 ? 'Lỗi máy chủ khi xử lý yêu cầu.' : err.message });
   });
 
   return { router, migrate: () => (migrated = migrate(db)) };

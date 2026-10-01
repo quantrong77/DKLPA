@@ -6,6 +6,13 @@ thanh luồng cho biết bước nào đã có hồ sơ, bước nào là bướ
 Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`). Chức năng:
 
 - Import **lịch cắt điện** (Excel, mẫu 8 hoặc 10 cột) thành kế hoạch công tác. Có bước xem trước và chống nhập trùng.
+  Nút "Tải lịch cắt điện": máy chủ có tài khoản trang lịch Công ty thì tự đăng nhập, kết xuất Excel theo khoảng ngày chọn
+  (trang `https://home.ptc3.npt.evn.vn/tsvh/lcd.aspx`) và nạp luôn; chưa có tài khoản thì chỉ mở trang lịch
+  (https://home.ptc3.npt.evn.vn/lichcatdien_new2/) để tải tay. Cấu hình trong `.env` của máy chủ (không commit):
+  `OUTAGE_SOURCE_USER`, `OUTAGE_SOURCE_PASSWORD` (tuỳ chọn `OUTAGE_SOURCE_URL`). Chỉ chạy khi máy chủ vào được mạng nội bộ.
+  Nạp lại lịch: so với lịch đã nạp trong khoảng ngày chọn (mặc định theo khoảng của file) — **hoãn** (dòng không còn trong
+  file mới, hoặc tình trạng "Hoãn") tô đỏ, **phát sinh** (dòng mới) tô vàng, không đổi để nguyên; xem trước có số dự kiến,
+  sau khi cập nhật liệt kê chi tiết, bấm để tới dòng. Khoảng chưa nạp lịch nào thì không so sánh.
 - Lập **giấy đăng ký công tác** từ một dòng lịch hoặc tự ghi:
   - Nơi nhận chọn từ danh mục, email tự điền.
   - LĐCV, GSATĐ, người cảnh giới: chọn từ danh mục hoặc tự ghi, có thể để trống. Bậc ATĐ tự hiển thị.

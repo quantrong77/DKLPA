@@ -12,7 +12,7 @@ const USERS = {
 const byId = Object.fromEntries(Object.values(USERS).map(u => [u.id, u]));
 const SHORT = { 'Tổ Thí nghiệm điện Lâm Đồng': 'TNLĐ', 'Tổ Vận tải': 'VT', 'Ban giám đốc': 'BGĐ' };
 
-async function startApp({ legacyLastIssued } = {}) {
+async function startApp({ legacyLastIssued, outageSource } = {}) {
   const db = createTestDb();
   const dkct = createDkctModule({
     db,
@@ -23,7 +23,8 @@ async function startApp({ legacyLastIssued } = {}) {
     isUnitLead: async (id, dept) => id === 'U1' && dept === USERS.lead.department,
     getUnit: async (id) => ({ department: byId[id].department, shortName: SHORT[byId[id].department] }),
     listDepartments: async () => Object.entries(SHORT).map(([name, shortName]) => ({ name, shortName })),
-    legacyLastIssued
+    legacyLastIssued,
+    outageSource
   });
   await dkct.migrate();
   const app = express();
