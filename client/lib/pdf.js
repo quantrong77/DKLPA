@@ -28,6 +28,16 @@ export async function pageText(doc, pageNo) {
   return content.items.map(it => it.str).join(' ');
 }
 
+/** Các hình tô (nét vẽ vector) của trang, để tự đọc nhãn/dây (ctReader): { shapes, width, height } theo pt. */
+export async function pageShapes(doc, pageNo) {
+  const [pdfjs, { filledShapes }] = await Promise.all([loadPdfjs(), import('./ctVector.js')]);
+  const page = await doc.getPage(pageNo);
+  const viewport = page.getViewport({ scale: 1 });
+  const ops = await page.getOperatorList();
+  page.cleanup();
+  return { shapes: filledShapes(ops, pdfjs.OPS, viewport.transform), width: viewport.width, height: viewport.height };
+}
+
 /** Trang `pageNo` -> { blob (image/jpeg), width, height }; nền trắng, ~200 dpi. */
 export async function renderPdfPage(doc, pageNo) {
   const page = await doc.getPage(pageNo);

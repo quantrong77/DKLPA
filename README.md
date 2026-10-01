@@ -42,7 +42,12 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   mỗi core 6 dòng theo `templates/template_co_lap_mach_dong.docx`: L1 kẹp 1, 4; L2 kẹp 2, 5; L3 kẹp 3, 6 tại tủ trung gian,
   kèm đầu phía CT đúng nhãn trên bản vẽ (điểm N không in).
   - Tải trang mạch dòng (PDF: chọn trang, chỉ lưu ảnh trang; hoặc ảnh chụp). Khung tên đọc từ lớp chữ PDF (tủ, số trang,
-    số bản vẽ, ngăn). Nhãn hàng kẹp/đầu CT trong mạch thường là nét vẽ nên nhập tay; "Điền theo mẫu" chỉ điền ô trống để kiểm tra lại.
+    số bản vẽ, ngăn). "Điền theo mẫu" chỉ điền ô trống để kiểm tra lại.
+  - **Tự đọc trang PDF vector** (không AI, không OCR, chạy trong trình duyệt): nhãn trong mạch là nét vẽ font CAD, được nhận
+    dạng bằng so hình học với bộ mẫu `client/lib/ctFont.js` (`ctGlyphs.js`); dây (kể cả nét gấp khúc) được dò để biết đầu
+    cuộn nào nối vào hàng kẹp nào (`ctReader.js`). Kết quả điền vào ô còn trống, tô vàng để đối chiếu; sửa tay thì hết tô.
+    Ảnh chụp/trang quét chưa tự đọc. Mẫu bản vẽ khác font có thể chưa đọc được: thêm mẫu ký tự vào `ctFont.js`.
+    Test với bản vẽ thật (`tests/ctReaderSamples.test.js`) chỉ chạy khi có thư mục mẫu (`DKCT_CT_SAMPLES`), bản vẽ không đưa vào repo.
   - Khoanh vùng từng core trên trang để xem lại khi lập phương án. Ô trống in "CHƯA ĐỦ DỮ LIỆU", không tự suy diễn.
   - Xác nhận khi đủ dữ liệu; sửa sau xác nhận thì về "cần kiểm tra". TI chưa xác nhận vẫn in được, ghi "BẢN NHÁP – chưa xác nhận".
   - Bản vẽ cập nhật: thêm trang với "phiên bản mới", trang cũ giữ lại. Phương án lưu bản chụp TI lúc chọn (thư viện sửa sau

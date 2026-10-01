@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, Save, Loader2, Plus, Trash2, FileUp, ChevronLeft, ChevronRight, Wand2, Crop, BadgeCheck, History, AlertTriangle, EyeOff } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, FileUp, ChevronLeft, ChevronRight, Wand2, Crop, BadgeCheck, History, AlertTriangle, EyeOff, ScanText } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { Field, Section, btnGhost, btnPrimary, btnSecondary, inputCls, inputBorder } from './ui.jsx';
-import { openPdf, renderPdfPage, pageText } from '../lib/pdf.js';
+import { openPdf, renderPdfPage, pageText, pageShapes } from '../lib/pdf.js';
 import { patternPoints, parseTitleBlock, drawingRefFor, ROW_PHASES, ROW_TERMINALS, CT_SIDE_PRESETS, parseSide, normalizeSide, sideLabel, INSUFFICIENT } from '../lib/ctLibrary.js';
 import { CropView, SourceDialog, RegionPicker } from './CtSource.jsx';
 
@@ -57,7 +57,7 @@ const formOf = (ct) => ({
  * Thêm trang mạch dòng: PDF (chọn trang, đọc khung tên từ lớp chữ) hoặc ảnh chụp/cắt.
  * Chỉ lưu ảnh trang đã chọn, không lưu cả bộ PDF.
  */
-function PageAdder({ ct, onAdded, onTitleBlock }) {
+function PageAdder({ ct, onAdded, onTitleBlock, onAutoRead }) {
   const { api, notify } = useDkct();
   const inputRef = useRef(null);
   const [pdf, setPdf] = useState(null);      // { file, doc, pageCount }
@@ -68,6 +68,7 @@ function PageAdder({ ct, onAdded, onTitleBlock }) {
   const [pageLabel, setPageLabel] = useState('');
   const [newRevision, setNewRevision] = useState(false);
   const [busy, setBusy] = useState('');
+  const [auto, setAuto] = useState(null);   // kết quả tự đọc trang PDF đang xem
 
   useEffect(() => () => { pdf?.doc?.destroy(); }, [pdf]);
   useEffect(() => () => { if (preview?.url) URL.revokeObjectURL(preview.url); }, [preview]);
@@ -82,12 +83,19 @@ function PageAdder({ ct, onAdded, onTitleBlock }) {
       setInfo(tb);
       setPageLabel(tb.pageLabel || `${n}/${doc.numPages}`);
       setPage(n);
+      setAuto(null);
+      setBusy('Đang tự đọc nhãn, dây trên trang…');
+      // đọc nét vẽ vector (không AI/OCR); trang quét/ảnh thì không có nét -> không đọc được, nhập tay
+      try {
+        const [{ readCtPage }, vec] = await Promise.all([import('../lib/ctReader.js'), pageShapes(doc, n)]);
+        setAuto(readCtPage(vec.shapes, vec));
+      } catch (e) { setAuto({ cores: [], warnings: ['Không tự đọc được trang này.'] }); }
     } catch (err) { notify(err.message, 'error'); } finally { setBusy(''); }
   };
 
   const choose = async (file) => {
     if (!file) return;
-    setPdf(null); setImage(null); setPreview(null); setInfo(null); setPageLabel('');
+    setPdf(null); setImage(null); setPreview(null); setInfo(null); setPageLabel(''); setAuto(null);
     if (/^image\/(png|jpe?g)$/.test(file.type)) {
       setImage({ file, url: URL.createObjectURL(file) });
       return;
@@ -113,6 +121,7 @@ function PageAdder({ ct, onAdded, onTitleBlock }) {
       if (newRevision) form.append('newRevision', '1');
       const { page: saved } = await api.sendForm(`/ct-library/${ct.id}/pages`, form, 'POST');
       if (info) onTitleBlock(info, saved);
+      if (pdf && auto?.cores?.length) onAutoRead(auto, saved, info);
       notify(`Đã thêm trang ${saved.pageLabel || ''}${newRevision ? ' — phiên bản bản vẽ mới, cần kiểm tra lại các core' : ''}.`, 'success');
       setNewRevision(false);
       setImage(null);
@@ -153,8 +162,10 @@ function PageAdder({ ct, onAdded, onTitleBlock }) {
             <button type="button" className={btnPrimary} disabled={!!busy} onClick={add}><Plus className="w-4 h-4" /> Thêm trang này</button>
           </div>
           {info && (info.panel || info.drawingNumber) && (
-            <p className="text-xs text-slate-500">Khung tên: {[info.drawingNumber, info.panel, info.sheet].filter(Boolean).join(' · ')}. Nhãn hàng kẹp/đầu CT trong mạch là nét vẽ, cần nhập tay theo bản vẽ.</p>
+            <p className="text-xs text-slate-500">Khung tên: {[info.drawingNumber, info.panel, info.sheet].filter(Boolean).join(' · ')}.</p>
           )}
+          {pdf && auto && <AutoReadSummary auto={auto} />}
+          {image && <p className="text-xs text-slate-500">Ảnh chụp: chưa tự đọc được, nhập tay theo bản vẽ.</p>}
           <img src={shown} alt="Trang bản vẽ đang chọn" className="w-full h-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white" />
         </>
       )}
@@ -162,7 +173,24 @@ function PageAdder({ ct, onAdded, onTitleBlock }) {
   );
 }
 
-function CoreCard({ core, index, pages, form, issues, readOnly, setCore, removeCore, onPick, onView }) {
+/** Kết quả tự đọc trang PDF (trước khi thêm trang). */
+function AutoReadSummary({ auto }) {
+  const pointsOf = (c) => c.points.filter(p => p.terminal && p.ctTerminal).length;
+  if (!auto.cores.length) {
+    return <p className="text-xs text-amber-700 dark:text-amber-400">Không tự đọc được hàng kẹp/đầu CT trên trang này (trang quét, ảnh hoặc mẫu bản vẽ khác) — nhập tay theo bản vẽ.</p>;
+  }
+  return (
+    <div className="text-xs rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-amber-900 dark:text-amber-200">
+      <p className="font-semibold inline-flex items-center gap-1"><ScanText className="w-3.5 h-3.5" /> Tự đọc được: {auto.cores.map(c => `core ${c.coreNo ?? '?'} (${c.terminalBlock}, ${pointsOf(c)}/6 điểm)`).join(', ')}.</p>
+      <p>Bấm “Thêm trang này” để điền vào các ô còn trống (tô vàng); ô đã có dữ liệu giữ nguyên.</p>
+      {auto.cores.flatMap(c => c.notes.map(n => `Core ${c.coreNo ?? '?'}: ${n}`)).concat(auto.warnings).map((n, k) => <p key={k}>• {n}</p>)}
+    </div>
+  );
+}
+
+const AUTO_CLS = '!bg-amber-50 !border-amber-400 dark:!bg-amber-900/30';
+
+function CoreCard({ core, index, pages, form, issues, readOnly, setCore, removeCore, onPick, onView, autoOf = () => undefined }) {
   const [side, setSide] = useState('S1-S2');
   const page = pages.find(p => p.id === core.pageId);
   const setPoint = (k, patch) => setCore({ points: core.points.map((p, j) => (j === k ? { ...p, ...patch } : p)) });
@@ -175,6 +203,7 @@ function CoreCard({ core, index, pages, form, issues, readOnly, setCore, removeC
     setCore({ pageId: pageId || null, region: null, drawingRef: core.drawingRef || drawingRefFor(form.panel, p?.pageLabel) });
   };
   const empty = (v) => !String(v || '').trim();
+  const isAuto = (field, k, value) => !!value && autoOf(field, k) === value;
   return (
     <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-2">
       <div className="grid grid-cols-2 sm:grid-cols-[5rem_7rem_1fr_1fr_auto] gap-2 items-end">
@@ -183,7 +212,7 @@ function CoreCard({ core, index, pages, form, issues, readOnly, setCore, removeC
             onChange={e => setCore({ coreNo: e.target.value ? Number(e.target.value) : null })} />
         </Field>
         <Field label="Khối hàng kẹp" htmlFor={`core-block-${index}`}>
-          <input id={`core-block-${index}`} className={`${inputCls} ${inputBorder(empty(core.terminalBlock))}`} value={core.terminalBlock} placeholder="X41"
+          <input id={`core-block-${index}`} className={`${inputCls} ${inputBorder(empty(core.terminalBlock))} ${isAuto('terminalBlock', -1, core.terminalBlock) ? AUTO_CLS : ''}`} value={core.terminalBlock} placeholder="X41"
             onChange={e => setCore({ terminalBlock: e.target.value })} />
         </Field>
         <Field label="Trang nguồn" htmlFor={`core-page-${index}`}>
@@ -208,11 +237,11 @@ function CoreCard({ core, index, pages, form, issues, readOnly, setCore, removeC
               <tr key={k}>
                 <td className="p-1 font-semibold text-slate-700 dark:text-slate-200">{ROW_PHASES[k]}</td>
                 <td className="p-1">
-                  <input aria-label={`Core ${core.coreNo ?? index + 1} ${ROW_PHASES[k]} hàng kẹp dòng ${k + 1}`} className={`${inputCls} ${inputBorder(empty(p.terminal))}`}
+                  <input aria-label={`Core ${core.coreNo ?? index + 1} ${ROW_PHASES[k]} hàng kẹp dòng ${k + 1}`} className={`${inputCls} ${inputBorder(empty(p.terminal))} ${isAuto('terminal', k, p.terminal) ? AUTO_CLS : ''}`} title={isAuto('terminal', k, p.terminal) ? 'Tự đọc từ bản vẽ — đối chiếu lại' : undefined}
                     value={p.terminal} placeholder={INSUFFICIENT} onChange={e => setPoint(k, { terminal: e.target.value })} />
                 </td>
                 <td className="p-1">
-                  <input aria-label={`Core ${core.coreNo ?? index + 1} ${ROW_PHASES[k]} đầu CT dòng ${k + 1}`} className={`${inputCls} ${inputBorder(empty(p.ctTerminal))}`}
+                  <input aria-label={`Core ${core.coreNo ?? index + 1} ${ROW_PHASES[k]} đầu CT dòng ${k + 1}`} className={`${inputCls} ${inputBorder(empty(p.ctTerminal))} ${isAuto('ctTerminal', k, p.ctTerminal) ? AUTO_CLS : ''}`} title={isAuto('ctTerminal', k, p.ctTerminal) ? 'Tự đọc từ bản vẽ — đối chiếu lại' : undefined}
                     value={p.ctTerminal} placeholder={INSUFFICIENT} onChange={e => setPoint(k, { ctTerminal: e.target.value })} />
                 </td>
               </tr>
@@ -311,6 +340,9 @@ export default function CtEditor({ ctId, catalogs, canManage, onClose, onChanged
   const [picking, setPicking] = useState(null); // chỉ số core đang khoanh vùng
   const [viewing, setViewing] = useState(null); // chỉ số core đang xem nguồn
   const [showAudit, setShowAudit] = useState(false);
+  // ô do máy tự đọc: khóa "core|trường|dòng" -> giá trị máy đọc (sửa khác đi thì hết tô vàng)
+  const [autoMarks, setAutoMarks] = useState(() => new Map());
+  const [autoNote, setAutoNote] = useState(null);
   const readOnly = !canManage;
 
   const apply = ({ ct: next, issues: list }, keepForm = false) => {
@@ -349,6 +381,8 @@ export default function CtEditor({ ctId, catalogs, canManage, onClose, onChanged
     setBusy(true);
     try {
       apply(await api.post(`/ct-library/${ct.id}/verify`));
+      setAutoMarks(new Map());
+      setAutoNote(null);
       notify(`Đã xác nhận ${ct.name}.`, 'success');
       onChanged();
     } catch (err) {
@@ -368,6 +402,38 @@ export default function CtEditor({ ctId, catalogs, canManage, onClose, onChanged
   const onTitleBlock = (tb) => update(f => ({
     panel: f.panel || tb.panel, drawingNumber: f.drawingNumber || tb.drawingNumber, bay: f.bay || tb.bay
   }));
+  const emptyCore = (no) => ({ id: null, coreNo: no ?? null, terminalBlock: '', drawingRef: '', spec: '', pageId: null, region: null, points: ROW_TERMINALS.map(() => ({ terminal: '', ctTerminal: '' })) });
+  // kết quả tự đọc trang vừa thêm: điền vào ô còn trống của core cùng số (hoặc cùng khối kẹp), thiếu core thì thêm
+  const onAutoRead = (result, page, tb) => {
+    const marks = new Map(autoMarks);
+    const panel = form.panel || tb?.panel || '';
+    const cores = form.cores.map(c => ({ ...c, points: c.points.map(p => ({ ...p })) }));
+    let filled = 0;
+    for (const rc of result.cores) {
+      let c = cores.find(x => rc.coreNo && x.coreNo === rc.coreNo)
+        || cores.find(x => x.terminalBlock && x.terminalBlock.toUpperCase() === rc.terminalBlock.toUpperCase());
+      if (!c) { c = emptyCore(rc.coreNo); cores.push(c); }
+      if (!c.coreNo && rc.coreNo) c.coreNo = rc.coreNo;
+      const key = (field, k) => `${c.coreNo}|${field}|${k}`;
+      if (!c.terminalBlock && rc.terminalBlock) { c.terminalBlock = rc.terminalBlock; marks.set(key('terminalBlock', -1), rc.terminalBlock); filled++; }
+      if (!c.pageId) { c.pageId = page.id; c.region = c.region || rc.region; }
+      if (!c.drawingRef) c.drawingRef = drawingRefFor(panel, page.pageLabel);
+      rc.points.forEach((p, k) => {
+        for (const field of ['terminal', 'ctTerminal']) {
+          if (!c.points[k][field] && p[field]) { c.points[k][field] = p[field]; marks.set(key(field, k), p[field]); filled++; }
+        }
+      });
+    }
+    update({ cores: cores.sort((a, b) => (a.coreNo ?? 99) - (b.coreNo ?? 99)) });
+    setAutoMarks(marks);
+    // cộng dồn khi thêm lần lượt nhiều trang
+    setAutoNote(prev => ({
+      pages: [...(prev?.pages || []), page.pageLabel || '?'],
+      filled: (prev?.filled || 0) + filled,
+      cores: [...(prev?.cores || []), ...result.cores.map(c => `core ${c.coreNo ?? '?'} (${c.terminalBlock})`)],
+      notes: [...(prev?.notes || []), ...result.cores.flatMap(c => c.notes.map(n => `Core ${c.coreNo ?? '?'}: ${n}`)), ...result.warnings]
+    }));
+  };
   const onPageAdded = async () => {
     const fresh = await api.get(`/ct-library/${ct.id}`);
     apply(fresh, true); // giữ phần đang sửa dở
@@ -421,7 +487,7 @@ export default function CtEditor({ ctId, catalogs, canManage, onClose, onChanged
                   ))}
                 </div>
               )}
-              {!readOnly && <PageAdder ct={ct} onAdded={onPageAdded} onTitleBlock={onTitleBlock} />}
+              {!readOnly && <PageAdder ct={ct} onAdded={onPageAdded} onTitleBlock={onTitleBlock} onAutoRead={onAutoRead} />}
             </Section>
             <Section title={`Các core (${form.cores.length})`}
               subtitle="Mỗi core 6 dòng: L1 kẹp 1, 4; L2 kẹp 2, 5; L3 kẹp 3, 6 tại tủ trung gian. Đầu phía CT ghi đúng nhãn trên bản vẽ (đầu cuộn có đấu dây). Ô trống in “CHƯA ĐỦ DỮ LIỆU”."
@@ -429,8 +495,20 @@ export default function CtEditor({ ctId, catalogs, canManage, onClose, onChanged
               {!readOnly && form.cores.length > 0 && <SideApplier cores={form.cores} onApply={(picked, pair) => update(f => ({
                 cores: f.cores.map((c, i) => (picked.includes(i) ? { ...c, points: c.points.map((p, k) => ({ ...p, ctTerminal: c.coreNo ? `${c.coreNo}${pair[k % 2]}` : p.ctTerminal })) } : c))
               }))} />}
+              {autoNote && (
+                <div className="text-xs rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-amber-900 dark:text-amber-200 flex gap-2" role="status">
+                  <ScanText className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold">Đã tự đọc trang {autoNote.pages.join(', ')}: {autoNote.cores.join(', ')} — điền {autoNote.filled} ô (tô vàng).</p>
+                    <p>Máy đọc nét vẽ của bản vẽ, không đoán; vẫn phải đối chiếu từng ô với bản vẽ trước khi xác nhận.</p>
+                    {autoNote.notes.map((n, k) => <p key={k}>• {n}</p>)}
+                  </div>
+                  <button type="button" className="p-0.5 h-fit rounded hover:bg-amber-100 dark:hover:bg-amber-900" aria-label="Ẩn thông báo tự đọc" onClick={() => setAutoNote(null)}><X className="w-3.5 h-3.5" /></button>
+                </div>
+              )}
               {form.cores.map((c, i) => (
                 <CoreCard key={c.id || `new-${i}`} core={c} index={i} pages={pages} form={form} readOnly={readOnly}
+                  autoOf={(field, k) => autoMarks.get(`${c.coreNo}|${field}|${k}`)}
                   issues={dirty ? [] : issues.filter(x => x.core === i)}
                   setCore={patch => setCore(i, patch)} removeCore={() => update(f => ({ cores: f.cores.filter((_, j) => j !== i) }))}
                   onPick={() => setPicking(i)} onView={() => setViewing(i)} />
