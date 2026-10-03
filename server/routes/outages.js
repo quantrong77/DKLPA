@@ -13,6 +13,12 @@ const { isoDate } = require('../services/outageImport');
 const { fetchAndImport, MAX_DAYS } = require('../services/outageAutoFetch');
 const { newId } = require('../schema');
 const { areaResolver, loadAreaSubstations, areaKey, areaOptions } = require('../services/outageArea');
+const { executeIn } = require('../services/outageChange');
+
+// dòng lịch đã có biên bản KSHT / phương án / giấy ĐKCT gắn: không xóa khi dọn lịch cũ
+const LINKED_SQL = `(EXISTS (SELECT 1 FROM dkct_surveys s WHERE s.outageId = o.id)
+  OR EXISTS (SELECT 1 FROM dkct_plans p WHERE p.outageId = o.id)
+  OR EXISTS (SELECT 1 FROM dkct_registrations r WHERE r.outageId = o.id))`;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -172,6 +178,37 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSource, impo
       registrationUnit, workUnit, status, changeKind, changeNote, changeAt, prevStart, prevEnd FROM dkct_outages WHERE id = ?`, [req.params.id]);
     if (!outage) return res.status(404).json({ error: 'Không tìm thấy dòng lịch.' });
     res.json({ outage });
+  }));
+
+  /**
+   * Dọn lịch cũ theo khoảng ngày bắt đầu (from bỏ trống = từ đầu): chỉ admin (lịch dùng chung mọi tổ).
+   * Giữ các dòng đã có hồ sơ gắn để hồ sơ không mất liên kết; lịch sử thay đổi của dòng bị xóa xóa theo.
+   */
+  async function purgeRange(req) {
+    const actor = await policy.actorOf(req);
+    if (!policy.isAdmin(actor)) throw forbidden('Chỉ admin được dọn lịch cắt điện cũ.');
+    const src = req.method === 'GET' ? req.query : req.body || {};
+    const from = src.from ? isoDate(src.from) : null;
+    const to = isoDate(src.to);
+    if (!to || (src.from && !from) || (from && from > to)) throw Object.assign(new Error('Chọn đến ngày (và từ ngày nếu cần, từ ngày ≤ đến ngày).'), { status: 400 });
+    const where = ['o.regStart <= ?'];
+    const params = [`${to}T23:59`];
+    if (from) { where.unshift('o.regStart >= ?'); params.unshift(`${from}T00:00`); }
+    const rows = await db.query(`SELECT o.id, ${LINKED_SQL} AS linked FROM dkct_outages o WHERE ${where.join(' AND ')}`, params);
+    const linked = rows.filter(r => Number(r.linked) === 1 || r.linked === true);
+    return { from, to, rows, linked, ids: rows.filter(r => !linked.includes(r)).map(r => r.id) };
+  }
+
+  router.get('/outages/purge/preview', wrap(async (req, res) => {
+    const { from, to, rows, linked, ids } = await purgeRange(req);
+    res.json({ from, to, total: rows.length, linked: linked.length, deletable: ids.length });
+  }));
+
+  router.post('/outages/purge', wrap(async (req, res) => {
+    const { from, to, linked, ids } = await purgeRange(req);
+    await executeIn(db, 'DELETE FROM dkct_outage_changes WHERE outageId IN ({in})', ids);
+    await executeIn(db, 'DELETE FROM dkct_outages WHERE id IN ({in})', ids);
+    res.json({ from, to, deleted: ids.length, kept: linked.length });
   }));
 
   router.delete('/outages/:id', wrap(async (req, res) => {

@@ -205,7 +205,7 @@ export default function DkctApp() {
         )}
         {tab === 'plans' && <PlanList {...pick('plan')} reloadKey={reloadKey} onOpen={openPlan} canCreate={permissions.canCreate} />}
         {tab === 'outages' && (
-          <OutagePanel {...pick('outage')} canCreate={permissions.canCreate} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
+          <OutagePanel {...pick('outage')} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
             onCreatePlanFromOutage={openPlanFromOutage} />
         )}
         {tab === 'catalogs' && <CatalogPanel catalogs={catalogs} canManage={permissions.canManageCatalog} isAdmin={permissions.isAdmin} onChanged={loadCatalog} />}

@@ -176,3 +176,35 @@ test('dấu phát sinh / dời / sửa hết hạn sau 7 ngày; dấu hoãn gi�
     assert.deepEqual(await kinds(), { 'Trạm A': null, 'Trạm B': 'POSTPONED', 'Trạm C': null });
   } finally { app.close(); }
 });
+
+test('dọn lịch cũ theo khoảng ngày: chỉ admin; xem trước số dòng; giữ dòng đã có hồ sơ gắn; xóa cả lịch sử', async () => {
+  const app = await startApp();
+  try {
+    const row = (d, loc) => [`${d}/10/2024 07h00`, `${d}/10/2024 17h00`, loc, `Việc ${loc}`, '', '', '', ''];
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([row('01', 'A'), row('02', 'B')]));
+    // nạp lại có thay đổi để có lịch sử: B không còn (hoãn), C phát sinh
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([row('01', 'A'), row('03', 'C'), row('20', 'Z')], ['2024-10-01', '2024-10-03']));
+    const items = (await app.call('lead', 'GET', '/outages?from=2024-09-01')).body.items;
+    const id = (loc) => items.find(o => o.location === loc).id;
+    const { SURVEY } = require('./fixtures/sampleSurvey');
+    await app.call('lead', 'POST', '/surveys', { ...SURVEY, outageId: id('A') }); // A có biên bản: giữ lại
+
+    assert.equal((await app.call('lead', 'GET', '/outages/purge/preview?to=2024-10-05')).status, 403, 'chỉ admin');
+    assert.equal((await app.call('admin', 'GET', '/outages/purge/preview?from=2024-10-09&to=2024-10-05')).status, 400);
+    assert.equal((await app.call('admin', 'GET', '/outages/purge/preview')).status, 400, 'phải có đến ngày');
+    const pv = (await app.call('admin', 'GET', '/outages/purge/preview?to=2024-10-05')).body;
+    assert.deepEqual([pv.total, pv.linked, pv.deletable], [3, 1, 2]);
+    assert.equal((await app.call('lead', 'GET', '/outages?from=2024-09-01')).body.items.length, 4, 'xem trước không xóa gì');
+
+    assert.equal((await app.call('lead', 'POST', '/outages/purge', { to: '2024-10-05' })).status, 403);
+    const res = (await app.call('admin', 'POST', '/outages/purge', { to: '2024-10-05' })).body;
+    assert.deepEqual([res.deleted, res.kept], [2, 1]);
+    const left = (await app.call('lead', 'GET', '/outages?from=2024-09-01')).body.items.map(o => o.location);
+    assert.deepEqual(left, ['A', 'Z'], 'giữ dòng có biên bản và dòng ngoài khoảng');
+    const hist = await app.db.query('SELECT outageId FROM dkct_outage_changes');
+    assert.ok(hist.every(h => [id('A'), id('Z')].includes(h.outageId)), 'lịch sử của dòng đã xóa cũng xóa');
+    // khoảng có từ ngày
+    const r2 = (await app.call('admin', 'POST', '/outages/purge', { from: '2024-10-15', to: '2024-10-31' })).body;
+    assert.deepEqual([r2.deleted, r2.kept], [1, 0]);
+  } finally { app.close(); }
+});

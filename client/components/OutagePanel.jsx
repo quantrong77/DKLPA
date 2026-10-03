@@ -5,6 +5,7 @@ import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, for
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 import { CHANGE_TONES } from './OutageAlert.jsx';
 import { OutageHistory, AutoFetchStatus } from './OutageHistory.jsx';
+import OutagePurge from './OutagePurge.jsx';
 
 const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const todayIso = () => isoOf(new Date());
@@ -355,7 +356,7 @@ function StepTracker({ outage }) {
 }
 
 /** Lịch cắt điện = kế hoạch công tác: import Excel, lọc, theo dõi tiến độ, lập biên bản/phương án/giấy từ một dòng. */
-export default function OutagePanel({ selectedId, linked, onTrack, canCreate, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
+export default function OutagePanel({ selectedId, linked, onTrack, canCreate, canPurge, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
   const { api, notify, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -433,6 +434,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, on
           title="Chỉ hiện dòng lịch thuộc khu vực tổ phụ trách, hoặc tổ đã lập biên bản / phương án / giấy ĐKCT">
           <Users className="w-4 h-4" /> Chỉ tổ của tôi
         </button>
+        {canPurge && <OutagePurge onDone={load} />}
       </div>
       {mineOnly && (
         <p className="text-xs text-slate-600 dark:text-slate-300" role="note">
