@@ -1,0 +1,94 @@
+// Nội dung "Hướng dẫn" theo tab và "Giới thiệu" (thuần, không phụ thuộc React). Sửa nội dung ở đây.
+
+export const ABOUT = {
+  summary: 'Ứng dụng hỗ trợ tổ thí nghiệm, sửa chữa chuẩn bị công tác tại trạm biến áp theo đúng trình tự: từ lịch cắt điện, '
+    + 'khảo sát hiện trường, lập phương án, đăng ký công tác đến giấy xác nhận đủ điều kiện đóng điện. Văn bản xuất ra Word '
+    + 'theo mẫu của đơn vị, giữ nhãn ký số để ký trên ứng dụng ký số của Công ty.',
+  features: [
+    'Nạp lịch cắt điện từ Excel hoặc tự tải từ trang lịch của Công ty; so sánh khi nạp lại: hoãn, dời lịch, sửa nội dung, phát sinh.',
+    'Theo dõi luồng công việc 5 bước cho từng hồ sơ; cảnh báo khi lịch cắt điện của hồ sơ thay đổi.',
+    'Lập biên bản khảo sát, phương án, giấy đăng ký công tác, giấy xác nhận; xem trước Word, tải Word/PDF.',
+    'Thư viện cô lập mạch dòng TI và tự đọc bản vẽ mạch dòng PDF (không dùng AI).',
+    'Danh mục nhân sự, đơn vị, trạm, rủi ro; khu vực phụ trách của tổ; mẫu Word thay đổi được không cần sửa phần mềm.'
+  ],
+  developer: { name: 'Hoàng Trần Quản Trọng', email: 'quantrong77@gmail.com' }
+};
+
+/** Mục hướng dẫn: id trùng tab của ứng dụng (outages, surveys, …) để mở đúng mục đang xem. */
+export const HELP_SECTIONS = [
+  {
+    id: 'general', title: 'Bắt đầu',
+    items: [
+      ['Luồng công việc', 'Thanh "1. Lịch cắt điện → 2. Khảo sát → 3. Phương án → 4. Giấy ĐKCT → 5. Giấy xác nhận" là trình tự chuẩn bị một công tác. Bấm một bước để mở danh sách của bước đó.'],
+      ['Theo dõi một hồ sơ', 'Bấm biểu tượng luồng ở đầu một dòng (hoặc mở hồ sơ): thanh luồng tô màu bước đã có (xanh lá ✓), bước đang chọn (xanh dương), bước nên làm tiếp (vàng); các hồ sơ cùng luồng được viền xanh trong danh sách.'],
+      ['Cảnh báo lịch', 'Hồ sơ gắn dòng lịch đã hoãn / dời / sửa có nhãn "Lịch: …" trong danh sách và dải cảnh báo khi mở — kiểm tra lại trước khi in, nộp.'],
+      ['Giao diện', 'Nút bảng màu ở đầu trang: chọn "Mặc định" hoặc "Chuyên nghiệp"; trình duyệt ghi nhớ lựa chọn.'],
+      ['Quyền', 'Trưởng/phó tổ, trưởng phòng, admin lập và sửa hồ sơ của tổ; thành viên xem. Một số chức năng (dọn lịch, thư viện mạch dòng, khu vực của tổ, mẫu văn bản) chỉ admin.']
+    ]
+  },
+  {
+    id: 'outages', title: 'Lịch cắt điện',
+    items: [
+      ['Nạp lịch', '"Tải lịch cắt điện": máy chủ tự đăng nhập trang lịch Công ty, tải theo khoảng ngày rồi nạp luôn (cần cấu hình tài khoản). Hoặc "Chọn file lịch cắt điện (Excel)" → xem trước → "Cập nhật lịch".'],
+      ['So sánh khi nạp lại', 'Chọn khoảng so sánh: dòng Hoãn (đỏ), Dời lịch (xanh), Sửa nội dung (tím), Phát sinh (vàng); không đổi để nguyên. Bấm một mục trong kết quả để tới dòng đó. Dời/sửa cập nhật tại chỗ nên hồ sơ đã gắn vẫn trỏ đúng.'],
+      ['Tự tải và báo', 'Nếu máy chủ bật tự tải theo giờ, dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi.'],
+      ['Lọc, tìm', 'Chọn khoảng ngày, gõ từ khóa (trạm, thiết bị, đơn vị); bấm thẻ thống kê để lọc; "Chỉ tổ của tôi" giữ dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ.'],
+      ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — nội dung, phạm vi, thời gian tự điền. "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
+      ['Dọn lịch cũ (admin)', 'Chọn khoảng ngày, xem số dòng sẽ xóa rồi xác nhận; dòng đã có hồ sơ gắn được giữ lại.']
+    ]
+  },
+  {
+    id: 'surveys', title: 'Khảo sát hiện trường',
+    items: [
+      ['Lập biên bản', 'Từ dòng lịch cắt điện hoặc nút "Lập biên bản". Ghi thời điểm, trạm, thành phần (đại diện đầu tiên mỗi bên ký cuối biên bản), địa điểm, nội dung, phạm vi, rủi ro và biện pháp.'],
+      ['Sơ đồ', 'Tải ảnh, dán ảnh chụp màn hình, hoặc chọn bản vẽ của trạm trong danh mục; đánh dấu vùng làm việc trên sơ đồ.'],
+      ['Xuất văn bản', '"Xem trước" xem bản Word ngay bên cạnh (tải PDF trong khung xem trước); "Lưu & tải Word"; sau khi tải bấm "Đăng QLTN" để mở trang QLTN và đăng biên bản.'],
+      ['Bước tiếp theo', 'Từ biên bản lập phương án hoặc giấy ĐKCT: căn cứ, nội dung, địa điểm, rủi ro được chép sang.']
+    ]
+  },
+  {
+    id: 'plans', title: 'Phương án',
+    items: [
+      ['4 bước soạn', '1. Chung & pháp lý · 2. Thi công & an toàn · 3. Phụ lục I (hạng mục thí nghiệm theo QĐ 1901, thiết bị thí nghiệm) · 4. Phụ lục II, III, ký.'],
+      ['Ngăn lộ cắt điện', 'Tự lấy từ "Phạm vi / điều kiện cắt điện" của dòng lịch; sửa được.'],
+      ['Cô lập mạch dòng (Phụ lục II)', 'Chọn TI từ thư viện mạch dòng, hoặc nạp trang bản vẽ mạch dòng PDF: phần mềm tự đọc kẹp, đầu dây — ô tự điền tô vàng, phải kiểm tra rồi bấm xác nhận. Đầu phía TI chọn kS1-kS2 … kS1-kS5 hoặc "Khác…".'],
+      ['Số và ký', 'Số phương án cấp khi lưu lần đầu, không đổi khi sửa. Các nhãn ((…)) trong mẫu là vị trí ký số, giữ nguyên.'],
+      ['Xuất văn bản', 'Xem trước, Tải Word / PDF, "Đăng QLTN" sau khi tải.']
+    ]
+  },
+  {
+    id: 'registrations', title: 'Giấy đăng ký công tác',
+    items: [
+      ['Lập giấy', 'Từ dòng lịch cắt điện, từ biên bản khảo sát hoặc "Lập giấy mới". Nơi nhận chọn từ danh mục (email tự điền).'],
+      ['Đơn vị công tác', 'Có thể nhiều ĐVCT; mỗi ĐVCT bắt buộc có chỉ huy trực tiếp, có thời gian và địa điểm riêng; số nhân viên tự đếm. LĐCV, GSATĐ, người cảnh giới chọn từ danh mục hoặc tự ghi, bậc ATĐ tự hiện.'],
+      ['Số giấy', 'Số theo tổ, theo năm (vd 215/ĐK-TNLĐ); trưởng/phó tổ đặt được số khởi đầu.'],
+      ['Tiếp theo', 'Tải Word; từ giấy lập giấy xác nhận đủ điều kiện đóng điện.']
+    ]
+  },
+  {
+    id: 'confirmations', title: 'Giấy xác nhận',
+    items: [
+      ['Lập giấy', 'Từ giấy ĐKCT hoặc phương án (hạng mục lấy theo nhóm thiết bị), hoặc tự ghi.'],
+      ['Nội dung', 'Mỗi hạng mục một dòng, kết quả "đạt"; ghi chú (nếu có) in thêm dòng "Ghi chú:".'],
+      ['Số và xuất', 'Số GXN riêng theo tổ, theo năm; Xem trước, Tải Word / PDF.']
+    ]
+  },
+  {
+    id: 'catalogs', title: 'Danh mục',
+    items: [
+      ['Danh mục chung', 'Nhân sự ATĐ, Đơn vị QLVH (nơi nhận), Trạm biến áp (kèm bản vẽ sơ đồ trạm), Nhiệm vụ, Thư viện rủi ro — dùng để chọn khi lập hồ sơ.'],
+      ['Mạch dòng TI (admin)', 'Thư viện cô lập mạch dòng theo trạm / TI, dùng cho Phụ lục II của phương án.'],
+      ['Khu vực của tổ (admin)', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng.'],
+      ['Mẫu văn bản (admin)', 'Tải mẫu Word về sửa (giữ thẻ {…} và nhãn ((…))), tải lên: phần mềm kiểm tra, thử điền, cho xem thử; "Lưu & dùng ngay" hoặc quay về mẫu gốc bất cứ lúc nào.']
+    ]
+  },
+  {
+    id: 'legacy', title: 'Giấy cũ',
+    items: [
+      ['Giấy cũ', 'Danh sách giấy ĐKCT lập bằng chức năng cũ của ChatLan: chỉ xem và tải Word. Giấy mới lập ở tab Giấy ĐKCT; số giấy tiếp nối số cũ.']
+    ]
+  }
+];
+
+/** Mục hướng dẫn cho tab đang mở (không có thì "Bắt đầu"). */
+export const helpFor = (tab) => HELP_SECTIONS.find(s => s.id === tab) || HELP_SECTIONS[0];

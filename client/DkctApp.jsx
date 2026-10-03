@@ -19,6 +19,7 @@ import { defaultWorkload, planFromSurvey } from './lib/plan.js';
 import { fromSaved } from './lib/form.js';
 import { loadTheme, saveTheme, themeClass } from './lib/theme.js';
 import ThemePicker from './components/ThemePicker.jsx';
+import HelpAboutButtons from './components/HelpAbout.jsx';
 import './dkct-theme.css';
 import { emptyRep, qlvhRoleFor, registrationFromSurvey, withQlvhFor } from './lib/survey.js';
 
@@ -187,6 +188,7 @@ export default function DkctApp() {
             ) : (
               <button type="button" className={btnPrimary} onClick={openNew} disabled={!meta}><Plus className="w-4 h-4" /> Lập giấy mới</button>
             ))}
+            <HelpAboutButtons tab={tab} />
             <ThemePicker value={theme} onChange={chooseTheme} />
             <button type="button" className={btnGhost} aria-label="Tải lại" onClick={() => { loadAll(); setReloadKey(k => k + 1); }}>
               <RefreshCw className="w-4 h-4" />
