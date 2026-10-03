@@ -23,7 +23,7 @@ const upload = multer({
 
 const LIST_COLUMNS = 'id, department, surveyTime, stationName, substationId, workContent, outageId, diagramType, createdBy, createdAt, updatedAt';
 
-function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) {
+function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
   const router = express.Router();
 
   const present = async (row, actor) => ({
@@ -214,7 +214,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }
     if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập biên bản khảo sát.');
     const data = await normalize(req.body, res);
     if (!data) return;
-    sendPreview(res, renderSurveyDocx({ data }, null));
+    sendPreview(res, await templates.render('survey', (tpl) => renderSurveyDocx({ data }, null, tpl)));
   }));
 
   router.post('/surveys/:id/preview', wrap(async (req, res) => {
@@ -222,13 +222,13 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }
     const data = await normalize(req.body, res);
     if (!data) return;
     const diagram = row.diagram && req.query.noDiagram !== '1' ? { buffer: Buffer.from(row.diagram, 'base64') } : null;
-    sendPreview(res, renderSurveyDocx({ data }, diagram));
+    sendPreview(res, await templates.render('survey', (tpl) => renderSurveyDocx({ data }, diagram, tpl)));
   }));
 
   router.get('/surveys/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
     const data = safeParse(row.data);
-    const buffer = renderSurveyDocx({ data }, row.diagram ? { buffer: Buffer.from(row.diagram, 'base64') } : null);
+    const buffer = await templates.render('survey', (tpl) => renderSurveyDocx({ data }, row.diagram ? { buffer: Buffer.from(row.diagram, 'base64') } : null, tpl));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', attachment(docxFileName('survey', {
       date: data.surveyTime, bayText: [data.equipment, ...(data.scopeItems || []), data.workContent].join(' '), station: data.station?.name

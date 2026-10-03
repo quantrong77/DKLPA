@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp, Cable, MapPinned } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp, Cable, MapPinned, FileText } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import DrawingDialog from './DrawingDialog.jsx';
 import CtLibraryPanel from './CtLibraryPanel.jsx';
 import TeamAreasPanel from './TeamAreasPanel.jsx';
+import TemplatesPanel from './TemplatesPanel.jsx';
 import { TabButton, btnGhost, btnPrimary, btnSecondary, inputCls, inputBorder } from './ui.jsx';
 
 const CATALOGS = {
@@ -120,7 +121,9 @@ export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }
         ))}
         <TabButton icon={Cable} active={tab === 'ctLibrary'} onClick={() => { setTab('ctLibrary'); setEditing(null); }}>Mạch dòng TI</TabButton>
         <TabButton icon={MapPinned} active={tab === 'teamAreas'} onClick={() => { setTab('teamAreas'); setEditing(null); }}>Khu vực của tổ</TabButton>
+        <TabButton icon={FileText} active={tab === 'templates'} onClick={() => { setTab('templates'); setEditing(null); }}>Mẫu văn bản</TabButton>
       </div>
+      {tab === 'templates' && <TemplatesPanel canManage={!!isAdmin} />}
       {tab === 'ctLibrary' && <CtLibraryPanel catalogs={catalogs} canManage={!!isAdmin} />}
       {tab === 'teamAreas' && <TeamAreasPanel canManage={!!isAdmin} />}
       {cfg && <>

@@ -123,7 +123,9 @@ function addImagePart(zip, buffer, ext, { relId = REL_ID, name = 'dkct_diagram' 
   }
 }
 
-function loadTemplate(templatePath) {
+/** Mẫu: Buffer (mẫu tải lên, xem services/templateStore.js), đường dẫn khác, hoặc mẫu gốc (mặc định, giữ trong bộ nhớ). */
+function loadTemplate(templatePath = TEMPLATE_PATH) {
+  if (Buffer.isBuffer(templatePath)) return templatePath.toString('binary');
   if (templatePath !== TEMPLATE_PATH) return fs.readFileSync(templatePath, 'binary');
   templateBinary = templateBinary || fs.readFileSync(TEMPLATE_PATH, 'binary');
   return templateBinary;

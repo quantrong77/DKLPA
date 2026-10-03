@@ -307,6 +307,22 @@ function tables(t) {
       area ${t.short} NOT NULL,
       createdAt ${t.now},
       CONSTRAINT uq_dkct_team_areas UNIQUE (department, area)`,
+    // Mẫu Word admin tải lên cho từng loại văn bản (survey | plan | registration | confirmation); active = 1: đang dùng
+    // (mỗi loại tối đa một mẫu đang dùng; không có thì dùng mẫu gốc trong templates/)
+    dkct_doc_templates: `
+      id ${t.id} PRIMARY KEY,
+      kind ${t.short} NOT NULL,
+      name ${t.str} NOT NULL,
+      note ${t.text},
+      fileName ${t.str},
+      content ${t.blob} NOT NULL,
+      size ${t.int},
+      active ${t.int} NOT NULL DEFAULT 0,
+      createdBy ${t.id},
+      createdAt ${t.now},
+      updatedBy ${t.id},
+      updatedAt ${t.now},
+      revision ${t.int} NOT NULL DEFAULT 1`,
     // Cài đặt/dấu mốc của module (vd đã nạp dữ liệu bổ sung nào)
     dkct_settings: `
       name ${t.short} PRIMARY KEY,
@@ -324,6 +340,7 @@ function tables(t) {
 
 const INDEXES = [
   ['idx_dkct_outages_start', 'dkct_outages', 'regStart'],
+  ['idx_dkct_doc_templates_kind', 'dkct_doc_templates', 'kind'],
   ['idx_dkct_outage_changes_outage', 'dkct_outage_changes', 'outageId'],
   ['idx_dkct_outage_fetches_started', 'dkct_outage_fetches', 'startedAt'],
   ['idx_dkct_reg_department', 'dkct_registrations', 'department'],

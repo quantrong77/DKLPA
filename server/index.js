@@ -34,6 +34,12 @@ const { planRouter } = require('./routes/plans');
 const { confirmationRouter } = require('./routes/confirmations');
 const { ctLibraryRouter } = require('./routes/ctLibrary');
 const { workflowRouter } = require('./routes/workflow');
+const { docTemplateRouter } = require('./routes/docTemplates');
+const { createTemplateStore } = require('./services/templateStore');
+const { renderSurveyDocx } = require('./services/surveyRender');
+const { renderPlanDocx } = require('./services/planRender');
+const { renderRegistrationDocx } = require('./services/docxRender');
+const { renderConfirmationDocx } = require('./services/confirmationRender');
 const { vnToday } = require('./services/clock');
 const { createOutageImporter } = require('./services/outageImport');
 const { createAutoFetch } = require('./services/outageAutoFetch');
@@ -105,6 +111,26 @@ function createDkctModule(deps) {
   // nạp lịch (chọn file / bấm tải / tự tải) dùng chung một quy trình; tự tải theo giờ hẹn
   shared.importer = createOutageImporter({ db, notifyUsers: deps.notifyUsers, listTeamLeads: deps.listTeamLeads });
   shared.autoFetch = createAutoFetch({ db, importer: shared.importer, outageSource: deps.outageSource, auto: deps.outageAuto });
+  // mẫu Word: mẫu admin tải lên (đang dùng) hoặc mẫu gốc trong templates/; thử điền bằng văn bản gần nhất
+  const SAMPLE_TABLE = {
+    survey: ['dkct_surveys', 'Biên bản KSHT', 'NULL'], plan: ['dkct_plans', 'Phương án', 'docNumber'],
+    registration: ['dkct_registrations', 'Giấy ĐKCT', 'docNumber'], confirmation: ['dkct_confirmations', 'Giấy xác nhận', 'docNumber']
+  };
+  shared.templates = createTemplateStore({
+    db,
+    renderers: {
+      survey: (doc, tpl) => renderSurveyDocx({ data: doc.data }, null, tpl),
+      plan: (doc, tpl) => renderPlanDocx(doc, [], tpl),
+      registration: (doc, tpl) => renderRegistrationDocx(doc, tpl),
+      confirmation: (doc, tpl) => renderConfirmationDocx(doc, tpl)
+    },
+    async sampleOf(kind) {
+      const [table, label, number] = SAMPLE_TABLE[kind];
+      const row = await db.queryOne(`SELECT ${number} AS docNumber, data FROM ${table} ORDER BY createdAt DESC LIMIT 1`);
+      if (!row) return { doc: { docNumber: '', data: {} }, label: 'dữ liệu trống (chưa có văn bản nào)' };
+      return { doc: { docNumber: row.docNumber || '', data: safeParse(row.data) }, label: `${label} ${row.docNumber || 'gần nhất'}` };
+    }
+  });
   let migrated = null; // Promise của migrate(): request đến sớm chờ tạo bảng xong
   const router = express.Router();
   router.use((req, res, next) => (migrated ? migrated.then(() => next(), next) : next()));
@@ -118,11 +144,13 @@ function createDkctModule(deps) {
   router.use(confirmationRouter(shared));
   router.use(ctLibraryRouter(shared));
   router.use(workflowRouter(shared));
+  router.use(docTemplateRouter(shared));
   // eslint-disable-next-line no-unused-vars
   router.use((err, req, res, next) => {
     const status = err.status || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);
     if (status >= 500) console.error('[dkct]', err);
-    res.status(status).json({ error: status >= 500 ? 'Lỗi máy chủ khi xử lý yêu cầu.' : err.message });
+    // errors: danh sách chi tiết (vd lỗi của mẫu Word tải lên) khi có
+    res.status(status).json({ error: status >= 500 ? 'Lỗi máy chủ khi xử lý yêu cầu.' : err.message, ...(status < 500 && Array.isArray(err.errors) ? { errors: err.errors } : {}) });
   });
 
   return {

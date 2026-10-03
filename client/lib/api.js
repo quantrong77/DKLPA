@@ -1,6 +1,12 @@
 // Gọi API /api/dkct qua apiFetch của ChatLan (tự gắn Bearer token).
 export const API_BASE = '/api/dkct';
 
+async function blobError(res) {
+  let payload = null;
+  try { payload = await res.json(); } catch (e) { /* không phải JSON */ }
+  return Object.assign(new Error(payload?.error || `Lỗi ${res.status}`), { status: res.status, errors: payload?.errors || [] });
+}
+
 export function createApi(apiFetch) {
   async function request(path, { method = 'GET', body, form } = {}) {
     const init = { method, headers: {} };
@@ -35,7 +41,13 @@ export function createApi(apiFetch) {
     /** Tải tệp (vd ảnh sơ đồ) kèm xác thực; trả về Blob. */
     blob: async (path) => {
       const res = await apiFetch(`${API_BASE}${path}`);
-      if (!res.ok) throw Object.assign(new Error(`Lỗi ${res.status}`), { status: res.status });
+      if (!res.ok) throw await blobError(res);
+      return res.blob();
+    },
+    /** Gửi FormData (vd file mẫu Word), nhận tệp kết quả (Blob). */
+    formBlob: async (path, form) => {
+      const res = await apiFetch(`${API_BASE}${path}`, { method: 'POST', body: form });
+      if (!res.ok) throw await blobError(res);
       return res.blob();
     },
     /** Gửi dữ liệu đang soạn, nhận bản Word xem trước (Blob); dữ liệu sai: lỗi kèm errors như khi lưu. */

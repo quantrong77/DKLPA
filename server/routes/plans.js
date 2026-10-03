@@ -42,7 +42,7 @@ const DEFAULT_INSTRUMENTS = [
   ['Thiết bị nâng', 'Xe chở người 16C', 'Xe', '01']
 ].map(([group, name, unit, qty]) => ({ group, name, unit, qty, note: '' }));
 
-function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) {
+function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
   const router = express.Router();
   const numbering = createNumbering(db, undefined, { table: 'dkct_plans', prefix: 'PA:' });
   const places = createPlaces(db);
@@ -279,7 +279,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
     const data = await normalize(req.body, res);
     if (!data) return;
     data.preparedBy = (await getProfile(actor.id))?.fullName || '';
-    sendPreview(res, renderPlanDocx({ docNumber: previewNumber(null, req.query), data }, await drawingsFor(data)));
+    sendPreview(res, await templates.render('plan', async (tpl) => renderPlanDocx({ docNumber: previewNumber(null, req.query), data }, await drawingsFor(data), tpl)));
   }));
 
   router.post('/plans/:id/preview', wrap(async (req, res) => {
@@ -288,13 +288,13 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
     const data = await normalize(req.body, res);
     if (!data) return;
     data.preparedBy = safeParse(row.data).preparedBy || '';
-    sendPreview(res, renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data)));
+    sendPreview(res, await templates.render('plan', async (tpl) => renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data), tpl)));
   }));
 
   router.get('/plans/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
     const data = safeParse(row.data);
-    const buffer = renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data));
+    const buffer = await templates.render('plan', async (tpl) => renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data), tpl));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', attachment(docxFileName('plan', {
       date: data.header?.date, number: row.docNumber, bays: data.bays, bayText: data.equipmentText, station: data.station?.name

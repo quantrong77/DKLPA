@@ -16,7 +16,7 @@ const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('..
 
 const toMap = (rows) => new Map(rows.map(r => [r.id, r]));
 
-function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDefaults, listDepartments }) {
+function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDefaults, listDepartments, templates }) {
   const router = express.Router();
 
   const present = async (row, actor) => ({
@@ -171,7 +171,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy đăng ký công tác.');
     const data = await normalize(req.body, res);
     if (!data) return;
-    sendPreview(res, renderRegistrationDocx({ docNumber: previewNumber(null, req.query), data }));
+    sendPreview(res, await templates.render('registration', (tpl) => renderRegistrationDocx({ docNumber: previewNumber(null, req.query), data }, tpl)));
   }));
 
   router.post('/registrations/:id/preview', wrap(async (req, res) => {
@@ -179,13 +179,13 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó tổ, trưởng phòng hoặc admin được sửa.');
     const data = await normalize(req.body, res);
     if (!data) return;
-    sendPreview(res, renderRegistrationDocx({ docNumber: row.docNumber, data }));
+    sendPreview(res, await templates.render('registration', (tpl) => renderRegistrationDocx({ docNumber: row.docNumber, data }, tpl)));
   }));
 
   router.get('/registrations/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
     const data = safeParse(row.data);
-    const buffer = renderRegistrationDocx({ docNumber: row.docNumber, data });
+    const buffer = await templates.render('registration', (tpl) => renderRegistrationDocx({ docNumber: row.docNumber, data }, tpl));
     const name = docxFileName('registration', {
       date: data.header?.date || data.time?.start, number: row.docNumber, bayText: data.workContent?.text, station: data.workLocation
     });

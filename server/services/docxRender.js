@@ -11,7 +11,9 @@ const { toDocxView } = require('./docxView');
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'templates', 'template_dkct.docx');
 let templateBinary = null;
 
-function loadTemplate(templatePath) {
+/** Mẫu: Buffer (mẫu tải lên, xem services/templateStore.js), đường dẫn khác, hoặc mẫu gốc (mặc định, giữ trong bộ nhớ). */
+function loadTemplate(templatePath = TEMPLATE_PATH) {
+  if (Buffer.isBuffer(templatePath)) return templatePath.toString('binary');
   if (templatePath !== TEMPLATE_PATH) return fs.readFileSync(templatePath, 'binary');
   templateBinary = templateBinary || fs.readFileSync(TEMPLATE_PATH, 'binary');
   return templateBinary;

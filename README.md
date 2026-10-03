@@ -139,6 +139,16 @@ Lỗi kiểm tra dữ liệu trả mã `422 { error, errors: [{ field, message }
 
 ## Cập nhật mẫu Word
 
+**Không cần sửa mã (khuyên dùng):** Danh mục → **Mẫu văn bản**. Mỗi loại (biên bản KSHT, phương án, giấy ĐKCT, giấy
+xác nhận) có mẫu gốc (file trong `templates/`, luôn còn) và các mẫu admin tải lên (bảng `dkct_doc_templates`).
+Tải mẫu về sửa trong Word (giữ thẻ `{…}` và nhãn ký số `((…))`), tải lên: phần mềm kiểm tra cú pháp thẻ (báo lỗi tiếng
+Việt), so thẻ với mẫu gốc (thẻ lạ / thẻ thiếu / thiếu nhãn ký số), thử điền bằng văn bản gần nhất, cho **Xem thử**; rồi
+"Lưu & dùng ngay" hoặc "Dùng mẫu này". Sửa tên/ghi chú, thay file, xóa, quay về mẫu gốc bất cứ lúc nào. Mỗi loại tối đa
+một mẫu đang dùng; xóa mẫu đang dùng thì quay về mẫu gốc. Mẫu đang dùng mà lỗi khi điền: xuất Word trả 409 kèm tên mẫu
+và hướng dẫn quay về mẫu gốc. Mọi người xem/tải mẫu; chỉ admin thay đổi.
+
+**Đổi mẫu gốc trong mã nguồn** (khi bố cục đổi nhiều, cần sinh lại thẻ):
+
 1. Thay `templates/template_dkct.source.docx` bằng mẫu mới, giữ bố cục các mục 1–13 và 3 bảng phụ lục.
 2. Chạy `python scripts/tag_template.py` (cần `python-docx`). Nếu bố cục đổi, script dừng và báo đoạn không khớp.
 3. Chạy `npm test`, và `node scripts/render-sample.js` để xuất `tests/.tmp/sample.docx` rồi mở ra xem.

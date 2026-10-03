@@ -15,7 +15,7 @@ const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('..
 
 const LIST_COLUMNS = 'id, docNumber, docYear, department, stationName, bays, workDate, substationId, registrationId, planId, createdBy, createdAt, updatedAt';
 
-function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) {
+function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
   const router = express.Router();
   const numbering = createNumbering(db, undefined, { table: 'dkct_confirmations', prefix: 'GXN:' });
   const notFound = (message) => Object.assign(new Error(message), { status: 404 });
@@ -207,7 +207,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
     if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy xác nhận.');
     const data = await normalize(req.body, res);
     if (!data) return;
-    sendPreview(res, renderConfirmationDocx({ docNumber: previewNumber(null, req.query), data }));
+    sendPreview(res, await templates.render('confirmation', (tpl) => renderConfirmationDocx({ docNumber: previewNumber(null, req.query), data }, tpl)));
   }));
 
   router.post('/confirmations/:id/preview', wrap(async (req, res) => {
@@ -215,13 +215,13 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa giấy xác nhận.');
     const data = await normalize(req.body, res);
     if (!data) return;
-    sendPreview(res, renderConfirmationDocx({ docNumber: row.docNumber, data }));
+    sendPreview(res, await templates.render('confirmation', (tpl) => renderConfirmationDocx({ docNumber: row.docNumber, data }, tpl)));
   }));
 
   router.get('/confirmations/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
     const data = safeParse(row.data);
-    const buffer = renderConfirmationDocx({ docNumber: row.docNumber, data });
+    const buffer = await templates.render('confirmation', (tpl) => renderConfirmationDocx({ docNumber: row.docNumber, data }, tpl));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', attachment(docxFileName('confirmation', {
       date: data.workDate || data.header?.date, number: row.docNumber, bays: data.bays, bayText: data.equipment, station: data.station?.name
