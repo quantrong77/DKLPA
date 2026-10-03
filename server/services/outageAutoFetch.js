@@ -1,15 +1,14 @@
 /**
  * Tự tải lịch cắt điện từ trang Công ty theo giờ hẹn (giờ Việt Nam) rồi nạp, so sánh, báo thay đổi.
  *
- * Cấu hình (biến môi trường của máy chủ):
+ * Cấu hình: admin đặt ở Danh mục → Tải lịch tự động (services/outageSettings); mặc định lấy biến môi trường
  *   OUTAGE_AUTO_FETCH   giờ tải trong ngày, vd "07:00,15:00" (bỏ trống = tắt)
  *   OUTAGE_AUTO_DAYS    số ngày tới cần tải, tính từ hôm nay (mặc định 14)
- * Cần tài khoản trang lịch (OUTAGE_SOURCE_USER/PASSWORD) và máy chủ vào được mạng nội bộ.
+ * Cần tài khoản trang lịch (admin đặt hoặc OUTAGE_SOURCE_USER/PASSWORD) và máy chủ vào được mạng nội bộ.
  *
  * Mỗi lần tải giữ một "slot" duy nhất trong dkct_outage_fetches ("auto:YYYY-MM-DD HH:mm"): nhiều tiến trình
  * (hoặc khởi động lại trong cùng phút) cũng chỉ tải một lần.
  */
-const { newId } = require('../schema');
 const { changedRows } = require('../util');
 const { vnNow, vnToday } = require('./clock');
 const { fetchOutageWorkbook, sourceConfig, configured } = require('./outageSource');
@@ -44,9 +43,13 @@ const addDays = (iso, n) => {
   return d.toISOString().slice(0, 10);
 };
 
+// id tăng theo thời gian: startedAt chỉ tới phút, hai lần tải trong cùng phút vẫn sắp đúng thứ tự
+let runSeq = 0;
+const fetchRunId = () => `TLCD-${Date.now().toString(36).padStart(9, '0')}-${(++runSeq % 1679616).toString(36).padStart(4, '0')}-${Math.random().toString(36).slice(2, 6)}`;
+
 /** Ghi một lần tải vào nhật ký (giữ slot); trả id, hoặc null nếu slot đã có người tải. */
 async function claimSlot(db, { slot, mode, from, to, actorId, now }) {
-  const id = newId('TLCD');
+  const id = fetchRunId();
   const res = await db.execute(`INSERT IGNORE INTO dkct_outage_fetches (id, slot, mode, fromDate, toDate, startedAt, actorId)
     VALUES (?, ?, ?, ?, ?, ?, ?)`, [id, slot, mode, from, to, vnNow(now), actorId || null]);
   return changedRows(res) ? id : null;
@@ -83,22 +86,31 @@ async function fetchAndImport({ db, importer, outageSource, from, to, mode, slot
 }
 
 /**
- * Bộ hẹn giờ: mỗi 30 giây xem đã tới giờ hẹn chưa. -> { config, start(), stop(), tick(now) }
- * Không bật (start trả false) khi chưa đặt giờ hoặc chưa có tài khoản trang lịch.
+ * Bộ hẹn giờ: mỗi 30 giây xem đã tới giờ hẹn chưa. -> { start(), stop(), tick(now), enabled(), config() }
+ * Giờ hẹn và tài khoản đọc lại mỗi lần (admin đổi trên giao diện có hiệu lực ngay, không cần khởi động lại).
+ * @param settings { autoOptions(), sourceOptions() } (services/outageSettings)
  */
-function createAutoFetch({ db, importer, outageSource, auto, log = console }) {
-  const config = autoConfig(auto);
+function createAutoFetch({ db, importer, settings, log = console }) {
   let timer = null;
   let running = false;
+
+  const config = () => settings.autoOptions();
+  async function enabled() {
+    const cfg = await config();
+    return cfg.times.length > 0 && configured(sourceConfig(await settings.sourceOptions()));
+  }
 
   async function tick(now = new Date()) {
     if (running) return null;
     const hhmm = vnNow(now).slice(11, 16);
-    if (!config.times.includes(hhmm)) return null;
     running = true;
     try {
+      const cfg = await config();
+      if (!cfg.times.includes(hhmm)) return null;
+      const outageSource = await settings.sourceOptions();
+      if (!configured(sourceConfig(outageSource))) return null;
       const from = vnToday(now);
-      const to = addDays(from, config.days - 1);
+      const to = addDays(from, cfg.days - 1);
       const label = `Tự tải ${hhmm} ${from.split('-').reverse().join('/')}`;
       const result = await fetchAndImport({ db, importer, outageSource, from, to, mode: 'AUTO', slot: `auto:${from} ${hhmm}`, label, now });
       if (result) log.info?.(`[dkct] ${label}: ${result.rows} dòng, ${result.logged} thay đổi, báo ${result.notified} người.`);
@@ -113,12 +125,15 @@ function createAutoFetch({ db, importer, outageSource, auto, log = console }) {
 
   return {
     config,
-    enabled: () => config.times.length > 0 && configured(sourceConfig(outageSource)),
+    enabled,
+    /** Bật bộ hẹn giờ (luôn chạy; chưa đặt giờ/tài khoản thì mỗi lần kiểm tra không làm gì). */
     start() {
-      if (timer || !config.times.length || !configured(sourceConfig(outageSource))) return false;
+      if (timer) return true;
       timer = setInterval(() => { tick().catch(() => {}); }, TICK_MS);
       timer.unref?.();
-      log.info?.(`[dkct] Tự tải lịch cắt điện lúc ${config.times.join(', ')} hằng ngày (${config.days} ngày tới).`);
+      config().then(async (cfg) => {
+        if (await enabled()) log.info?.(`[dkct] Tự tải lịch cắt điện lúc ${cfg.times.join(', ')} hằng ngày (${cfg.days} ngày tới).`);
+      }).catch(() => {});
       return true;
     },
     stop() { if (timer) clearInterval(timer); timer = null; },

@@ -23,7 +23,7 @@ export const HELP_SECTIONS = [
       ['Theo dõi một hồ sơ', 'Bấm biểu tượng luồng ở đầu một dòng (hoặc mở hồ sơ): thanh luồng tô màu bước đã có (xanh lá ✓), bước đang chọn (xanh dương), bước nên làm tiếp (vàng); các hồ sơ cùng luồng được viền xanh trong danh sách.'],
       ['Cảnh báo lịch', 'Hồ sơ gắn dòng lịch đã hoãn / dời / sửa có nhãn "Lịch: …" trong danh sách và dải cảnh báo khi mở — kiểm tra lại trước khi in, nộp.'],
       ['Giao diện', 'Nút bảng màu ở đầu trang: chọn "Mặc định" hoặc "Chuyên nghiệp"; trình duyệt ghi nhớ lựa chọn.'],
-      ['Quyền', 'Trưởng/phó tổ, trưởng phòng, admin lập và sửa hồ sơ của tổ; thành viên xem. Một số chức năng (dọn lịch, thư viện mạch dòng, khu vực của tổ, mẫu văn bản) chỉ admin.']
+      ['Quyền', 'Trưởng/phó tổ, trưởng phòng, admin lập và sửa hồ sơ của tổ; thành viên xem. Một số chức năng (dọn lịch, thư viện mạch dòng, khu vực của tổ, mẫu văn bản, tải lịch tự động) chỉ admin.']
     ]
   },
   {
@@ -31,8 +31,9 @@ export const HELP_SECTIONS = [
     items: [
       ['Nạp lịch', '"Tải lịch cắt điện": máy chủ tự đăng nhập trang lịch Công ty, tải theo khoảng ngày rồi nạp luôn (cần cấu hình tài khoản). Hoặc "Chọn file lịch cắt điện (Excel)" → xem trước → "Cập nhật lịch".'],
       ['So sánh khi nạp lại', 'Chọn khoảng so sánh: dòng Hoãn (đỏ), Dời lịch (xanh), Sửa nội dung (tím), Phát sinh (vàng); không đổi để nguyên. Bấm một mục trong kết quả để tới dòng đó. Dời/sửa cập nhật tại chỗ nên hồ sơ đã gắn vẫn trỏ đúng.'],
-      ['Tự tải và báo', 'Nếu máy chủ bật tự tải theo giờ, dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi.'],
+      ['Tự tải và báo', 'Admin đặt giờ tải ở Danh mục → Tải lịch tự động; dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi.'],
       ['Lọc, tìm', 'Chọn khoảng ngày, gõ từ khóa (trạm, thiết bị, đơn vị); bấm thẻ thống kê để lọc; "Chỉ tổ của tôi" giữ dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ.'],
+      ['Ẩn/hiện khung', 'Nút con mắt "Tải lịch" và "Thống kê" ở hàng lọc ẩn/hiện khung tải lịch và các thẻ thống kê cho gọn màn hình; trình duyệt ghi nhớ lựa chọn.'],
       ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — nội dung, phạm vi, thời gian tự điền. "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
       ['Dọn lịch cũ (admin)', 'Chọn khoảng ngày, xem số dòng sẽ xóa rồi xác nhận; dòng đã có hồ sơ gắn được giữ lại.']
     ]
@@ -79,6 +80,7 @@ export const HELP_SECTIONS = [
       ['Danh mục chung', 'Nhân sự ATĐ, Đơn vị QLVH (nơi nhận), Trạm biến áp (kèm bản vẽ sơ đồ trạm), Nhiệm vụ, Thư viện rủi ro — dùng để chọn khi lập hồ sơ.'],
       ['Mạch dòng TI (admin)', 'Thư viện cô lập mạch dòng theo trạm / TI, dùng cho Phụ lục II của phương án.'],
       ['Khu vực của tổ (admin)', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng.'],
+      ['Tải lịch tự động (admin)', 'Tên đăng nhập, mật khẩu trang lịch cắt điện của Công ty (mật khẩu lưu mã hóa, không hiện lại), giờ tự tải hằng ngày (vd 07:00, 15:00; để trống = tắt) và số ngày tới. "Thử kết nối" kiểm tra đăng nhập. Lưu là có hiệu lực ngay; ô để trống dùng giá trị trong .env của máy chủ.'],
       ['Mẫu văn bản (admin)', 'Tải mẫu Word về sửa (giữ thẻ {…} và nhãn ((…))), tải lên: phần mềm kiểm tra, thử điền, cho xem thử; "Lưu & dùng ngay" hoặc quay về mẫu gốc bất cứ lúc nào.']
     ]
   },

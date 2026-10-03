@@ -16,10 +16,12 @@
  *  - listDepartments() -> [{ name, shortName }]: danh sách tổ cho ô "Tổ đăng ký" (tùy chọn)
  *  - outageSource: { url, user, password, fetch } tải lịch cắt điện từ trang Công ty (tùy chọn; mặc định OUTAGE_SOURCE_* trong env)
  *  - outageAuto: { times: '07:00,15:00', days: 14 } giờ tự tải lịch (tùy chọn; mặc định OUTAGE_AUTO_FETCH, OUTAGE_AUTO_DAYS)
+ *    (admin đổi được tài khoản, mật khẩu, giờ tải trên giao diện; giá trị trên chỉ là mặc định)
+ *  - secretKey: khóa mã hóa mật khẩu trang lịch admin lưu (tùy chọn; mặc định DKCT_SECRET_KEY, rồi JWT_SECRET trong env)
  *  - notifyUsers([{ userId, text }]) gửi tin nhắn báo lịch cắt điện thay đổi (tùy chọn; ChatLan: tin nhắn riêng)
  *  - listTeamLeads(department) -> [userId] tổ trưởng/tổ phó nhận báo (tùy chọn)
  *
- * Sau migrate(): dkct.startAutoFetch() bật hẹn giờ tự tải lịch (nếu đã cấu hình giờ và tài khoản trang lịch).
+ * Sau migrate(): dkct.startAutoFetch() bật hẹn giờ tự tải lịch (tải khi đã có giờ hẹn và tài khoản trang lịch).
  */
 const express = require('express');
 const { migrate } = require('./schema');
@@ -43,6 +45,7 @@ const { renderConfirmationDocx } = require('./services/confirmationRender');
 const { vnToday } = require('./services/clock');
 const { createOutageImporter } = require('./services/outageImport');
 const { createAutoFetch } = require('./services/outageAutoFetch');
+const { createOutageSettings } = require('./services/outageSettings');
 const { safeParse } = require('./util');
 
 const REQUIRED = ['db', 'getActor', 'getProfile', 'isAdmin', 'isDepartmentHead', 'isUnitLead', 'getUnit'];
@@ -105,12 +108,16 @@ function createDkctModule(deps) {
 
   const shared = {
     db, policy, wrap, numbering, getUnit, getProfile, buildDraftDefaults, listDepartments,
-    defaultUnitName: deps.defaultUnitName || DEFAULT_UNIT_NAME,
-    outageSource: deps.outageSource // { url, user, password, fetch } (tùy chọn; mặc định đọc OUTAGE_SOURCE_* trong biến môi trường)
+    defaultUnitName: deps.defaultUnitName || DEFAULT_UNIT_NAME
   };
+  // tài khoản trang lịch, giờ tự tải: admin đặt trên giao diện, mặc định deps.outageSource/outageAuto rồi OUTAGE_* trong env
+  shared.outageSettings = createOutageSettings({
+    db, source: deps.outageSource, auto: deps.outageAuto,
+    secret: deps.secretKey || process.env.DKCT_SECRET_KEY || process.env.JWT_SECRET || ''
+  });
   // nạp lịch (chọn file / bấm tải / tự tải) dùng chung một quy trình; tự tải theo giờ hẹn
   shared.importer = createOutageImporter({ db, notifyUsers: deps.notifyUsers, listTeamLeads: deps.listTeamLeads });
-  shared.autoFetch = createAutoFetch({ db, importer: shared.importer, outageSource: deps.outageSource, auto: deps.outageAuto });
+  shared.autoFetch = createAutoFetch({ db, importer: shared.importer, settings: shared.outageSettings });
   // mẫu Word: mẫu admin tải lên (đang dùng) hoặc mẫu gốc trong templates/; thử điền bằng văn bản gần nhất
   const SAMPLE_TABLE = {
     survey: ['dkct_surveys', 'Biên bản KSHT', 'NULL'], plan: ['dkct_plans', 'Phương án', 'docNumber'],

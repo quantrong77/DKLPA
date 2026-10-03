@@ -8,7 +8,7 @@ const { forbidden } = require('../policy');
 const { draftFromOutage } = require('../services/registration');
 const { likePattern, LIKE, changedRows } = require('../util');
 const { vnToday } = require('../services/clock');
-const { sourceConfig, configured } = require('../services/outageSource');
+const { sourceConfig, configured, fetchOutageWorkbook } = require('../services/outageSource');
 const { isoDate } = require('../services/outageImport');
 const { fetchAndImport, MAX_DAYS } = require('../services/outageAutoFetch');
 const { newId } = require('../schema');
@@ -26,7 +26,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => cb(null, /\.xlsx?$/i.test(file.originalname))
 });
 
-function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSource, importer, autoFetch, listDepartments }) {
+function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, importer, autoFetch, listDepartments }) {
   const router = express.Router();
 
   // Kiểm tra quyền TRƯỚC khi nhận file: người không có quyền không đẩy được file vào bộ nhớ
@@ -71,12 +71,36 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSource, impo
   router.get('/outages/source', wrap(async (req, res) => {
     await policy.actorOf(req);
     const runs = await db.query(`SELECT id, mode, fromDate, toDate, startedAt, finishedAt, ok, rowsCount, summary, error
-      FROM dkct_outage_fetches ORDER BY startedAt DESC LIMIT 5`);
+      FROM dkct_outage_fetches ORDER BY startedAt DESC, id DESC LIMIT 5`);
     res.json({
-      configured: configured(sourceConfig(outageSource)),
-      auto: autoFetch.enabled() ? autoFetch.config : null,
+      configured: configured(sourceConfig(await outageSettings.sourceOptions())),
+      auto: (await autoFetch.enabled()) ? await autoFetch.config() : null,
       runs: runs.map(r => ({ ...r, ok: r.ok === null || r.ok === undefined ? null : Number(r.ok) === 1, summary: r.summary ? JSON.parse(r.summary) : null }))
     });
+  }));
+
+  // Cấu hình tải lịch (admin): tài khoản trang lịch, mật khẩu (mã hóa, không trả về), giờ tự tải
+  const requireAdmin = wrap(async (req, res, next) => {
+    const actor = await policy.actorOf(req);
+    if (!policy.isAdmin(actor)) throw forbidden('Chỉ admin được cấu hình tải lịch cắt điện.');
+    req.dkctActor = actor;
+    next();
+  });
+  router.get('/outage-settings', requireAdmin, wrap(async (req, res) => {
+    res.json(await outageSettings.view());
+  }));
+  router.put('/outage-settings', requireAdmin, wrap(async (req, res) => {
+    const b = req.body || {};
+    res.json(await outageSettings.save({
+      user: b.user, password: b.password, clearPassword: !!b.clearPassword,
+      times: b.times, days: b.days, resetAuto: !!b.resetAuto
+    }, req.dkctActor.id));
+  }));
+  // thử đăng nhập + kết xuất lịch hôm nay bằng cấu hình đã lưu (không nạp)
+  router.post('/outage-settings/test', requireAdmin, wrap(async (req, res) => {
+    const today = vnToday();
+    const buffer = await fetchOutageWorkbook({ from: today, to: today }, await outageSettings.sourceOptions());
+    res.json({ ok: true, bytes: buffer.length });
   }));
 
   router.post('/outages/fetch', requireImporter, wrap(async (req, res) => {
@@ -85,7 +109,7 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSource, impo
     if (!from || !to || from > to) throw Object.assign(new Error('Chọn khoảng ngày cần tải (từ ngày ≤ đến ngày).'), { status: 400 });
     if ((Date.parse(to) - Date.parse(from)) / 86400000 > MAX_DAYS) throw Object.assign(new Error(`Mỗi lần tải tối đa ${MAX_DAYS} ngày.`), { status: 400 });
     const result = await fetchAndImport({
-      db, importer, outageSource, from, to, mode: 'MANUAL', slot: `manual:${newId('T')}`, actorId: req.dkctActor.id,
+      db, importer, outageSource: await outageSettings.sourceOptions(), from, to, mode: 'MANUAL', slot: `manual:${newId('T')}`, actorId: req.dkctActor.id,
       label: `Tải lịch ${from.split('-').reverse().join('/')}–${to.split('-').reverse().join('/')} (${vnToday().split('-').reverse().join('/')})`
     });
     res.json({ ...result, from, to });

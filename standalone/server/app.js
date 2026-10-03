@@ -199,7 +199,7 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     app.get('*', (req, res) => res.sendFile(path.join(clientDir, 'index.html')));
   }
 
-  // tự tải lịch cắt điện theo giờ hẹn (OUTAGE_AUTO_FETCH); bản này không có chat nên chỉ ghi nhật ký, đánh dấu
+  // tự tải lịch cắt điện theo giờ hẹn (admin đặt hoặc OUTAGE_AUTO_FETCH); bản này không có chat nên chỉ ghi nhật ký, đánh dấu
   return { app, migrate, startAutoFetch: () => dkct.startAutoFetch() };
 }
 

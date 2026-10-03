@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardCheck, LogOut, Settings, UserRound, Loader2, Hourglass, X } from 'lucide-react';
+import { ClipboardCheck, LogOut, Settings, UserRound, Loader2, Hourglass, X, House } from 'lucide-react';
 import DkctModule from '@dkct/index.jsx';
 import { btnPrimary, btnSecondary, btnGhost, inputCls, inputBorder } from '@dkct/components/ui.jsx';
 import { loadTheme, themeClass, THEME_EVENT } from '@dkct/lib/theme.js';
@@ -98,10 +98,17 @@ export default function App() {
           <ClipboardCheck className="w-5 h-5" aria-hidden="true" />
           <span className="font-bold text-sm flex-1 truncate">Chuẩn bị công tác{me.department ? ` · ${me.department}` : ''}</span>
           {isAdmin && (
-            <button type="button" onClick={() => setView(view === 'admin' ? 'dkct' : 'admin')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 ${view === 'admin' ? 'bg-white text-chatlan-700' : 'hover:bg-white/15'}`}>
-              <Settings className="w-4 h-4" /> Quản trị
-            </button>
+            view === 'admin' ? (
+              <button type="button" onClick={() => setView('dkct')} title="Về trang chính"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 bg-white text-chatlan-700">
+                <House className="w-4 h-4" /> Trang chính
+              </button>
+            ) : (
+              <button type="button" onClick={() => setView('admin')}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-white/15">
+                <Settings className="w-4 h-4" /> Quản trị
+              </button>
+            )
           )}
           <button type="button" onClick={() => setProfileOpen(true)} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-white/15"
             title={me.email}>
@@ -113,7 +120,7 @@ export default function App() {
           </button>
         </header>
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {view === 'admin' && isAdmin ? <AdminPanel me={me} onChanged={loadMe} />
+          {view === 'admin' && isAdmin ? <AdminPanel me={me} onChanged={loadMe} onBack={() => setView('dkct')} />
             : waiting ? (
               <EmptyState icon={Hourglass} title="Đang chờ quản trị viên xếp tổ"
                 description="Tài khoản đã tạo. Khi quản trị viên xếp bạn vào tổ, tải lại trang để bắt đầu dùng.">

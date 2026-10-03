@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck } from 'lucide-react';
+import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck, Eye, EyeOff } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
@@ -12,6 +12,24 @@ const todayIso = () => isoOf(new Date());
 const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return isoOf(d); };
 
 const MINE_KEY = 'dkct.outages.mineOnly';
+const SHOW_KEY = 'dkct.outages.show'; // khung tải lịch, khung thống kê: ẩn/hiện (trình duyệt nhớ)
+
+function loadShow() {
+  try { return { fetch: true, stats: true, ...JSON.parse(localStorage.getItem(SHOW_KEY) || '{}') }; } catch { return { fetch: true, stats: true }; }
+}
+
+/** Nút "con mắt" ẩn/hiện một khung. */
+function EyeToggle({ shown, label, title, onClick }) {
+  const Icon = shown ? Eye : EyeOff;
+  return (
+    <button type="button" aria-pressed={shown} onClick={onClick}
+      className={`${btnSecondary} ${shown ? '' : '!text-slate-400 border-dashed'}`}
+      title={`${shown ? 'Ẩn' : 'Hiện'} ${title}`} aria-label={`${shown ? 'Ẩn' : 'Hiện'} ${title}`}>
+      <Icon className={`w-4 h-4 ${shown ? 'text-chatlan-600' : 'text-slate-400'}`} aria-hidden="true" />
+      <span>{label}</span>
+    </button>
+  );
+}
 
 /** Trang lịch cắt điện của Công ty (mạng nội bộ): tải file Excel về rồi nạp ở nút bên cạnh. */
 export const OUTAGE_SOURCE_URL = 'https://home.ptc3.npt.evn.vn/lichcatdien_new2/';
@@ -179,7 +197,7 @@ function ImportBox({ onDone, onLocate }) {
           </>
         ) : (
           <a href={OUTAGE_SOURCE_URL} target="_blank" rel="noopener noreferrer" className={btnSecondary}
-            title="Mở trang lịch cắt điện của Công ty (mạng nội bộ) để tải file Excel. Máy chủ có tài khoản (OUTAGE_SOURCE_USER/PASSWORD) thì nút này tự tải và cập nhật.">
+            title="Mở trang lịch cắt điện của Công ty (mạng nội bộ) để tải file Excel. Khi admin đã đặt tài khoản (Danh mục → Tải lịch tự động) thì nút này tự tải và cập nhật.">
             <CloudDownload className="w-4 h-4 text-chatlan-600" /> Tải lịch cắt điện
           </a>
         )}
@@ -371,6 +389,12 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, ca
   const [myAreas, setMyAreas] = useState([]);
   const [historyOf, setHistoryOf] = useState(() => new Set()); // dòng đang mở lịch sử
   const [refresh, setRefresh] = useState(0);
+  const [show, setShow] = useState(loadShow);
+  const toggleShow = (key) => setShow(s => {
+    const next = { ...s, [key]: !s[key] };
+    try { localStorage.setItem(SHOW_KEY, JSON.stringify(next)); } catch { /* bỏ qua */ }
+    return next;
+  });
   const toggleMine = () => setMineOnly(v => { try { localStorage.setItem(MINE_KEY, v ? '0' : '1'); } catch { /* bỏ qua */ } return !v; });
   const base = useMemo(() => (mineOnly ? items.filter(o => o.mine) : items), [items, mineOnly]);
   const shown = useMemo(() => base.filter(([...FILTERS, ...CHANGE_FILTERS].find(f => f.id === filter) || FILTERS[0]).test), [base, filter]);
@@ -415,8 +439,11 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, ca
 
   return (
     <div className="space-y-3">
-      <AutoFetchStatus refresh={refresh} />
-      {canCreate && <ImportBox onDone={load} onLocate={locate} />}
+      {/* ẩn bằng CSS (không gỡ khỏi trang): đang xem trước file / kết quả so sánh thì vẫn giữ nguyên */}
+      <div className="space-y-3" hidden={!show.fetch}>
+        <AutoFetchStatus refresh={refresh} />
+        {canCreate && <ImportBox onDone={load} onLocate={locate} />}
+      </div>
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Từ ngày
           <input type="date" value={from} onChange={e => setFrom(e.target.value)} className={`${inputCls} ${inputBorder()} block mt-1`} />
@@ -435,6 +462,11 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, ca
           <Users className="w-4 h-4" /> Chỉ tổ của tôi
         </button>
         {canPurge && <OutagePurge onDone={load} />}
+        <div className="flex gap-1" role="group" aria-label="Ẩn/hiện khung">
+          <EyeToggle shown={show.fetch} label="Tải lịch" title="khung tải lịch cắt điện" onClick={() => toggleShow('fetch')} />
+          {/* ẩn thống kê thì bỏ lọc theo thẻ thống kê (không còn thấy để bỏ) */}
+          <EyeToggle shown={show.stats} label="Thống kê" title="khung thống kê" onClick={() => { if (show.stats) setFilter('all'); toggleShow('stats'); }} />
+        </div>
       </div>
       {mineOnly && (
         <p className="text-xs text-slate-600 dark:text-slate-300" role="note">
@@ -444,7 +476,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, ca
         </p>
       )}
 
-      {base.length > 0 && <StatsBar items={base} filter={filter} onFilter={setFilter} />}
+      {show.stats && base.length > 0 && <StatsBar items={base} filter={filter} onFilter={setFilter} />}
 
       {!loading && shown.length === 0 ? (
         base.length > 0 || (mineOnly && items.length > 0) ? (

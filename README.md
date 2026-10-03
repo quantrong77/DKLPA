@@ -8,8 +8,8 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
 - Import **lịch cắt điện** (Excel, mẫu 8 hoặc 10 cột) thành kế hoạch công tác. Có bước xem trước và chống nhập trùng.
   Nút "Tải lịch cắt điện": máy chủ có tài khoản trang lịch Công ty thì tự đăng nhập, kết xuất Excel theo khoảng ngày chọn
   (trang `https://home.ptc3.npt.evn.vn/tsvh/lcd.aspx`) và nạp luôn; chưa có tài khoản thì chỉ mở trang lịch
-  (https://home.ptc3.npt.evn.vn/lichcatdien_new2/) để tải tay. Cấu hình trong `.env` của máy chủ (không commit):
-  `OUTAGE_SOURCE_USER`, `OUTAGE_SOURCE_PASSWORD` (tuỳ chọn `OUTAGE_SOURCE_URL`). Chỉ chạy khi máy chủ vào được mạng nội bộ.
+  (https://home.ptc3.npt.evn.vn/lichcatdien_new2/) để tải tay. Tài khoản do admin đặt ở Danh mục → Tải lịch tự động, hoặc
+  trong `.env` của máy chủ (không commit): `OUTAGE_SOURCE_USER`, `OUTAGE_SOURCE_PASSWORD` (tuỳ chọn `OUTAGE_SOURCE_URL`, chỉ đặt trong .env). Chỉ chạy khi máy chủ vào được mạng nội bộ.
   Nạp lại lịch: so với lịch đã nạp trong khoảng ngày chọn (mặc định theo khoảng của file) — **hoãn** (dòng không còn trong
   file mới, hoặc tình trạng "Hoãn") tô đỏ, **dời lịch** (cùng trạm, cùng việc, khác giờ) xanh, **sửa nội dung** (cùng giờ,
   khác chữ) tím, **phát sinh** (dòng mới) vàng, **có lại** (dòng đang hoãn xuất hiện lại) bỏ dấu hoãn; dời/sửa cập nhật
@@ -17,7 +17,10 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   Khoảng chưa nạp lịch nào thì không so sánh. Dấu phát sinh/dời/sửa giữ 7 ngày; dấu hoãn giữ đến khi có lại.
   Biên bản KSHT, phương án, giấy ĐKCT gắn dòng lịch đã hoãn/dời/sửa có nhãn cảnh báo ở danh sách, dải cảnh báo khi mở
   và trên thanh luồng. Mỗi dòng lịch có **lịch sử thay đổi** (chỉ ghi khi trạng thái đổi thật, nạp lặp không ghi trùng).
-  **Tự tải theo giờ hẹn**: `OUTAGE_AUTO_FETCH=07:00,15:00` (giờ VN, bỏ trống = tắt), `OUTAGE_AUTO_DAYS=14`; mỗi giờ hẹn
+  **Tự tải theo giờ hẹn**: admin đặt ở **Danh mục → Tải lịch tự động** (tài khoản, mật khẩu, giờ tải, số ngày; có hiệu lực
+  ngay, không cần khởi động lại). Mật khẩu lưu mã hóa AES-256-GCM với khóa `DKCT_SECRET_KEY` trong .env (không có thì dùng
+  `JWT_SECRET`; không có khóa nào thì chỉ đặt mật khẩu được trong .env). Ô để trống dùng .env:
+  `OUTAGE_AUTO_FETCH=07:00,15:00` (giờ VN, bỏ trống = tắt), `OUTAGE_AUTO_DAYS=14`; mỗi giờ hẹn
   chỉ tải một lần (kể cả nhiều tiến trình), nhật ký lần tải hiện ở đầu tab. Có thay đổi thì báo (ChatLan: tin nhắn riêng từ
   "Chuẩn bị công tác") cho người lập và tổ trưởng/tổ phó của tổ có hồ sơ gắn dòng lịch, và tổ trưởng/tổ phó của tổ phụ trách
   khu vực. **Chỉ tổ của tôi**: dòng thuộc khu vực TTĐ tổ phụ trách (admin chọn ở Danh mục → Khu vực của tổ; khớp theo ô

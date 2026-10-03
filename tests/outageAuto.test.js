@@ -140,7 +140,7 @@ test('tự tải theo giờ hẹn: đúng giờ VN thì tải hôm nay..+N ngày
   console.warn = () => {};
   try {
     const auto = app.dkct.autoFetch;
-    assert.equal(auto.enabled(), true);
+    assert.equal(await auto.enabled(), true);
     const at = (iso) => new Date(iso); // giờ UTC; VN = UTC+7
     const first = await auto.tick(at('2024-10-05T00:00:30Z')); // 07:00 VN
     assert.equal(first.rows, 1);
@@ -206,5 +206,85 @@ test('dọn lịch cũ theo khoảng ngày: chỉ admin; xem trước số dòng
     // khoảng có từ ngày
     const r2 = (await app.call('admin', 'POST', '/outages/purge', { from: '2024-10-15', to: '2024-10-31' })).body;
     assert.deepEqual([r2.deleted, r2.kept], [1, 0]);
+  } finally { app.close(); }
+});
+
+test('cấu hình tải lịch do admin đặt: chỉ admin; mật khẩu mã hóa, không trả về; giờ tải có hiệu lực ngay; bỏ trống = dùng .env', async () => {
+  const auths = [];
+  const fakeFetch = async (url, init) => {
+    const auth = Buffer.from(init.headers.Authorization.slice(6), 'base64').toString();
+    if (init.method === 'GET') {
+      auths.push(auth);
+      if (auth !== 'tnld2:mat-khau-moi' && auth !== 'u:p') return new Response('no', { status: 401 });
+      return new Response('<input type="hidden" name="__VIEWSTATE" value="vs" /><input name="txtTuNgay" />', { headers: { 'content-type': 'text/html' } });
+    }
+    return new Response(xlsx([['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', '', '', '', '']]),
+      { headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
+  };
+  const app = await startApp({
+    outageSource: { url: 'https://lich.test/lcd.aspx', user: 'u', password: 'p', fetch: fakeFetch },
+    outageAuto: { times: '07:00', days: 3 }, secretKey: 'khoa-thu'
+  });
+  const info = console.info;
+  console.info = () => {};
+  try {
+    for (const who of ['member', 'lead']) {
+      assert.equal((await app.call(who, 'GET', '/outage-settings')).status, 403);
+      assert.equal((await app.call(who, 'PUT', '/outage-settings', { times: '08:00' })).status, 403);
+    }
+    let view = (await app.call('admin', 'GET', '/outage-settings')).body;
+    assert.deepEqual([view.user, view.defaultUser, view.passwordFrom, view.autoFrom, view.times, view.days, view.canStorePassword],
+      ['', 'u', 'env', 'env', '07:00', 3, true]);
+
+    view = (await app.call('admin', 'PUT', '/outage-settings', { user: 'tnld2', password: 'mat-khau-moi', times: '7h30; 15:00', days: 5 })).body;
+    assert.deepEqual([view.user, view.passwordFrom, view.autoFrom, view.times, view.days], ['tnld2', 'admin', 'admin', '07:30, 15:00', 5]);
+    assert.ok(!JSON.stringify(view).includes('mat-khau-moi'), 'không trả mật khẩu về trình duyệt');
+    const raw = (await app.db.queryOne("SELECT value FROM dkct_settings WHERE name = 'outage.config'")).value;
+    assert.ok(!raw.includes('mat-khau-moi') && /"password":"v1:/.test(raw), 'mật khẩu lưu dạng mã hóa');
+
+    assert.equal((await app.call('admin', 'POST', '/outage-settings/test')).body.ok, true);
+    assert.equal(auths.at(-1), 'tnld2:mat-khau-moi', 'dùng tài khoản admin vừa lưu');
+    assert.deepEqual((await app.call('member', 'GET', '/outages/source')).body.auto, { times: ['07:30', '15:00'], days: 5 });
+    assert.equal(await app.dkct.autoFetch.tick(new Date('2024-10-05T00:00:00Z')), null, '07:00 không còn là giờ hẹn');
+    assert.equal((await app.dkct.autoFetch.tick(new Date('2024-10-05T00:30:00Z'))).rows, 1, '07:30 tải ngay, không cần khởi động lại');
+
+    // giữ mật khẩu khi để trống; lỗi nhập
+    view = (await app.call('admin', 'PUT', '/outage-settings', { user: 'tnld2', password: '' })).body;
+    assert.equal(view.passwordFrom, 'admin');
+    assert.equal((await app.call('admin', 'PUT', '/outage-settings', { times: 'sáng sớm' })).status, 400);
+    assert.equal((await app.call('admin', 'PUT', '/outage-settings', { days: 100 })).status, 400);
+
+    // để trống giờ = tắt tự tải; "dùng .env" quay về mặc định
+    await app.call('admin', 'PUT', '/outage-settings', { times: '' });
+    assert.equal((await app.call('member', 'GET', '/outages/source')).body.auto, null);
+    view = (await app.call('admin', 'PUT', '/outage-settings', { user: '', clearPassword: true, resetAuto: true })).body;
+    assert.deepEqual([view.user, view.passwordFrom, view.autoFrom, view.times], ['', 'env', 'env', '07:00']);
+    await app.call('admin', 'POST', '/outage-settings/test');
+    assert.equal(auths.at(-1), 'u:p');
+
+    // sai tài khoản: báo lỗi của trang lịch (424)
+    await app.call('admin', 'PUT', '/outage-settings', { user: 'sai', password: 'sai' });
+    const bad = await app.call('admin', 'POST', '/outage-settings/test');
+    assert.equal(bad.status, 424);
+    assert.match(bad.body.error, /từ chối tài khoản/);
+  } finally { console.info = info; app.close(); }
+});
+
+test('cấu hình tải lịch: máy chủ không có khóa thì không lưu mật khẩu; đổi khóa thì mật khẩu cũ báo không đọc được', async () => {
+  const { createOutageSettings, encrypt, decrypt } = require('../server/services/outageSettings');
+  assert.equal(decrypt('khoa-b', encrypt('khoa-a', 'x')), null);
+  assert.equal(decrypt('khoa-a', encrypt('khoa-a', 'mật khẩu')), 'mật khẩu');
+  const app = await startApp();
+  try {
+    const noKey = createOutageSettings({ db: app.db, secret: '', source: { user: '', password: '' } });
+    await assert.rejects(noKey.save({ password: 'abc' }), /DKCT_SECRET_KEY/);
+    await noKey.save({ user: 'tnld' });
+    assert.equal((await noKey.view()).canStorePassword, false);
+    const a = createOutageSettings({ db: app.db, secret: 'khoa-a', source: { user: '', password: '' } });
+    await a.save({ password: 'abc' });
+    const b = createOutageSettings({ db: app.db, secret: 'khoa-b', source: { user: '', password: '' } });
+    const view = await b.view();
+    assert.deepEqual([view.passwordUnreadable, view.passwordFrom], [true, '']);
+    assert.equal((await b.sourceOptions()).password, '', 'không giải mã được thì không dùng');
   } finally { app.close(); }
 });

@@ -2,7 +2,7 @@
  * Tải lịch cắt điện từ trang của Công ty (ASP.NET, đăng nhập Basic) như người dùng bấm "Kết xuất file":
  * GET biểu mẫu (lấy __VIEWSTATE…, cookie phiên) -> POST khoảng ngày (dd/mm/yyyy) -> file .xlsx.
  *
- * Cấu hình (biến môi trường của máy chủ, không commit):
+ * Cấu hình: admin đặt tài khoản ở Danh mục → Tải lịch tự động (services/outageSettings); mặc định biến môi trường (không commit):
  *   OUTAGE_SOURCE_USER, OUTAGE_SOURCE_PASSWORD   tài khoản trang lịch
  *   OUTAGE_SOURCE_URL                            mặc định trang kết xuất Excel bên dưới
  * Chỉ chạy được khi máy chủ vào được mạng nội bộ Công ty.
@@ -40,7 +40,7 @@ const vnDate = (iso) => { const [y, m, d] = iso.split('-'); return `${d}/${m}/${
 /** Tải file Excel lịch cắt điện cho khoảng [from, to] (YYYY-MM-DD) -> Buffer. */
 async function fetchOutageWorkbook({ from, to }, options) {
   const cfg = sourceConfig(options);
-  if (!configured(cfg)) throw fail(424, 'Máy chủ chưa cấu hình tài khoản trang lịch cắt điện (OUTAGE_SOURCE_USER, OUTAGE_SOURCE_PASSWORD trong .env).');
+  if (!configured(cfg)) throw fail(424, 'Chưa cấu hình tài khoản trang lịch cắt điện: admin vào Danh mục → Tải lịch tự động (hoặc OUTAGE_SOURCE_USER, OUTAGE_SOURCE_PASSWORD trong .env).');
   const headers = { Authorization: `Basic ${Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64')}`, 'User-Agent': 'Mozilla/5.0 (ChuanBiCongTac)' };
   const call = async (init) => {
     try {
@@ -50,7 +50,7 @@ async function fetchOutageWorkbook({ from, to }, options) {
     }
   };
   const page = await call({ method: 'GET' });
-  if (page.status === 401 || page.status === 403) throw fail(424, 'Trang lịch cắt điện từ chối tài khoản (sai tên đăng nhập/mật khẩu trong .env của máy chủ).');
+  if (page.status === 401 || page.status === 403) throw fail(424, 'Trang lịch cắt điện từ chối tài khoản (sai tên đăng nhập/mật khẩu): admin sửa ở Danh mục → Tải lịch tự động.');
   if (!page.ok) throw fail(424, `Trang lịch cắt điện báo lỗi ${page.status}.`);
   const html = await page.text();
   const fields = hiddenFields(html);

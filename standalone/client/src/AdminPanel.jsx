@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Users, Building2, Loader2 } from 'lucide-react';
-import { btnPrimary, btnGhost, cardCls, inputCls, inputBorder } from '@dkct/components/ui.jsx';
+import { Plus, Trash2, Users, Building2, Loader2, ArrowLeft } from 'lucide-react';
+import { btnPrimary, btnGhost, btnSecondary, cardCls, inputCls, inputBorder } from '@dkct/components/ui.jsx';
 import { appApi } from './api.js';
 import { notify, confirmAction } from './ui/feedback.js';
 
 const ROLE_LABEL = { admin: 'Quản trị viên', lead: 'Trưởng/phó tổ', member: 'Thành viên' };
 
 /** Quản trị: danh sách tổ (tên viết tắt dùng trong số giấy) và xếp người dùng vào tổ, cấp vai trò. */
-export default function AdminPanel({ me, onChanged }) {
+export default function AdminPanel({ me, onChanged, onBack }) {
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +41,10 @@ export default function AdminPanel({ me, onChanged }) {
 
   return (
     <div className="p-4 space-y-4 max-w-5xl mx-auto">
+      <div className="flex items-center gap-2">
+        <button type="button" className={btnSecondary} onClick={onBack}><ArrowLeft className="w-4 h-4" /> Về trang chính</button>
+        <h1 className="text-base font-bold text-slate-900 dark:text-white">Quản trị</h1>
+      </div>
       <section className={cardCls}>
         <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2"><Building2 className="w-4 h-4 text-chatlan-600" /> Tổ</h2>
         <p className="text-xs text-slate-500 mt-1">Tên viết tắt dùng trong số giấy, vd 12/ĐK-<b>TNKH</b>. Tên tổ đã ghi vào hồ sơ nên không đổi được sau khi tạo.</p>
