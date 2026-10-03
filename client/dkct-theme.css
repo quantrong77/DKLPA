@@ -1,0 +1,62 @@
+/*
+ * Giao diện "Chuyên nghiệp" của module Chuẩn bị công tác: chỉ áp dụng trong khung gốc .dkct-theme-pro.
+ * Màu chatlan-* của Tailwind đọc biến --chatlan-<n> (xem tailwind.config của ứng dụng chủ), nên đổi biến là đổi màu
+ * mọi nút, nhãn, viền, kể cả hover/dark/độ trong suốt. Phần còn lại chỉnh hình khối: góc gọn, bóng phẳng, nền dịu.
+ */
+.dkct-theme-pro {
+  /* navy / thép — tông doanh nghiệp, tương phản AA với chữ trắng từ 600 trở lên */
+  --chatlan-50: 243 246 250;
+  --chatlan-100: 228 234 242;
+  --chatlan-200: 199 211 227;
+  --chatlan-300: 159 178 204;
+  --chatlan-400: 111 139 176;
+  --chatlan-500: 68 103 154;
+  --chatlan-600: 43 79 130;
+  --chatlan-700: 33 63 107;
+  --chatlan-800: 26 50 85;
+  --chatlan-900: 20 40 67;
+  --dkct-accent: 196 132 29; /* vạch nhấn đồng thau trên đầu trang */
+  font-feature-settings: "tnum" 1, "lnum" 1; /* số thẳng cột: giờ, số văn bản, thống kê */
+  letter-spacing: -0.003em;
+}
+
+/* nền dịu, lạnh hơn slate-50 */
+.dkct-theme-pro.bg-slate-50,
+.dkct-theme-pro .bg-slate-50 { background-color: #eef1f5; }
+:where(.dark) .dkct-theme-pro.dark\:bg-slate-950,
+:where(.dark) .dkct-theme-pro .dark\:bg-slate-950 { background-color: #0b1220; }
+
+/* góc gọn */
+.dkct-theme-pro .rounded-2xl { border-radius: 8px; }
+.dkct-theme-pro .rounded-xl { border-radius: 6px; }
+.dkct-theme-pro .rounded-lg { border-radius: 4px; }
+.dkct-theme-pro .rounded-md { border-radius: 3px; }
+@media (min-width: 768px) {
+  .dkct-theme-pro .md\:rounded-2xl { border-radius: 8px; }
+  .dkct-theme-pro .md\:rounded-b-2xl { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+}
+
+/* bóng phẳng: phân lớp bằng viền thay vì đổ bóng */
+.dkct-theme-pro .shadow-sm { box-shadow: 0 1px 0 rgb(16 24 40 / 0.04); }
+.dkct-theme-pro .shadow { box-shadow: 0 1px 2px rgb(16 24 40 / 0.06); }
+
+/* đầu trang: vạch nhấn, tiêu đề chữ hoa giãn nhẹ */
+.dkct-theme-pro [data-dkct-header] {
+  box-shadow: inset 0 3px 0 rgb(var(--dkct-accent));
+  background-image: linear-gradient(to bottom, #ffffff, #f8fafc);
+}
+:where(.dark) .dkct-theme-pro [data-dkct-header] { background-image: none; }
+.dkct-theme-pro [data-dkct-title] {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.8125rem;
+  color: rgb(var(--chatlan-800));
+}
+:where(.dark) .dkct-theme-pro [data-dkct-title] { color: rgb(var(--chatlan-200)); }
+
+/* nút chính: chữ đậm vừa, không bóng */
+.dkct-theme-pro .bg-chatlan-600 { box-shadow: none; }
+.dkct-theme-pro button.font-bold, .dkct-theme-pro a.font-bold { font-weight: 600; }
+
+/* thanh cuộn theo tông */
+.dkct-theme-pro ::-webkit-scrollbar-thumb { background: rgb(var(--chatlan-300)); }

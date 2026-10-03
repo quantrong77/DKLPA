@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ClipboardCheck, LogOut, Settings, UserRound, Loader2, Hourglass, X } from 'lucide-react';
 import DkctModule from '@dkct/index.jsx';
 import { btnPrimary, btnSecondary, btnGhost, inputCls, inputBorder } from '@dkct/components/ui.jsx';
+import { loadTheme, themeClass, THEME_EVENT } from '@dkct/lib/theme.js';
 import ModalOverlay from './ui/ModalOverlay.jsx';
 import EmptyState from './ui/EmptyState.jsx';
 import FeedbackHost from './ui/FeedbackHost.jsx';
@@ -55,6 +56,13 @@ export default function App() {
   const [view, setView] = useState('dkct'); // dkct | admin
   const [profileOpen, setProfileOpen] = useState(false);
   const [bootError, setBootError] = useState('');
+  // bản độc lập: thanh trên cùng đổi theo giao diện chọn trong module
+  const [theme, setTheme] = useState(() => loadTheme(localStorage));
+  useEffect(() => {
+    const on = (e) => setTheme(e.detail);
+    window.addEventListener(THEME_EVENT, on);
+    return () => window.removeEventListener(THEME_EVENT, on);
+  }, []);
 
   useEffect(() => {
     let sub;
@@ -85,7 +93,7 @@ export default function App() {
     const isAdmin = me.role === 'admin';
     const waiting = !me.department && !isAdmin;
     body = (
-      <div className="h-full flex flex-col">
+      <div className={`h-full flex flex-col ${themeClass(theme)}`}>
         <header className="flex items-center gap-2 px-4 py-2 bg-chatlan-600 text-white">
           <ClipboardCheck className="w-5 h-5" aria-hidden="true" />
           <span className="font-bold text-sm flex-1 truncate">Chuẩn bị công tác{me.department ? ` · ${me.department}` : ''}</span>

@@ -17,6 +17,9 @@ import WorkflowBar, { WorkflowMini } from './components/WorkflowBar.jsx';
 import { APP_NAME, linkedIds } from './lib/workflow.js';
 import { defaultWorkload, planFromSurvey } from './lib/plan.js';
 import { fromSaved } from './lib/form.js';
+import { loadTheme, saveTheme, themeClass } from './lib/theme.js';
+import ThemePicker from './components/ThemePicker.jsx';
+import './dkct-theme.css';
 import { emptyRep, qlvhRoleFor, registrationFromSurvey, withQlvhFor } from './lib/survey.js';
 
 const EMPTY_WORK = {
@@ -31,6 +34,9 @@ const EMPTY_WORK = {
 export default function DkctApp() {
   const { api, notify } = useDkct();
   const [tab, setTab] = useState('outages');
+  // giao diện: Mặc định (ChatLan) | Chuyên nghiệp — nhớ theo trình duyệt
+  const [theme, setTheme] = useState(() => loadTheme(typeof localStorage === 'undefined' ? null : localStorage));
+  const chooseTheme = (id) => { setTheme(id); saveTheme(typeof localStorage === 'undefined' ? null : localStorage, id); };
   const [meta, setMeta] = useState(null);
   const [catalogs, setCatalogs] = useState({ personnel: [], stations: [], substations: [], drawings: [], duties: [], risks: [] });
   const [editor, setEditor] = useState(null); // { initial, registration, outage }
@@ -158,15 +164,15 @@ export default function DkctApp() {
   const linked = linkedIds(chain);
   const pick = (type) => ({ selectedId: selection?.type === type ? selection.id : null, linked, onTrack: (item) => track(type, item) });
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950">
-      <div className="px-4 pt-4 pb-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+    <div className={`h-full flex flex-col bg-slate-50 dark:bg-slate-950 ${themeClass(theme)}`} data-dkct-theme={theme}>
+      <div data-dkct-header className="px-4 pt-4 pb-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg bg-chatlan-50 dark:bg-chatlan-900/50 text-chatlan-600 dark:text-chatlan-400 flex items-center justify-center">
               <ClipboardCheck className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-slate-900 dark:text-white">{APP_NAME}</h1>
+              <h1 data-dkct-title className="text-base font-bold text-slate-900 dark:text-white">{APP_NAME}</h1>
               <WorkflowMini tab={tab} onTab={setTab} chain={chain} selection={selection} />
             </div>
           </div>
@@ -181,6 +187,7 @@ export default function DkctApp() {
             ) : (
               <button type="button" className={btnPrimary} onClick={openNew} disabled={!meta}><Plus className="w-4 h-4" /> Lập giấy mới</button>
             ))}
+            <ThemePicker value={theme} onChange={chooseTheme} />
             <button type="button" className={btnGhost} aria-label="Tải lại" onClick={() => { loadAll(); setReloadKey(k => k + 1); }}>
               <RefreshCw className="w-4 h-4" />
             </button>
