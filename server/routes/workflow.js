@@ -7,7 +7,7 @@ const express = require('express');
 const { forbidden } = require('../policy');
 
 const TYPES = {
-  outage: { table: 'dkct_outages', columns: 'id, regStart, regEnd, location, content, status', shared: true },
+  outage: { table: 'dkct_outages', columns: 'id, regStart, regEnd, location, content, status, changeKind, changeNote', shared: true },
   survey: { table: 'dkct_surveys', columns: 'id, department, surveyTime, stationName, workContent, outageId' },
   plan: { table: 'dkct_plans', columns: 'id, department, docNumber, workTitle, stationName, startTime, surveyId, outageId' },
   registration: { table: 'dkct_registrations', columns: 'id, department, docNumber, workContent, startTime, outageId' },
@@ -30,11 +30,12 @@ const CHILDREN = {
 const MAX_NODES = 200;
 const ORDER = { outage: 'regStart', survey: 'surveyTime', plan: 'startTime', registration: 'startTime', confirmation: 'workDate' };
 
-function workflowRouter({ db, policy, wrap }) {
+function workflowRouter({ db, policy, wrap, importer }) {
   const router = express.Router();
 
   router.get('/workflow/:type/:id', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
+    await importer?.expireMarks(); // cảnh báo lịch cắt điện: bỏ dấu đã hết hạn
     const { type, id } = req.params;
     if (!TYPES[type]) throw Object.assign(new Error('Loại hồ sơ không hợp lệ.'), { status: 400 });
     const visible = (t, row) => TYPES[t].shared || policy.canView(actor, row);

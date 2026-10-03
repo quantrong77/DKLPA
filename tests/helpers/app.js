@@ -12,7 +12,7 @@ const USERS = {
 const byId = Object.fromEntries(Object.values(USERS).map(u => [u.id, u]));
 const SHORT = { 'Tổ Thí nghiệm điện Lâm Đồng': 'TNLĐ', 'Tổ Vận tải': 'VT', 'Ban giám đốc': 'BGĐ' };
 
-async function startApp({ legacyLastIssued, outageSource } = {}) {
+async function startApp({ legacyLastIssued, outageSource, outageAuto, notifyUsers, listTeamLeads } = {}) {
   const db = createTestDb();
   const dkct = createDkctModule({
     db,
@@ -24,7 +24,10 @@ async function startApp({ legacyLastIssued, outageSource } = {}) {
     getUnit: async (id) => ({ department: byId[id].department, shortName: SHORT[byId[id].department] }),
     listDepartments: async () => Object.entries(SHORT).map(([name, shortName]) => ({ name, shortName })),
     legacyLastIssued,
-    outageSource
+    outageSource,
+    outageAuto,
+    notifyUsers,
+    listTeamLeads
   });
   await dkct.migrate();
   const app = express();
@@ -40,7 +43,7 @@ async function startApp({ legacyLastIssued, outageSource } = {}) {
     const type = res.headers.get('content-type') || '';
     return { status: res.status, headers: res.headers, body: type.includes('json') ? await res.json() : Buffer.from(await res.arrayBuffer()) };
   };
-  return { db, call, close: () => { server.close(); db.close(); } };
+  return { db, dkct, call, close: () => { dkct.stopAutoFetch(); server.close(); db.close(); } };
 }
 
 module.exports = { USERS, startApp };

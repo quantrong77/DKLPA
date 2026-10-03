@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Zap, Search, Link2, Unlink, Loader2, ChevronDown } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import { OutageAlertBanner } from './OutageAlert.jsx';
+import { OutageHistory } from './OutageHistory.jsx';
 
 const todayIso = () => {
   const d = new Date();
@@ -135,14 +137,20 @@ export default function LinkedOutage({ outageId, onChange, onOutage, readOnly })
         )}
       </div>
 
+      {shown && !picking && <OutageAlertBanner kind={outage.changeKind} note={outage.changeNote} className="mb-1" />}
       {picking && <div className="pb-2 pt-1"><OutagePicker onPick={pick} onCancel={() => setPicking(false)} /></div>}
       {open && shown && !picking && (
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-1 pb-2 pt-1 max-h-40 overflow-y-auto">
+          <Detail label="Thời gian trước khi dời">{range(outage.prevStart, outage.prevEnd)}</Detail>
           <Detail label="Thời gian thực tế">{range(outage.actualStart, outage.actualEnd)}</Detail>
           <Detail label="Tình trạng">{outage.status}</Detail>
           <Detail label="Đơn vị đăng ký / công tác">{[outage.registrationUnit, outage.workUnit].filter(Boolean).join(' / ')}</Detail>
           <Detail label="Nội dung công tác" wide>{outage.content}</Detail>
           <Detail label="Phạm vi / điều kiện cắt điện" wide>{outage.scope}</Detail>
+          <div className="sm:col-span-3">
+            <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Lịch sử thay đổi</dt>
+            <dd className="pt-0.5"><OutageHistory outageId={outage.id} /></dd>
+          </div>
         </dl>
       )}
     </div>

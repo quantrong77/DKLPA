@@ -3,6 +3,7 @@ import { X, Save, FileDown, Loader2, AlertTriangle, Eye, Plus, Trash2, ImagePlus
 import { useDkct } from '../context.jsx';
 import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
+import QltnLink from './QltnLink.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
@@ -181,6 +182,7 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
   const [errorList, setErrorList] = useState([]);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [exported, setExported] = useState(false); // đã tải Word: nhắc bước đăng lên QLTN
   const [dirty, setDirty] = useState(false);
   const readOnly = !!current && !current.canEdit;
   const errors = useMemo(() => fieldErrors(errorList), [errorList]);
@@ -246,6 +248,8 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
     try {
       const date = String(target.surveyTime || form.surveyTime || '').slice(0, 10).replace(/-/g, '');
       await downloadAuthenticatedFile(`/api/dkct/surveys/${target.id}/docx`, `BienBanKhaoSat_${date}.docx`);
+      setExported(true);
+      notify('Đã tải file Word. Bấm “Đăng QLTN” để mở trang QLTN và đăng biên bản.', 'success');
     } catch (err) { notify(err.message, 'error'); }
   }
 
@@ -414,6 +418,7 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
               <FileDown className="w-4 h-4" /> Tải Word
             </button>
           )}
+          {current && <QltnLink highlight={exported} />}
           {!readOnly && (
             <>
               <button type="button" className={btnSecondary} onClick={() => save({ andDownload: true })} disabled={saving}>
@@ -436,6 +441,7 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
             onDownload={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
             downloadLabel={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? 'Tải Word' : 'Lưu & tải Word'}
             pdf={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed'))}
+            actions={current ? <QltnLink highlight={exported} /> : null}
             onClose={() => setPreviewing(false)} />
         )}
       </div>

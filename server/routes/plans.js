@@ -4,6 +4,7 @@
  * Quyền giống giấy ĐKCT.
  */
 const express = require('express');
+const { attachOutageChanges } = require('../services/outageChange');
 const { docxFileName, attachment } = require('../services/fileName');
 const { newId, sameUnitName } = require('../schema');
 const { forbidden } = require('../policy');
@@ -213,7 +214,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }) 
       ORDER BY docYear DESC, docSeq DESC LIMIT 500`, params);
     const items = [];
     for (const row of rows) items.push(await present(row, actor));
-    res.json({ items });
+    res.json({ items: await attachOutageChanges(db, items) }); // cảnh báo lịch cắt điện đã hoãn / dời / sửa
   }));
 
   router.get('/plans/:id', wrap(async (req, res) => {

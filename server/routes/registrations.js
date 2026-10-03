@@ -4,6 +4,7 @@
  * vài cột tóm tắt (workContent, startTime, recipientName) phục vụ danh sách và tìm kiếm.
  */
 const express = require('express');
+const { attachOutageChanges } = require('../services/outageChange');
 const { docxFileName, attachment } = require('../services/fileName');
 const { newId } = require('../schema');
 const { forbidden } = require('../policy');
@@ -117,7 +118,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
       }
       items.push({ ...row, canEdit });
     }
-    res.json({ items });
+    res.json({ items: await attachOutageChanges(db, items) }); // cảnh báo lịch cắt điện đã hoãn / dời / sửa
   }));
 
   router.get('/registrations/:id', wrap(async (req, res) => {

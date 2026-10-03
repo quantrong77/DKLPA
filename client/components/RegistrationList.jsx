@@ -4,6 +4,7 @@ import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
+import { OutageChangeTag } from './OutageAlert.jsx';
 
 /** Danh sách giấy ĐKCT của tổ (admin thấy tất cả). */
 export default function RegistrationList({ selectedId, linked, onTrack, reloadKey, onOpen, numbering, canCreate, onNumberingChanged, onCreateConfirmation }) {
@@ -100,6 +101,7 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
               </span>
               <button type="button" className="flex-1 min-w-[12rem] text-left" onClick={() => onOpen(item)}>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2">{item.workContent}</p>
+                {item.outageChange && <span className="block mt-0.5"><OutageChangeTag change={item.outageChange} /></span>}
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {formatDateTime(item.startTime)} → {formatDateTime(item.endTime)} · Kính gửi: {item.recipientName}
                 </p>

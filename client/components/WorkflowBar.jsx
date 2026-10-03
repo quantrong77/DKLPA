@@ -1,6 +1,8 @@
 import React from 'react';
 import { Zap, ClipboardList, FileStack, FileText, BadgeCheck, Check, ChevronRight, Route, X, CircleDot } from 'lucide-react';
 import { workflowSteps, doneCount, selectionTitle, stepOfType, WORKFLOW_STEPS } from '../lib/workflow.js';
+import { chainAlert } from '../lib/outageChange.js';
+import { OutageAlertBanner } from './OutageAlert.jsx';
 
 const ICONS = { outage: Zap, survey: ClipboardList, plan: FileStack, registration: FileText, confirmation: BadgeCheck };
 
@@ -33,6 +35,7 @@ export default function WorkflowBar({ tab, onTab, chain, selection, onClearSelec
   const steps = workflowSteps(chain, selection);
   const selectedRow = selection && chain ? (chain[stepOfType(selection.type)?.list] || []).find(r => r.id === selection.id) : null;
   const done = doneCount(steps);
+  const alert = selection && chain ? chainAlert(chain.outages) : null;
   return (
     <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
       <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
@@ -88,7 +91,13 @@ export default function WorkflowBar({ tab, onTab, chain, selection, onClearSelec
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-      ) : (
+      ) : null}
+      {alert && (
+        <OutageAlertBanner kind={alert.kind} note={alert.note} className="mt-1.5">
+          <button type="button" className="underline font-semibold" onClick={() => onTab(WORKFLOW_STEPS[0].tab)}>Xem lịch cắt điện</button>
+        </OutageAlertBanner>
+      )}
+      {selection ? null : (
         <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400 inline-flex items-center gap-1">
           Bấm <Route className="w-3 h-3" aria-label="biểu tượng luồng" /> ở một hồ sơ (hoặc mở hồ sơ) để xem hồ sơ đó đã qua những bước nào.
         </p>

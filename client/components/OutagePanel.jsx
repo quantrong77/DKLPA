@@ -1,17 +1,29 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, LocateFixed, ExternalLink } from 'lucide-react';
+import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
+import { CHANGE_TONES } from './OutageAlert.jsx';
+import { OutageHistory, AutoFetchStatus } from './OutageHistory.jsx';
 
 const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const todayIso = () => isoOf(new Date());
 const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return isoOf(d); };
 
+const MINE_KEY = 'dkct.outages.mineOnly';
+
 /** Trang lịch cắt điện của Công ty (mạng nội bộ): tải file Excel về rồi nạp ở nút bên cạnh. */
 export const OUTAGE_SOURCE_URL = 'https://home.ptc3.npt.evn.vn/lichcatdien_new2/';
 
-/** Một dòng lịch trong danh sách hoãn/phát sinh; bấm để tới dòng đó trong danh sách lịch. */
+/** "2 hoãn, 1 dời lịch, 1 sửa nội dung, 3 phát sinh" (bỏ mục bằng 0) */
+export function changeCounts(cmp) {
+  if (!cmp) return '';
+  const parts = [[cmp.postponed, 'hoãn'], [cmp.moved, 'dời lịch'], [cmp.edited, 'sửa nội dung'], [cmp.added, 'phát sinh'], [cmp.restored, 'có lại']]
+    .filter(([list]) => list?.length).map(([list, label]) => `${list.length} ${label}`);
+  return parts.length ? parts.join(', ') : 'không có thay đổi';
+}
+
+/** Một dòng lịch trong danh sách hoãn/dời/sửa/phát sinh; bấm để tới dòng đó trong danh sách lịch. */
 function ChangeItem({ r, onLocate }) {
   return (
     <li>
@@ -28,7 +40,7 @@ function ChangeItem({ r, onLocate }) {
   );
 }
 
-/** Kết quả so sánh với lịch đã nạp: hoãn (đỏ), phát sinh (vàng); lịch không đổi chỉ đếm. */
+/** Kết quả so sánh với lịch đã nạp: hoãn (đỏ), dời lịch (xanh), sửa nội dung (tím), phát sinh (vàng); lịch không đổi chỉ đếm. */
 export function CompareSummary({ compare, onLocate, title }) {
   if (!compare) return null;
   return (
@@ -36,12 +48,32 @@ export function CompareSummary({ compare, onLocate, title }) {
       <p className="text-sm text-slate-700 dark:text-slate-200">
         {title || 'So với lịch đã nạp'} từ {compare.from.split('-').reverse().join('/')} đến {compare.to.split('-').reverse().join('/')} ({compare.previous} dòng):{' '}
         <b className="text-red-700 dark:text-red-400">{compare.postponed.length} hoãn</b>,{' '}
+        <b className="text-sky-700 dark:text-sky-400">{(compare.moved || []).length} dời lịch</b>,{' '}
+        <b className="text-violet-700 dark:text-violet-400">{(compare.edited || []).length} sửa nội dung</b>,{' '}
         <b className="text-amber-700 dark:text-amber-400">{compare.added.length} phát sinh</b>, {compare.unchanged} không đổi.
       </p>
       {compare.postponed.length > 0 && (
         <details open className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-xs text-red-900 dark:text-red-200">
           <summary className="cursor-pointer px-3 py-1.5 font-semibold inline-flex items-center gap-1"><CalendarX2 className="w-3.5 h-3.5" /> Hoãn ({compare.postponed.length})</summary>
           <ul className="px-1 pb-1.5 max-h-48 overflow-y-auto">{compare.postponed.map(r => <ChangeItem key={`p-${r.rowHash}`} r={r} onLocate={onLocate} />)}</ul>
+        </details>
+      )}
+      {(compare.moved || []).length > 0 && (
+        <details open className="rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/30 text-xs text-sky-900 dark:text-sky-200">
+          <summary className="cursor-pointer px-3 py-1.5 font-semibold inline-flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> Dời lịch ({compare.moved.length})</summary>
+          <ul className="px-1 pb-1.5 max-h-48 overflow-y-auto">{compare.moved.map(r => <ChangeItem key={`m-${r.rowHash}`} r={r} onLocate={onLocate} />)}</ul>
+        </details>
+      )}
+      {(compare.edited || []).length > 0 && (
+        <details open className="rounded-lg border border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-violet-950/30 text-xs text-violet-900 dark:text-violet-200">
+          <summary className="cursor-pointer px-3 py-1.5 font-semibold inline-flex items-center gap-1"><FilePenLine className="w-3.5 h-3.5" /> Sửa nội dung ({compare.edited.length})</summary>
+          <ul className="px-1 pb-1.5 max-h-48 overflow-y-auto">{compare.edited.map(r => <ChangeItem key={`e-${r.rowHash}`} r={r} onLocate={onLocate} />)}</ul>
+        </details>
+      )}
+      {(compare.restored || []).length > 0 && (
+        <details className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 text-xs text-emerald-900 dark:text-emerald-200">
+          <summary className="cursor-pointer px-3 py-1.5 font-semibold inline-flex items-center gap-1"><CalendarCheck className="w-3.5 h-3.5" /> Có lại trong lịch ({compare.restored.length})</summary>
+          <ul className="px-1 pb-1.5 max-h-48 overflow-y-auto">{compare.restored.map(r => <ChangeItem key={`r-${r.rowHash}`} r={r} onLocate={onLocate} />)}</ul>
         </details>
       )}
       {compare.added.length > 0 && (
@@ -76,7 +108,7 @@ function ImportBox({ onDone, onLocate }) {
       const res = await api.post('/outages/fetch', fetchRange);
       setResult(res.compare);
       setFetched(res);
-      notify(`Đã tải ${res.rows} dòng lịch (${fetchRange.from.split('-').reverse().join('/')}–${fetchRange.to.split('-').reverse().join('/')}): thêm ${res.inserted}, cập nhật ${res.updated}${res.compare ? `; ${res.compare.postponed.length} hoãn, ${res.compare.added.length} phát sinh` : ''}.`, 'success');
+      notify(`Đã tải ${res.rows} dòng lịch (${fetchRange.from.split('-').reverse().join('/')}–${fetchRange.to.split('-').reverse().join('/')}): thêm ${res.inserted}, cập nhật ${res.updated}${res.compare ? `; ${changeCounts(res.compare)}` : ''}.`, 'success');
       onDone();
     } catch (err) { notify(err.message, 'error'); } finally { setFetching(false); }
   };
@@ -111,7 +143,7 @@ function ImportBox({ onDone, onLocate }) {
     setBusy(true);
     try {
       const res = await send('/outages/import/commit', file, range);
-      notify(`Đã cập nhật lịch: thêm ${res.inserted}, cập nhật ${res.updated} dòng${res.compare ? `; ${res.compare.postponed.length} hoãn, ${res.compare.added.length} phát sinh` : ''}.`, 'success');
+      notify(`Đã cập nhật lịch: thêm ${res.inserted}, cập nhật ${res.updated} dòng${res.compare ? `; ${changeCounts(res.compare)}` : ''}.`, 'success');
       setResult(res.compare);
       setFile(null); setPreview(null);
       if (fileRef.current) fileRef.current.value = '';
@@ -120,7 +152,8 @@ function ImportBox({ onDone, onLocate }) {
   };
   const reset = () => { setFile(null); setPreview(null); if (fileRef.current) fileRef.current.value = ''; };
   const fresh = preview ? preview.rows.filter(r => !r.alreadyImported).length : 0;
-  const changes = preview?.compare ? preview.compare.postponed.length + preview.compare.added.length : 0;
+  const cmpPv = preview?.compare;
+  const changes = cmpPv ? cmpPv.postponed.length + cmpPv.added.length + (cmpPv.moved || []).length + (cmpPv.edited || []).length : 0;
 
   return (
     <div className={cardCls}>
@@ -223,7 +256,7 @@ function ImportBox({ onDone, onLocate }) {
           </div>
           <button type="button" className={btnPrimary} onClick={commit} disabled={busy || (fresh === 0 && changes === 0 && !preview.compare)}>
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            {preview.compare ? ` Cập nhật lịch (${fresh} dòng mới, ${preview.compare.postponed.length} hoãn, ${preview.compare.added.length} phát sinh)` : ` Lưu ${fresh} dòng mới vào kế hoạch`}
+            {preview.compare ? ` Cập nhật lịch (${changeCounts(preview.compare)})` : ` Lưu ${fresh} dòng mới vào kế hoạch`}
           </button>
         </div>
       )}
@@ -250,24 +283,28 @@ const TONES = {
   slate: 'text-slate-900 dark:text-white',
   amber: 'text-amber-700 dark:text-amber-400',
   emerald: 'text-emerald-700 dark:text-emerald-400',
-  red: 'text-red-700 dark:text-red-400'
+  red: 'text-red-700 dark:text-red-400',
+  sky: 'text-sky-700 dark:text-sky-400',
+  violet: 'text-violet-700 dark:text-violet-400'
 };
 
 // dấu so sánh khi nạp lại lịch
 const CHANGE_FILTERS = [
   { id: 'change:POSTPONED', label: 'Hoãn', test: o => o.changeKind === 'POSTPONED', tone: 'red' },
+  { id: 'change:MOVED', label: 'Dời lịch', test: o => o.changeKind === 'MOVED', tone: 'sky' },
+  { id: 'change:EDITED', label: 'Sửa nội dung', test: o => o.changeKind === 'EDITED', tone: 'violet' },
   { id: 'change:NEW', label: 'Phát sinh', test: o => o.changeKind === 'NEW', tone: 'amber' }
 ];
 
-// khung dòng lịch theo dấu so sánh: hoãn đỏ, phát sinh vàng; không đổi giữ như thường
+// khung dòng lịch theo dấu so sánh: hoãn đỏ, dời lịch xanh, sửa nội dung tím, phát sinh vàng; không đổi giữ như thường
 const CHANGE_FRAME = {
   POSTPONED: 'bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800',
+  MOVED: 'bg-sky-50 dark:bg-sky-950/30 border border-sky-300 dark:border-sky-800',
+  EDITED: 'bg-violet-50 dark:bg-violet-950/30 border border-violet-300 dark:border-violet-800',
   NEW: 'bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300 dark:border-yellow-800'
 };
-const CHANGE_TAG = {
-  POSTPONED: { label: 'Hoãn', cls: 'bg-red-600 text-white' },
-  NEW: { label: 'Phát sinh', cls: 'bg-yellow-400 text-yellow-950' }
-};
+const CHANGE_TAG = Object.fromEntries(Object.entries({ POSTPONED: 'Hoãn', MOVED: 'Dời lịch', EDITED: 'Sửa nội dung', NEW: 'Phát sinh' })
+  .map(([k, label]) => [k, { label, cls: CHANGE_TONES[k].tag }]));
 
 function StatsBar({ items, filter, onFilter }) {
   const shown = [...FILTERS, ...CHANGE_FILTERS.filter(f => items.some(f.test))];
@@ -328,13 +365,24 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, on
   const [filter, setFilter] = useState('all');
   const [pending, setPending] = useState(null); // dòng cần tới sau khi tải lại danh sách
   const [flash, setFlash] = useState(null);     // dòng vừa tới: viền nhấp nháy
-  const shown = useMemo(() => items.filter(([...FILTERS, ...CHANGE_FILTERS].find(f => f.id === filter) || FILTERS[0]).test), [items, filter]);
+  // "Chỉ tổ của tôi": dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ (nhớ theo trình duyệt)
+  const [mineOnly, setMineOnly] = useState(() => { try { return localStorage.getItem(MINE_KEY) === '1'; } catch { return false; } });
+  const [myAreas, setMyAreas] = useState([]);
+  const [historyOf, setHistoryOf] = useState(() => new Set()); // dòng đang mở lịch sử
+  const [refresh, setRefresh] = useState(0);
+  const toggleMine = () => setMineOnly(v => { try { localStorage.setItem(MINE_KEY, v ? '0' : '1'); } catch { /* bỏ qua */ } return !v; });
+  const base = useMemo(() => (mineOnly ? items.filter(o => o.mine) : items), [items, mineOnly]);
+  const shown = useMemo(() => base.filter(([...FILTERS, ...CHANGE_FILTERS].find(f => f.id === filter) || FILTERS[0]).test), [base, filter]);
+  const toggleHistory = (id) => setHistoryOf(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const q = new URLSearchParams({ from, to, search });
-      setItems((await api.get(`/outages?${q}`)).items);
+      const res = await api.get(`/outages?${q}`);
+      setItems(res.items);
+      setMyAreas(res.myAreas || []);
+      setRefresh(n => n + 1);
     } catch (err) { notify(err.message, 'error'); } finally { setLoading(false); }
   }, [api, notify, from, to, search]);
 
@@ -347,6 +395,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, on
   const locate = (r) => {
     const day = String(r.regStart || '').slice(0, 10);
     setFilter('all');
+    setMineOnly(false); // dòng cần tới có thể không thuộc tổ (không đổi lựa chọn đã nhớ)
     setSearch('');
     if (day && from > day) setFrom(day);
     if (day && to && to < day) setTo('');
@@ -365,6 +414,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, on
 
   return (
     <div className="space-y-3">
+      <AutoFetchStatus refresh={refresh} />
       {canCreate && <ImportBox onDone={load} onLocate={locate} />}
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">Từ ngày
@@ -378,14 +428,26 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, on
           <input type="search" aria-label="Tìm lịch" placeholder="Tìm trạm, thiết bị, đơn vị…" value={search}
             onChange={e => setSearch(e.target.value)} className={`${inputCls} ${inputBorder()} pl-8`} />
         </div>
+        <button type="button" aria-pressed={mineOnly} onClick={toggleMine}
+          className={`${btnSecondary} ${mineOnly ? '!bg-chatlan-600 !text-white !border-chatlan-600' : ''}`}
+          title="Chỉ hiện dòng lịch thuộc khu vực tổ phụ trách, hoặc tổ đã lập biên bản / phương án / giấy ĐKCT">
+          <Users className="w-4 h-4" /> Chỉ tổ của tôi
+        </button>
       </div>
+      {mineOnly && (
+        <p className="text-xs text-slate-600 dark:text-slate-300" role="note">
+          {myAreas.length
+            ? <>Khu vực tổ phụ trách: <b>{myAreas.join(', ')}</b> (cùng các dòng tổ đã lập hồ sơ).</>
+            : <>Tổ chưa chọn khu vực phụ trách — chỉ hiện dòng tổ đã lập hồ sơ. Admin chọn khu vực ở <b>Danh mục</b>.</>}
+        </p>
+      )}
 
-      {items.length > 0 && <StatsBar items={items} filter={filter} onFilter={setFilter} />}
+      {base.length > 0 && <StatsBar items={base} filter={filter} onFilter={setFilter} />}
 
       {!loading && shown.length === 0 ? (
-        items.length > 0 ? (
+        base.length > 0 || (mineOnly && items.length > 0) ? (
           <EmptyState icon={CheckCircle2} title="Không có dòng lịch nào khớp bộ lọc"
-            description="Bấm lại thẻ thống kê đang chọn để xem tất cả." />
+            description={mineOnly && base.length === 0 ? 'Không có dòng nào của tổ trong khoảng này. Bỏ "Chỉ tổ của tôi" để xem tất cả.' : 'Bấm lại thẻ thống kê đang chọn để xem tất cả.'} />
         ) : 
         <EmptyState icon={Zap} title="Không có lịch cắt điện trong khoảng này"
           description={canCreate ? 'Import file Excel lịch cắt điện ở trên, hoặc đổi khoảng ngày.' : 'Đổi khoảng ngày để xem lịch khác.'} />
@@ -403,10 +465,18 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, on
                     )}
                     {formatDateTime(o.regStart)} → {formatDateTime(o.regEnd)} · {o.location}
                   </p>
+                  {o.changeNote && o.changeKind !== 'NEW' && <p className="text-xs font-semibold mt-0.5 text-slate-700 dark:text-slate-200">{o.changeNote}</p>}
                   <p className="text-sm text-slate-900 dark:text-white mt-1 whitespace-pre-line line-clamp-3">{o.content}</p>
                   {o.scope && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 whitespace-pre-line line-clamp-2">Phạm vi: {o.scope}</p>}
                   <p className="text-xs text-slate-500 mt-1">ĐV công tác: {o.workUnit} · {o.status}</p>
                   <StepTracker outage={o} />
+                  {o.changeCount > 0 && (
+                    <button type="button" onClick={() => toggleHistory(o.id)} aria-expanded={historyOf.has(o.id)}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-chatlan-700 dark:text-slate-300">
+                      <History className="w-3.5 h-3.5" /> Lịch sử thay đổi ({o.changeCount})
+                    </button>
+                  )}
+                  {historyOf.has(o.id) && <div className="mt-1.5"><OutageHistory outageId={o.id} /></div>}
                 </div>
                 {canCreate && (
                   <div className="flex flex-col gap-1.5">

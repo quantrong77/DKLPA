@@ -81,7 +81,7 @@ async function printPages(stylesEl, hostEl, fileName) {
  * load(): Promise<Blob> — bản Word đã lưu hoặc bản dựng từ dữ liệu đang soạn.
  * pdf: cho "Tải PDF" (chỉ bản đã lưu — bản nháp chưa có số chính thức).
  */
-export default function DocPreview({ title, note, load, onDownload, downloadLabel = 'Tải Word', pdf = true, onClose }) {
+export default function DocPreview({ title, note, load, onDownload, downloadLabel = 'Tải Word', pdf = true, actions = null, onClose }) {
   const { ModalOverlay, notify } = useDkct();
   const frame = useRef(null);
   const zoomBox = useRef(null);
@@ -156,6 +156,7 @@ export default function DocPreview({ title, note, load, onDownload, downloadLabe
           {onDownload && (
             <button type="button" className={btnSecondary} onClick={onDownload}><FileDown className="w-4 h-4" /> <span className="hidden sm:inline">{downloadLabel}</span></button>
           )}
+          {actions}
           <button type="button" className={btnGhost} onClick={onClose} aria-label="Đóng xem trước"><X className="w-5 h-5" /></button>
         </header>
 

@@ -101,6 +101,9 @@ function tables(t) {
       status ${t.str},
       changeKind ${t.short},
       changeAt ${t.time},
+      changeNote ${t.text},
+      prevStart ${t.time},
+      prevEnd ${t.time},
       rowHash VARCHAR(40) NOT NULL UNIQUE,
       sourceFile ${t.str},
       importedBy ${t.id},
@@ -269,6 +272,41 @@ function tables(t) {
       detail ${t.long},
       userId ${t.id},
       createdAt ${t.now}`,
+    // Lịch sử thay đổi của từng dòng lịch cắt điện qua các lần nạp lại (phát sinh, hoãn, dời, sửa, có lại)
+    dkct_outage_changes: `
+      id ${t.id} PRIMARY KEY,
+      outageId ${t.id} NOT NULL,
+      kind ${t.short} NOT NULL,
+      note ${t.text},
+      prevStart ${t.time},
+      prevEnd ${t.time},
+      newStart ${t.time},
+      newEnd ${t.time},
+      source ${t.str},
+      changedAt ${t.time} NOT NULL,
+      CONSTRAINT fk_dkct_outage_changes_outage FOREIGN KEY (outageId) REFERENCES dkct_outages (id)
+        ON UPDATE CASCADE ON DELETE CASCADE`,
+    // Nhật ký các lần tải lịch từ trang Công ty (tự động theo giờ hẹn / bấm tay); slot duy nhất để nhiều tiến trình không tải trùng
+    dkct_outage_fetches: `
+      id ${t.id} PRIMARY KEY,
+      slot ${t.short} NOT NULL UNIQUE,
+      mode ${t.short} NOT NULL,
+      fromDate ${t.time},
+      toDate ${t.time},
+      startedAt ${t.time} NOT NULL,
+      finishedAt ${t.time},
+      ok ${t.int},
+      rowsCount ${t.int},
+      summary ${t.text},
+      error ${t.text},
+      actorId ${t.id}`,
+    // Khu vực truyền tải điện (TTĐ) mà mỗi tổ phụ trách: lọc "Chỉ tổ của tôi", báo thay đổi lịch cho tổ trưởng
+    dkct_team_areas: `
+      id ${t.id} PRIMARY KEY,
+      department ${t.short} NOT NULL,
+      area ${t.short} NOT NULL,
+      createdAt ${t.now},
+      CONSTRAINT uq_dkct_team_areas UNIQUE (department, area)`,
     // Cài đặt/dấu mốc của module (vd đã nạp dữ liệu bổ sung nào)
     dkct_settings: `
       name ${t.short} PRIMARY KEY,
@@ -286,6 +324,8 @@ function tables(t) {
 
 const INDEXES = [
   ['idx_dkct_outages_start', 'dkct_outages', 'regStart'],
+  ['idx_dkct_outage_changes_outage', 'dkct_outage_changes', 'outageId'],
+  ['idx_dkct_outage_fetches_started', 'dkct_outage_fetches', 'startedAt'],
   ['idx_dkct_reg_department', 'dkct_registrations', 'department'],
   ['idx_dkct_reg_outage', 'dkct_registrations', 'outageId'],
   ['idx_dkct_personnel_name', 'dkct_personnel', 'fullName'],
@@ -305,9 +345,13 @@ const ADDED_COLUMNS = (t) => [
   ['dkct_stations', 'shortName', t.short],
   ['dkct_stations', 'leaderName', t.str],
   ['dkct_substations', 'transmissionName', t.str],
-  // so sánh khi nạp lại lịch: NEW (phát sinh) | POSTPONED (hoãn); thời điểm so sánh
+  // so sánh khi nạp lại lịch: NEW (phát sinh) | POSTPONED (hoãn) | MOVED (dời lịch) | EDITED (sửa nội dung);
+  // thời điểm so sánh, ghi chú (lý do / giờ cũ -> mới), giờ đăng ký trước khi dời
   ['dkct_outages', 'changeKind', t.short],
   ['dkct_outages', 'changeAt', t.time],
+  ['dkct_outages', 'changeNote', t.text],
+  ['dkct_outages', 'prevStart', t.time],
+  ['dkct_outages', 'prevEnd', t.time],
   ['dkct_surveys', 'substationId', t.id,
     { name: 'fk_dkct_surveys_substation', ref: 'dkct_substations (id)', rule: 'ON UPDATE CASCADE ON DELETE SET NULL' }]
 ];

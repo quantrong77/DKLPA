@@ -15,3 +15,6 @@ coverage/
 
 # ứng dụng độc lập (standalone/): bản build và biến môi trường
 standalone/dist/
+
+# kết nối MySQL cho npm run test:mysql
+tests/*.local.env

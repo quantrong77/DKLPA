@@ -767,10 +767,68 @@ test('nạp lại lịch: so với lịch cùng khoảng đã nạp -> hoãn (kh
     // không chọn khoảng so sánh: nạp như cũ, không đổi dấu đã có
     await app.call('lead', 'POST', '/outages/import/commit', excelFrom([A]));
     assert.equal((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items.find(o => o.location === 'Trạm D').changeKind, 'NEW');
-    // nạp lại cùng lịch trong khoảng: bỏ dấu cũ (hết hoãn/phát sinh)
-    await app.call('lead', 'POST', '/outages/import/commit', withRange([A, B, C, D]));
+    // nạp lại lịch có lại B, C: hết hoãn (ghi lịch sử "có lại"); dấu phát sinh của D giữ đến hết hạn
+    const back = (await app.call('lead', 'POST', '/outages/import/commit', withRange([A, B, C, D]))).body;
+    assert.deepEqual(back.compare.restored.map(r => r.location).sort(), ['Trạm B', 'Trạm C']);
     const again = (await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items;
-    assert.equal(again.filter(o => o.changeKind).length, 0);
+    assert.deepEqual(again.filter(o => o.changeKind).map(o => [o.location, o.changeKind]), [['Trạm D', 'NEW']]);
+    const hist = (await app.call('lead', 'GET', `/outages/${again.find(o => o.location === 'Trạm C').id}/history`)).body.items;
+    assert.deepEqual(hist.map(h => h.kind), ['RESTORED', 'POSTPONED']);
+    assert.equal(again.find(o => o.location === 'Trạm C').changeCount, 2);
+    // nạp lặp lại y như vậy: không ghi thêm lịch sử
+    assert.equal((await app.call('lead', 'POST', '/outages/import/commit', withRange([A, B, C, D]))).body.logged, 0);
+  } finally { app.close(); }
+});
+
+test('nạp lại lịch: dời giờ / sửa chữ -> cập nhật tại chỗ (giữ id, không thành hoãn + phát sinh); hồ sơ đã gắn được cảnh báo', async () => {
+  const app = await startApp();
+  try {
+    const A = ['05/10/2024 07h00', '05/10/2024 17h00', 'TBA 220kV Tháp Chàm', 'Thí nghiệm định kỳ ngăn 232, MC232, TI232', 'Cô lập MC232', 'Đ1', 'Đ1', 'Đã duyệt'];
+    const E = ['06/10/2024 07h00', '06/10/2024 17h00', 'TBA 110kV Ninh Sơn', 'Thí nghiêm định kỳ MBA T1', 'Cô lập T1', 'Đ1', 'Đ1', 'Đã duyệt'];
+    const F = ['07/10/2024 07h00', '07/10/2024 17h00', 'TBA 220kV Đa Nhim', 'Sửa chữa DCL 271-1', 'Cô lập 271', 'Đ1', 'Đ1', 'Đã duyệt'];
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([A, E, F]));
+    const before = Object.fromEntries((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items.map(o => [o.location, o]));
+    // hồ sơ đã lập theo lịch: biên bản KSHT gắn A, phương án gắn F, giấy ĐKCT gắn E
+    const survey = (await app.call('lead', 'POST', '/surveys', { ...SURVEY, outageId: before['TBA 220kV Tháp Chàm'].id })).body.survey;
+    const plan = (await app.call('lead', 'POST', '/plans', { ...PLAN, outageId: before['TBA 220kV Đa Nhim'].id })).body.plan;
+    const reg = (await app.call('lead', 'POST', '/registrations', { ...(await validInput(app.call)), outageId: before['TBA 110kV Ninh Sơn'].id })).body.registration;
+
+    // lịch mới 05–10/10: A dời sang 09/10, E sửa chính tả, F không còn (hoãn), G phát sinh
+    const G = ['08/10/2024 07h00', '08/10/2024 17h00', 'TBA 110kV Cam Ranh', 'Thay sứ MC171', 'Cô lập 171', 'Đ1', 'Đ1', 'Chờ duyệt'];
+    const next = [['09/10/2024 07h00', '09/10/2024 17h00', ...A.slice(2)], [...E.slice(0, 3), 'Thí nghiệm định kỳ MBA T1', ...E.slice(4)], G];
+    const form = () => { const f = excelFrom(next); f.append('compareFrom', '2024-10-05'); f.append('compareTo', '2024-10-10'); return f; };
+    const pv = (await app.call('lead', 'POST', '/outages/import/preview', form())).body.compare;
+    assert.deepEqual(pv.moved.map(r => [r.location, r.reason]), [['TBA 220kV Tháp Chàm', 'Dời lịch: 05/10 07:00–17:00 → 09/10 07:00–17:00']]);
+    assert.deepEqual(pv.edited.map(r => [r.location, r.reason]), [['TBA 110kV Ninh Sơn', 'Sửa nội dung trong lịch']]);
+    assert.deepEqual(pv.postponed.map(r => r.location), ['TBA 220kV Đa Nhim']);
+    assert.deepEqual(pv.added.map(r => r.location), ['TBA 110kV Cam Ranh']);
+
+    const res = (await app.call('lead', 'POST', '/outages/import/commit', form())).body;
+    assert.deepEqual([res.inserted, res.updated], [1, 2], 'dời / sửa là cập nhật, chỉ G là dòng mới');
+    const items = (await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items;
+    assert.equal(items.length, 4, 'không sinh dòng trùng');
+    const after = Object.fromEntries(items.map(o => [o.location, o]));
+    const moved = after['TBA 220kV Tháp Chàm'];
+    assert.equal(moved.id, before['TBA 220kV Tháp Chàm'].id, 'giữ id: hồ sơ đã gắn vẫn trỏ đúng');
+    assert.deepEqual([moved.regStart, moved.changeKind, moved.prevStart, moved.prevEnd], ['2024-10-09T07:00', 'MOVED', '2024-10-05T07:00', '2024-10-05T17:00']);
+    assert.equal(after['TBA 110kV Ninh Sơn'].content, 'Thí nghiệm định kỳ MBA T1');
+    assert.equal(after['TBA 110kV Ninh Sơn'].changeKind, 'EDITED');
+    assert.deepEqual([after['TBA 220kV Đa Nhim'].changeKind, after['TBA 220kV Đa Nhim'].changeNote], ['POSTPONED', 'Không còn trong lịch mới']);
+    assert.equal(after['TBA 110kV Cam Ranh'].changeKind, 'NEW');
+
+    // cảnh báo trên hồ sơ đã gắn: danh sách, chi tiết dòng lịch, luồng công việc
+    const surveyRow = (await app.call('lead', 'GET', '/surveys')).body.items.find(r => r.id === survey.id);
+    assert.deepEqual([surveyRow.outageChange.kind, surveyRow.outageChange.note], ['MOVED', 'Dời lịch: 05/10 07:00–17:00 → 09/10 07:00–17:00']);
+    assert.equal((await app.call('lead', 'GET', '/plans')).body.items.find(r => r.id === plan.id).outageChange.kind, 'POSTPONED');
+    assert.equal((await app.call('lead', 'GET', '/registrations')).body.items.find(r => r.id === reg.id).outageChange.kind, 'EDITED');
+    assert.equal((await app.call('lead', 'GET', `/outages/${moved.id}`)).body.outage.changeNote, 'Dời lịch: 05/10 07:00–17:00 → 09/10 07:00–17:00');
+    assert.equal((await app.call('lead', 'GET', `/workflow/plan/${plan.id}`)).body.outages[0].changeKind, 'POSTPONED');
+
+    // nạp lại đúng lịch mới: dấu giữ nguyên (đến hết hạn), không ghi lịch sử lặp
+    assert.equal((await app.call('lead', 'POST', '/outages/import/commit', form())).body.logged, 0);
+    assert.equal((await app.call('lead', 'GET', '/surveys')).body.items.find(r => r.id === survey.id).outageChange.kind, 'MOVED');
+    const hist = (await app.call('lead', 'GET', `/outages/${moved.id}/history`)).body.items;
+    assert.deepEqual(hist.map(h => [h.kind, h.prevStart, h.newStart]), [['MOVED', '2024-10-05T07:00', '2024-10-09T07:00']]);
   } finally { app.close(); }
 });
 
@@ -824,7 +882,11 @@ test('tải lịch từ trang Công ty: đăng nhập Basic, gửi biểu mẫu 
     assert.deepEqual(again.compare.postponed.map(r => r.location), ['Trạm B']);
     const items = (await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.items;
     assert.equal(items.find(o => o.location === 'Trạm B').changeKind, 'POSTPONED');
-    assert.match(items[0].sourceFile, /^Tải tự động 2024-10-05\.\.2024-10-06/);
+    assert.match(items[0].sourceFile, /^Tải lịch 05\/10\/2024–06\/10\/2024/);
+    // nhật ký tải: 2 lần bấm tay, thành công
+    const src = (await app.call('lead', 'GET', '/outages/source')).body;
+    assert.deepEqual(src.runs.map(r => [r.mode, r.ok, r.rowsCount]), [['MANUAL', true, 2], ['MANUAL', true, 2]]);
+    assert.equal(src.runs[0].summary.postponed, 1);
   } finally { app.close(); }
 
   // sai mật khẩu / chưa cấu hình: báo rõ, không treo

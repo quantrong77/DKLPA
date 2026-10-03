@@ -45,7 +45,7 @@ async function verifyToken(token) {
   return { id: u.id, email: u.email || '', fullName: u.user_metadata?.full_name || '' };
 }
 
-const { app, migrate } = createApp({
+const { app, migrate, startAutoFetch } = createApp({
   db: createPgDb(pool, { names: [APP_TABLE_TEXT] }),
   verifyToken,
   adminEmails: String(process.env.ADMIN_EMAILS || '').split(','),
@@ -57,6 +57,7 @@ migrate()
   .then(() => {
     const port = Number(process.env.PORT) || 3000;
     app.listen(port, () => console.log(`Chuẩn bị công tác đang chạy ở cổng ${port}`));
+    startAutoFetch();
   })
   .catch((err) => {
     console.error('Không tạo được bảng trong CSDL:', err);

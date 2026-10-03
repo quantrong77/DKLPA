@@ -3,6 +3,7 @@
  * Quyền giống giấy ĐKCT: trưởng/phó tổ, trưởng phòng, admin lập; người lập hoặc lãnh đạo tổ sửa; cùng tổ xem.
  */
 const express = require('express');
+const { attachOutageChanges } = require('../services/outageChange');
 const { docxFileName, attachment } = require('../services/fileName');
 const multer = require('multer');
 const { newId, sameUnitName } = require('../schema');
@@ -135,7 +136,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName }
       ORDER BY surveyTime DESC, createdAt DESC LIMIT 500`, params);
     const items = [];
     for (const row of rows) items.push(await present(row, actor));
-    res.json({ items });
+    res.json({ items: await attachOutageChanges(db, items) }); // cảnh báo lịch cắt điện đã hoãn / dời / sửa
   }));
 
   router.get('/surveys/:id', wrap(async (req, res) => {

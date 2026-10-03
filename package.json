@@ -6,7 +6,8 @@
   "main": "server/index.js",
   "scripts": {
     "test": "node --test --experimental-test-coverage --test-coverage-include=server/** --test-coverage-include=client/lib/** \"tests/**/*.test.js\"",
-    "test:pg": "node --env-file=tests/pg.env --test \"tests/**/*.test.js\""
+    "test:pg": "node --env-file=tests/pg.env --test \"tests/**/*.test.js\"",
+    "test:mysql": "node --env-file=tests/mysql.env --env-file-if-exists=tests/mysql.local.env --test --test-concurrency=4 \"tests/**/*.test.js\""
   },
   "dependencies": {
     "docxtemplater": "^3.60.0",
@@ -22,6 +23,7 @@
     "react": "^18.3.1"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8"
+    "@electric-sql/pglite": "^0.5.8",
+    "mysql2": "^3.24.5"
   }
 }

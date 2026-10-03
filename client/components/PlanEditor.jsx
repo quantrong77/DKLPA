@@ -9,6 +9,7 @@ import PersonPicker from './PersonPicker.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
 import { SourceDialog } from './CtSource.jsx';
 import DocPreview from './DocPreview.jsx';
+import QltnLink from './QltnLink.jsx';
 import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
@@ -483,6 +484,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
   const [errorList, setErrorList] = useState([]);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [exported, setExported] = useState(false); // đã tải Word: nhắc bước đăng lên QLTN
   const [dirty, setDirty] = useState(false);
   const [devices, setDevices] = useState([]);
   const [surveys, setSurveys] = useState([]);
@@ -523,6 +525,8 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
   async function download(target = current) {
     try {
       await downloadAuthenticatedFile(`/api/dkct/plans/${target.id}/docx`, `PhuongAn_${String(target.docNumber).replace(/\//g, '-')}.docx`);
+      setExported(true);
+      notify('Đã tải file Word. Bấm “Đăng QLTN” để mở trang QLTN và đăng phương án.', 'success');
     } catch (err) { notify(err.message, 'error'); }
   }
 
@@ -640,6 +644,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
               <FileDown className="w-4 h-4" /> Tải Word
             </button>
           )}
+          {current && <QltnLink highlight={exported} />}
           {!readOnly && (
             <>
               <button type="button" className={btnSecondary} onClick={() => save({ andDownload: true })} disabled={saving}><FileDown className="w-4 h-4" /> Lưu & tải Word</button>
@@ -660,6 +665,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
             onDownload={(readOnly || (current && !dirty)) ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
             downloadLabel={(readOnly || (current && !dirty)) ? 'Tải Word' : 'Lưu & tải Word'}
             pdf={(readOnly || (current && !dirty))}
+            actions={current ? <QltnLink highlight={exported} /> : null}
             onClose={() => setPreviewing(false)} />
         )}
       </div>

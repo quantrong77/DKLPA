@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp, Cable } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp, Cable, MapPinned } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import DrawingDialog from './DrawingDialog.jsx';
 import CtLibraryPanel from './CtLibraryPanel.jsx';
+import TeamAreasPanel from './TeamAreasPanel.jsx';
 import { TabButton, btnGhost, btnPrimary, btnSecondary, inputCls, inputBorder } from './ui.jsx';
 
 const CATALOGS = {
@@ -118,8 +119,10 @@ export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }
           </TabButton>
         ))}
         <TabButton icon={Cable} active={tab === 'ctLibrary'} onClick={() => { setTab('ctLibrary'); setEditing(null); }}>Mạch dòng TI</TabButton>
+        <TabButton icon={MapPinned} active={tab === 'teamAreas'} onClick={() => { setTab('teamAreas'); setEditing(null); }}>Khu vực của tổ</TabButton>
       </div>
       {tab === 'ctLibrary' && <CtLibraryPanel catalogs={catalogs} canManage={!!isAdmin} />}
+      {tab === 'teamAreas' && <TeamAreasPanel canManage={!!isAdmin} />}
       {cfg && <>
       {cfg.hint && <p className="text-xs text-slate-500 dark:text-slate-400">{cfg.hint}</p>}
       {canManage && !editing && (

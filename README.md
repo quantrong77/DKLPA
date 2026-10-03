@@ -11,8 +11,17 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   (https://home.ptc3.npt.evn.vn/lichcatdien_new2/) để tải tay. Cấu hình trong `.env` của máy chủ (không commit):
   `OUTAGE_SOURCE_USER`, `OUTAGE_SOURCE_PASSWORD` (tuỳ chọn `OUTAGE_SOURCE_URL`). Chỉ chạy khi máy chủ vào được mạng nội bộ.
   Nạp lại lịch: so với lịch đã nạp trong khoảng ngày chọn (mặc định theo khoảng của file) — **hoãn** (dòng không còn trong
-  file mới, hoặc tình trạng "Hoãn") tô đỏ, **phát sinh** (dòng mới) tô vàng, không đổi để nguyên; xem trước có số dự kiến,
-  sau khi cập nhật liệt kê chi tiết, bấm để tới dòng. Khoảng chưa nạp lịch nào thì không so sánh.
+  file mới, hoặc tình trạng "Hoãn") tô đỏ, **dời lịch** (cùng trạm, cùng việc, khác giờ) xanh, **sửa nội dung** (cùng giờ,
+  khác chữ) tím, **phát sinh** (dòng mới) vàng, **có lại** (dòng đang hoãn xuất hiện lại) bỏ dấu hoãn; dời/sửa cập nhật
+  dòng cũ tại chỗ nên hồ sơ đã gắn vẫn trỏ đúng. Xem trước có số dự kiến, sau khi cập nhật liệt kê chi tiết, bấm để tới dòng.
+  Khoảng chưa nạp lịch nào thì không so sánh. Dấu phát sinh/dời/sửa giữ 7 ngày; dấu hoãn giữ đến khi có lại.
+  Biên bản KSHT, phương án, giấy ĐKCT gắn dòng lịch đã hoãn/dời/sửa có nhãn cảnh báo ở danh sách, dải cảnh báo khi mở
+  và trên thanh luồng. Mỗi dòng lịch có **lịch sử thay đổi** (chỉ ghi khi trạng thái đổi thật, nạp lặp không ghi trùng).
+  **Tự tải theo giờ hẹn**: `OUTAGE_AUTO_FETCH=07:00,15:00` (giờ VN, bỏ trống = tắt), `OUTAGE_AUTO_DAYS=14`; mỗi giờ hẹn
+  chỉ tải một lần (kể cả nhiều tiến trình), nhật ký lần tải hiện ở đầu tab. Có thay đổi thì báo (ChatLan: tin nhắn riêng từ
+  "Chuẩn bị công tác") cho người lập và tổ trưởng/tổ phó của tổ có hồ sơ gắn dòng lịch, và tổ trưởng/tổ phó của tổ phụ trách
+  khu vực. **Chỉ tổ của tôi**: dòng thuộc khu vực TTĐ tổ phụ trách (admin chọn ở Danh mục → Khu vực của tổ; khớp theo ô
+  đơn vị "TTĐ …" hoặc TBA trong danh mục) hoặc tổ đã lập hồ sơ.
 - Lập **giấy đăng ký công tác** từ một dòng lịch hoặc tự ghi:
   - Nơi nhận chọn từ danh mục, email tự điền.
   - LĐCV, GSATĐ, người cảnh giới: chọn từ danh mục hoặc tự ghi, có thể để trống. Bậc ATĐ tự hiển thị.

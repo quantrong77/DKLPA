@@ -59,7 +59,7 @@ test('khóa ngoại: không xóa được đơn vị QLVH còn TBA; xóa TBA th�
       [id, substationId, label, Buffer.from('%PDF-'), Buffer.from('x')]);
     await insertDrawing('BV-1', sub.id, 'Phía 500kV');
     await insertDrawing('BV-2', sub.id, 'Phía 220kV');
-    await assert.rejects(insertDrawing('BV-3', sub.id, 'Phía 220kV'), /UNIQUE/i, 'tên sơ đồ không trùng trong một trạm');
+    await assert.rejects(insertDrawing('BV-3', sub.id, 'Phía 220kV'), /UNIQUE|Duplicate entry/i, 'tên sơ đồ không trùng trong một trạm');
     await assert.rejects(insertDrawing('BV-4', 'KHONG-CO', 'Sơ đồ trạm'), /FOREIGN KEY/i);
     await db.execute('DELETE FROM dkct_substations WHERE id = ?', [sub.id]);
     assert.equal((await db.queryOne("SELECT substationId FROM dkct_surveys WHERE id = 'KS-1'")).substationId, null);
@@ -74,15 +74,15 @@ test('migrate: bản vẽ ở bảng cũ (một bản/trạm) chuyển sang dkct
   try {
     await migrate(db);
     const sub = await db.queryOne("SELECT id FROM dkct_substations WHERE name = 'TBA 220kV Tháp Chàm'");
-    await db.execute(`CREATE TABLE dkct_substation_drawings (substationId TEXT PRIMARY KEY, fileName TEXT, pdf BLOB NOT NULL, pdfSize INTEGER,
-      page INTEGER, pageCount INTEGER, image BLOB NOT NULL, imageType TEXT NOT NULL, width INTEGER, height INTEGER, uploadedBy TEXT,
+    await db.execute(`CREATE TABLE dkct_substation_drawings (substationId VARCHAR(64) PRIMARY KEY, fileName TEXT, pdf BLOB NOT NULL, pdfSize INTEGER,
+      page INTEGER, pageCount INTEGER, image BLOB NOT NULL, imageType VARCHAR(16) NOT NULL, width INTEGER, height INTEGER, uploadedBy TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     await db.execute(`INSERT INTO dkct_substation_drawings (substationId, fileName, pdf, pdfSize, page, pageCount, image, imageType, width, height)
       VALUES (?, 'cu.pdf', ?, 5, 2, 3, ?, 'png', 300, 150)`, [sub.id, Buffer.from('%PDF-'), Buffer.from('anh')]);
     await migrate(db);
     const rows = await db.query('SELECT substationId, label, fileName, page, width FROM dkct_drawings');
     assert.deepEqual(rows.map(r => ({ ...r })), [{ substationId: sub.id, label: 'Sơ đồ trạm', fileName: 'cu.pdf', page: 2, width: 300 }]);
-    await assert.rejects(db.query('SELECT 1 FROM dkct_substation_drawings'), /no such table/i);
+    await assert.rejects(db.query('SELECT 1 FROM dkct_substation_drawings'), /no such table|doesn't exist/i);
     await migrate(db);
     assert.equal((await db.queryOne('SELECT COUNT(*) AS n FROM dkct_drawings')).n, 1);
   } finally { db.close(); }

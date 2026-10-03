@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardList, Search, FileDown, Trash2, Eye, Pencil, FilePlus2, FileStack, Image as ImageIcon, ScanEye } from 'lucide-react';
+import { ClipboardList, Search, FileDown, Trash2, Eye, Pencil, FilePlus2, FileStack, Image as ImageIcon, ScanEye, Upload } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
+import QltnLink, { QLTN_URL } from './QltnLink.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
+import { OutageChangeTag } from './OutageAlert.jsx';
 import { surveyTimeLabel } from '../lib/survey.js';
 
 /** Danh sách biên bản khảo sát hiện trường của tổ (admin thấy tất cả). */
@@ -70,6 +72,7 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
               </span>
               <button type="button" className="flex-1 min-w-[12rem] text-left" onClick={() => onOpen(item)}>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2">{item.workContent}</p>
+                {item.outageChange && <span className="block mt-0.5"><OutageChangeTag change={item.outageChange} /></span>}
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 inline-flex items-center gap-1">
                   Tại: {item.stationName}
                   {item.hasDiagram && <span className="inline-flex items-center gap-0.5 ml-1" title="Có ảnh sơ đồ"><ImageIcon className="w-3.5 h-3.5" /> sơ đồ</span>}
@@ -97,6 +100,7 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
                   <ScanEye className="w-4 h-4" />
                 </button>
                 <button type="button" className={btnGhost} aria-label="Tải Word" onClick={() => download(item)}><FileDown className="w-4 h-4" /></button>
+                <a href={QLTN_URL} target="_blank" rel="noopener noreferrer" className={btnGhost} aria-label="Đăng QLTN" title="Mở trang QLTN để đăng file Word"><Upload className="w-4 h-4" /></a>
                 {item.canEdit && (
                   <button type="button" className={btnGhost} aria-label="Xóa" onClick={() => remove(item)}><Trash2 className="w-4 h-4" /></button>
                 )}
@@ -108,7 +112,7 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
       {loading && items.length === 0 && <p className="text-xs text-slate-500">Đang tải…</p>}
       {previewItem && (
         <DocPreview title={'Biên bản khảo sát hiện trường'} load={() => api.blob(`/surveys/${previewItem.id}/docx`)}
-          onDownload={() => download(previewItem)} onClose={() => setPreviewItem(null)} />
+          onDownload={() => download(previewItem)} actions={<QltnLink />} onClose={() => setPreviewItem(null)} />
       )}
     </div>
   );

@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FileStack, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye } from 'lucide-react';
+import { FileStack, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye, Upload } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
+import QltnLink, { QLTN_URL } from './QltnLink.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
+import { OutageChangeTag } from './OutageAlert.jsx';
 
 /** Danh sách phương án thi công, biện pháp an toàn của tổ (admin thấy tất cả). */
 export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpen, canCreate }) {
@@ -98,6 +100,7 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
               </span>
               <button type="button" className="flex-1 min-w-[12rem] text-left" onClick={() => onOpen(item)}>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2">{item.workTitle}</p>
+                {item.outageChange && <span className="block mt-0.5"><OutageChangeTag change={item.outageChange} /></span>}
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.stationName}{item.startTime ? ` · ${formatDateTime(item.startTime)}` : ''}</p>
               </button>
               <div className="flex items-center gap-1">
@@ -113,6 +116,7 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
                   onClick={() => download(item)}>
                   <FileDown className="w-4 h-4" />
                 </button>
+                <a href={QLTN_URL} target="_blank" rel="noopener noreferrer" className={btnGhost} aria-label="Đăng QLTN" title="Mở trang QLTN để đăng file Word"><Upload className="w-4 h-4" /></a>
                 {item.canEdit && <button type="button" className={btnGhost} aria-label="Xóa" onClick={() => remove(item)}><Trash2 className="w-4 h-4" /></button>}
               </div>
             </li>
@@ -122,7 +126,7 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
       {loading && items.length === 0 && <p className="text-xs text-slate-500">Đang tải…</p>}
       {previewItem && (
         <DocPreview title={`Phương án ${previewItem.docNumber}`} load={() => api.blob(`/plans/${previewItem.id}/docx`)}
-          onDownload={() => download(previewItem)} onClose={() => setPreviewItem(null)} />
+          onDownload={() => download(previewItem)} actions={<QltnLink />} onClose={() => setPreviewItem(null)} />
       )}
     </div>
   );
