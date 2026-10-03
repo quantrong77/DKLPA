@@ -110,6 +110,8 @@ test('renderSurveyDocx: điền đủ nội dung theo mẫu, không còn chữ h
   assert.doesNotMatch(text, /[<>]|nhập tay|pick chọn|Khu vực công tác/);
   assert.doesNotMatch(xml, /\{[#/@]?\w+\}/, 'không còn thẻ chưa điền');
   assert.doesNotMatch(xml, /r:embed="rId\d+"/, 'không còn ảnh sơ đồ mẫu');
+  // nhãn vị trí ký số của ứng dụng ký số Công ty: giữ nguyên trong file xuất
+  for (const tag of ['dvtc', 'qlvh']) assert.ok(paragraphs.includes(`((${tag}))`), `giữ nhãn ký số ((${tag}))`);
 });
 
 test('renderSurveyDocx: chèn ảnh sơ đồ vào trang cuối (media, quan hệ, kiểu nội dung)', () => {

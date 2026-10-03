@@ -4,6 +4,10 @@ Sinh templates/template_bbksht.docx (có thẻ docxtemplater) từ mẫu gốc t
 
     python scripts/tag_bbksht.py
 
+LƯU Ý: templates/template_bbksht.docx hiện là bản người dùng đã chỉnh tay, có thêm nhãn ký số ((dvtc)),
+((qlvh)) cho ứng dụng ký số của Công ty. Chạy lại script sẽ ghi đè và làm mất các nhãn này — chỉnh trực tiếp
+file .docx đó thay vì chạy lại (tests/survey.test.js kiểm tra nhãn còn nguyên).
+
 Giữ định dạng của mẫu: chữ mới lấy định dạng (rPr) của run chữ đầu tiên trong đoạn; run chứa hình
 (vd đường kẻ dưới tên đơn vị) được giữ nguyên. Các chú thích <…> của mẫu được thay bằng thẻ; ảnh sơ đồ
 ví dụ và hai hình chú thích "Khu vực công tác" được bỏ, thay bằng đoạn {@diagramXml} (ảnh người dùng tải lên).
