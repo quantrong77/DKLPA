@@ -13,7 +13,7 @@ import PlanList from './components/PlanList.jsx';
 import PlanEditor from './components/PlanEditor.jsx';
 import ConfirmationList from './components/ConfirmationList.jsx';
 import ConfirmationEditor from './components/ConfirmationEditor.jsx';
-import WorkflowBar from './components/WorkflowBar.jsx';
+import WorkflowBar, { WorkflowMini } from './components/WorkflowBar.jsx';
 import { APP_NAME, linkedIds } from './lib/workflow.js';
 import { defaultWorkload, planFromSurvey } from './lib/plan.js';
 import { fromSaved } from './lib/form.js';
@@ -167,7 +167,7 @@ export default function DkctApp() {
             </div>
             <div>
               <h1 className="text-base font-bold text-slate-900 dark:text-white">{APP_NAME}</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Từ lịch cắt điện đến giấy xác nhận đủ điều kiện đóng điện</p>
+              <WorkflowMini tab={tab} onTab={setTab} chain={chain} selection={selection} />
             </div>
           </div>
           <div className="flex items-center gap-2">

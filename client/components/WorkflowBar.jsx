@@ -106,6 +106,51 @@ export default function WorkflowBar({ tab, onTab, chain, selection, onClearSelec
   );
 }
 
+// vòng tròn của sơ đồ luồng thu gọn (dưới tên ứng dụng)
+const DOT = {
+  idle: 'bg-white text-chatlan-700 border border-chatlan-300 dark:bg-slate-900 dark:text-chatlan-300 dark:border-chatlan-700',
+  todo: 'bg-white text-slate-400 border border-slate-300 dark:bg-slate-900 dark:text-slate-500 dark:border-slate-600',
+  next: 'bg-amber-100 text-amber-700 border border-amber-400 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-600',
+  done: 'bg-emerald-500 text-white border border-emerald-500',
+  selected: 'bg-chatlan-600 text-white border border-chatlan-600'
+};
+
+/**
+ * Sơ đồ luồng thu gọn: 5 vòng tròn nối bằng đường kẻ (Lịch → KSHT → PA → ĐKCT → GXN).
+ * Bước đang mở có viền đậm; khi theo dõi một hồ sơ thì tô theo trạng thái (đã có xanh lá, tiếp theo vàng).
+ * Bấm một bước để mở danh sách của bước đó.
+ */
+export function WorkflowMini({ tab, onTab, chain, selection }) {
+  const steps = workflowSteps(chain, selection);
+  const reached = (s) => s.docs.length > 0 || s.state === 'selected';
+  return (
+    <nav aria-label="Sơ đồ luồng chuẩn bị công tác">
+      <ol className="flex items-start mt-0.5">
+        {steps.map((s, i) => {
+          const active = tab === s.tab;
+          const line = i > 0 && reached(steps[i - 1]) && reached(s);
+          return (
+            <li key={s.type} className="flex items-start">
+              {i > 0 && (
+                <span aria-hidden="true"
+                  className={`mt-[7px] h-0.5 w-4 sm:w-6 rounded-full ${line ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+              )}
+              <button type="button" onClick={() => onTab(s.tab)} aria-current={active ? 'page' : undefined}
+                aria-label={`Bước ${i + 1}: ${s.label}`} title={s.label}
+                className="group flex flex-col items-center gap-0.5 -mx-1 px-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-chatlan-500">
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold leading-none transition ${DOT[s.state]} ${active ? 'ring-2 ring-chatlan-300 dark:ring-chatlan-700 ring-offset-1 ring-offset-white dark:ring-offset-slate-900' : 'group-hover:ring-2 group-hover:ring-slate-200 dark:group-hover:ring-slate-700'}`}>
+                  {s.state === 'done' ? <Check className="w-2.5 h-2.5" aria-hidden="true" /> : i + 1}
+                </span>
+                <span className={`text-[10px] leading-none ${active ? 'font-bold text-chatlan-700 dark:text-chatlan-300' : 'text-slate-500 dark:text-slate-400'}`}>{s.short}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 /** Nút chọn hồ sơ để theo dõi luồng, đặt đầu mỗi dòng danh sách. */
 export function TrackButton({ active, linked, onClick }) {
   return (
