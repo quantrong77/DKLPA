@@ -22,6 +22,7 @@ export const HELP_SECTIONS = [
       ['Luồng công việc', 'Thanh "1. Lịch / Công việc → 2. Khảo sát → 3. Phương án → 4. Giấy ĐKCT → 5. Giấy xác nhận" là trình tự chuẩn bị một công tác. Bấm một bước để mở danh sách của bước đó. Việc không đăng ký cắt điện thì bắt đầu từ "Công việc không có lịch cắt điện" ở bước 1.'],
       ['Theo dõi một hồ sơ', 'Bấm biểu tượng luồng ở đầu một dòng (hoặc mở hồ sơ): thanh luồng tô màu bước đã có (xanh lá ✓), bước đang chọn (xanh dương), bước nên làm tiếp (vàng); các hồ sơ cùng luồng được viền xanh trong danh sách.'],
       ['Cảnh báo lịch', 'Hồ sơ gắn dòng lịch đã hoãn / dời / sửa có nhãn "Lịch: …" trong danh sách và dải cảnh báo khi mở — kiểm tra lại trước khi in, nộp.'],
+      ['Tải lại', 'Nút vòng xoay ở góc phải đầu trang lấy dữ liệu mới nhất từ máy chủ: danh sách của tab đang mở, danh mục, quyền và luồng hồ sơ đang theo dõi (không mất hồ sơ đang soạn). Vòng xoay quay khi đang tải; dòng "Cập nhật hh:mm" bên cạnh cho biết lần tải gần nhất. Dùng khi người khác vừa lập, sửa hồ sơ hoặc danh mục.'],
       ['Giao diện', 'Nút bảng màu ở đầu trang: chọn "Mặc định" hoặc "Chuyên nghiệp"; trình duyệt ghi nhớ lựa chọn.'],
       ['Quyền', 'Trưởng/phó tổ, trưởng phòng, admin lập và sửa hồ sơ của tổ; thành viên xem. Một số chức năng (dọn lịch, thư viện mạch dòng, khu vực của tổ, mẫu văn bản, tải lịch tự động) chỉ admin.']
     ]
@@ -96,3 +97,19 @@ export const HELP_SECTIONS = [
 
 /** Mục hướng dẫn cho tab đang mở (không có thì "Bắt đầu"). */
 export const helpFor = (tab) => HELP_SECTIONS.find(s => s.id === tab) || HELP_SECTIONS[0];
+
+// danh sách của từng tab (hint nút Tải lại); tab Lịch có hai danh sách: lịch cắt điện / công việc
+const LIST_NAMES = {
+  outages: 'lịch cắt điện', works: 'công việc không có lịch cắt điện', surveys: 'biên bản khảo sát', plans: 'phương án',
+  registrations: 'giấy đăng ký công tác', confirmations: 'giấy xác nhận', catalogs: 'danh mục', legacy: 'giấy cũ'
+};
+const clock = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+/** Hint của nút Tải lại: tải lại những gì, lần cập nhật gần nhất. */
+export function reloadHint(tab, firstView = 'outages', refreshedAt = null) {
+  const name = LIST_NAMES[tab === 'outages' && firstView === 'works' ? 'works' : tab];
+  const what = `Tải lại dữ liệu mới nhất từ máy chủ: ${name ? `danh sách ${name}` : 'danh sách đang mở'}, danh mục, quyền và luồng hồ sơ đang theo dõi.`;
+  const when = refreshedAt ? ` Cập nhật lần cuối lúc ${clock(refreshedAt)}.` : '';
+  return `${what}${when} Dùng khi người khác vừa lập/sửa hồ sơ hoặc danh mục.`;
+}
+export const refreshedLabel = (d) => (d ? `Cập nhật ${clock(d)}` : '');

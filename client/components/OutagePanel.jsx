@@ -374,7 +374,7 @@ function StepTracker({ outage }) {
 }
 
 /** Lịch cắt điện = kế hoạch công tác: import Excel, lọc, theo dõi tiến độ, lập biên bản/phương án/giấy từ một dòng. */
-export default function OutagePanel({ selectedId, linked, onTrack, canCreate, canPurge, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
+export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
   const { api, notify, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -414,7 +414,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, canCreate, ca
   useEffect(() => {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
-  }, [load]);
+  }, [load, reloadKey]);
 
   // tới một dòng hoãn/phát sinh: mở rộng khoảng ngày nếu cần, bỏ lọc, cuộn tới và làm nổi bật
   const locate = (r) => {

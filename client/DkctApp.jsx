@@ -23,6 +23,7 @@ import { fromSaved } from './lib/form.js';
 import { loadTheme, saveTheme, themeClass } from './lib/theme.js';
 import ThemePicker from './components/ThemePicker.jsx';
 import HelpAboutButtons from './components/HelpAbout.jsx';
+import { reloadHint, refreshedLabel } from './lib/help.js';
 import './dkct-theme.css';
 import { emptyRep, qlvhRoleFor, registrationFromSurvey, withQlvhFor } from './lib/survey.js';
 
@@ -73,12 +74,26 @@ export default function DkctApp() {
     const { items } = await api.get(name === 'drawings' ? '/substation-drawings' : `/${name}`);
     setCatalogs(c => ({ ...c, [name]: items }));
   }, [api]);
-  const loadAll = useCallback(() => {
-    loadMeta();
-    Promise.all(['personnel', 'stations', 'substations', 'drawings', 'duties', 'risks'].map(loadCatalog)).catch(err => notify(err.message, 'error'));
-  }, [loadMeta, loadCatalog, notify]);
+  const [refreshedAt, setRefreshedAt] = useState(null);
+  const loadAll = useCallback(() => Promise.all([
+    loadMeta(),
+    Promise.all(['personnel', 'stations', 'substations', 'drawings', 'duties', 'risks'].map(loadCatalog)).catch(err => notify(err.message, 'error'))
+  ]).then(() => setRefreshedAt(new Date())), [loadMeta, loadCatalog, notify]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // nút Tải lại: danh mục + quyền, danh sách của tab đang mở và luồng đang theo dõi (reloadKey);
+  // vòng xoay quay ít nhất 0,6 giây để thấy đã bấm, không bấm chồng khi đang tải
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    const started = Date.now();
+    setReloadKey(k => k + 1);
+    try { await loadAll(); } finally {
+      setTimeout(() => setRefreshing(false), Math.max(0, 600 - (Date.now() - started)));
+    }
+  };
 
   const withOpening = async (fn) => {
     setOpening(true);
@@ -223,7 +238,11 @@ export default function DkctApp() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {opening && <Loader2 className="w-4 h-4 animate-spin text-chatlan-600" aria-label="Đang mở" />}
+            {opening && (
+              <span className="inline-flex items-center gap-1 text-xs text-chatlan-700 dark:text-chatlan-300" role="status" title="Đang lấy dữ liệu để mở biểu mẫu…">
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /><span className="hidden sm:inline">Đang mở…</span>
+              </span>
+            )}
             {permissions.canCreate && (tab === 'outages' && firstView === 'works' ? (
               <button type="button" className={btnPrimary} onClick={openNewWork} disabled={!meta}><Plus className="w-4 h-4" /> Thêm công việc</button>
             ) : tab === 'surveys' ? (
@@ -237,8 +256,14 @@ export default function DkctApp() {
             ))}
             <HelpAboutButtons tab={tab} />
             <ThemePicker value={theme} onChange={chooseTheme} />
-            <button type="button" className={btnGhost} aria-label="Tải lại" onClick={() => { loadAll(); setReloadKey(k => k + 1); }}>
-              <RefreshCw className="w-4 h-4" />
+            <button type="button" className={`${btnGhost} inline-flex items-center gap-1.5 disabled:opacity-70`} onClick={refresh} disabled={refreshing}
+              aria-label={refreshing ? 'Đang tải lại' : 'Tải lại dữ liệu'} title={reloadHint(tab, firstView, refreshedAt)}>
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-chatlan-600' : ''}`} aria-hidden="true" />
+              {refreshedAt && (
+                <span className="hidden lg:inline text-[11px] text-slate-400 dark:text-slate-500 tabular-nums" aria-live="polite">
+                  {refreshing ? 'Đang tải…' : refreshedLabel(refreshedAt)}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -267,7 +292,7 @@ export default function DkctApp() {
           </div>
         )}
         {tab === 'outages' && firstView === 'outages' && (
-          <OutagePanel {...pick('outage')} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
+          <OutagePanel {...pick('outage')} reloadKey={reloadKey} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
             onCreatePlanFromOutage={openPlanFromOutage} />
         )}
         {tab === 'outages' && firstView === 'works' && (
