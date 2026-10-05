@@ -6,6 +6,7 @@ import DocPreview from './DocPreview.jsx';
 import QltnLink from './QltnLink.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
+import LinkedWork from './LinkedWork.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
 import { fieldErrors } from '../lib/form.js';
 import { suggestDrawings } from '../lib/plan.js';
@@ -302,7 +303,9 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
         </header>
 
         {/* ngoài vùng cuộn: luôn thấy khi cuộn nội dung bên dưới */}
-        <LinkedOutage outageId={form.outageId} onChange={id => setField('outageId', id)} readOnly={readOnly} />
+        {form.workId
+          ? <LinkedWork workId={form.workId} onUnlink={() => setField('workId', null)} readOnly={readOnly} />
+          : <LinkedOutage outageId={form.outageId} onChange={id => setField('outageId', id)} readOnly={readOnly} />}
         <div className="flex-1 overflow-y-auto p-4">
           {errorList.length > 0 && (
             <div className="mb-3 flex gap-2 p-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 text-sm text-red-700 dark:text-red-300" role="alert">

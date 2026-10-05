@@ -1,6 +1,6 @@
 import React from 'react';
 import { Zap, ClipboardList, FileStack, FileText, BadgeCheck, Check, ChevronRight, Route, X, CircleDot } from 'lucide-react';
-import { workflowSteps, doneCount, selectionTitle, stepOfType, WORKFLOW_STEPS } from '../lib/workflow.js';
+import { workflowSteps, doneCount, selectionTitle, listOfType, WORKFLOW_STEPS } from '../lib/workflow.js';
 import { chainAlert } from '../lib/outageChange.js';
 import { OutageAlertBanner } from './OutageAlert.jsx';
 
@@ -27,13 +27,13 @@ function statusText(step) {
 }
 
 /**
- * Thanh luồng chuẩn bị công tác: Lịch cắt điện → Khảo sát → Phương án → Giấy ĐKCT → Giấy xác nhận.
+ * Thanh luồng chuẩn bị công tác: Lịch cắt điện / Công việc không có lịch → Khảo sát → Phương án → Giấy ĐKCT → Giấy xác nhận.
  * Bấm một bước để mở danh sách của bước đó. Khi đã chọn một hồ sơ, mỗi bước hiện hồ sơ cùng luồng
  * (đã có / bước tiếp theo / chưa có).
  */
 export default function WorkflowBar({ tab, onTab, chain, selection, onClearSelection, extraTabs }) {
   const steps = workflowSteps(chain, selection);
-  const selectedRow = selection && chain ? (chain[stepOfType(selection.type)?.list] || []).find(r => r.id === selection.id) : null;
+  const selectedRow = selection && chain ? (chain[listOfType(selection.type)] || []).find(r => r.id === selection.id) : null;
   const done = doneCount(steps);
   const alert = selection && chain ? chainAlert(chain.outages) : null;
   return (

@@ -119,6 +119,7 @@ export function planFromSurvey(draft, survey) {
     ...draft,
     surveyId: survey.id || null,
     outageId: d.outageId || draft.outageId || null,
+    workId: d.workId || draft.workId || null,
     station: st.substationId || st.name
       ? { substationId: st.substationId || null, name: st.name || '', qlvhUnitId: st.qlvhUnitId || null, qlvhUnitName: st.qlvhUnitName || '', qlvhShort: draft.station?.qlvhShort || '' }
       : draft.station,
@@ -126,5 +127,30 @@ export function planFromSurvey(draft, survey) {
     drawingIds: st.substationId && st.substationId !== draft.station?.substationId ? null : draft.drawingIds,
     equipmentText: draft.equipmentText || d.equipment || '',
     risks: (d.risks || []).map(r => ({ hazard: r.hazard, measures: r.measures, performer: r.performer }))
+  };
+}
+
+/**
+ * Phần giấy ĐKCT lấy từ phương án: căn cứ (số phương án), nội dung, địa điểm (ngăn lộ tại trạm), thời gian, rủi ro,
+ * nơi nhận (đơn vị QLVH của trạm); giữ liên kết lịch / công việc / biên bản của phương án và chính phương án (planId).
+ */
+export function registrationFromPlan(plan) {
+  const d = plan.data || plan;
+  const st = d.station || {};
+  const equipment = String(d.equipmentText || '').trim();
+  const type = String(d.workType || '').trim();
+  const content = type && !equipment.toLowerCase().startsWith(type.toLowerCase()) ? `${type} ${equipment}`.trim() : equipment || type;
+  const time = d.time || {};
+  return {
+    header: { basis: `Phương án thi công, biện pháp an toàn số ${plan.docNumber || '…'}` },
+    workContent: { text: content, source: 'manual' },
+    workLocation: [d.bays, st.name].filter(Boolean).join(' tại '),
+    ...(time.start || time.end ? { time: { start: time.start || '', end: time.end || '', source: 'manual' } } : {}),
+    risks: (d.risks || []).map(r => ({ hazard: r.hazard, measures: r.measures, performer: r.performer })),
+    planId: plan.id || null,
+    surveyId: d.surveyId || null,
+    outageId: d.outageId || null,
+    workId: d.workId || null,
+    ...(st.qlvhUnitId ? { recipient: { stationId: st.qlvhUnitId } } : {})
   };
 }

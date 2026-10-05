@@ -1,6 +1,7 @@
 /**
- * Luồng chuẩn bị công tác của một hồ sơ: lịch cắt điện → biên bản KSHT → phương án → giấy ĐKCT → giấy xác nhận.
- * Từ hồ sơ đang chọn, đi theo các liên kết (outageId, surveyId, planId, registrationId) theo cả hai chiều
+ * Luồng chuẩn bị công tác của một hồ sơ: lịch cắt điện (hoặc công việc không có lịch) → biên bản KSHT → phương án
+ * → giấy ĐKCT → giấy xác nhận.
+ * Từ hồ sơ đang chọn, đi theo các liên kết (outageId, workId, surveyId, planId, registrationId) theo cả hai chiều
  * để biết mỗi bước đã có hồ sơ nào. Chỉ đi qua hồ sơ người xem được phép xem (lịch cắt điện dùng chung mọi tổ).
  */
 const express = require('express');
@@ -8,27 +9,29 @@ const { forbidden } = require('../policy');
 
 const TYPES = {
   outage: { table: 'dkct_outages', columns: 'id, regStart, regEnd, location, content, status, changeKind, changeNote', shared: true },
-  survey: { table: 'dkct_surveys', columns: 'id, department, surveyTime, stationName, workContent, outageId' },
-  plan: { table: 'dkct_plans', columns: 'id, department, docNumber, workTitle, stationName, startTime, surveyId, outageId' },
-  registration: { table: 'dkct_registrations', columns: 'id, department, docNumber, workContent, startTime, outageId' },
+  work: { table: 'dkct_works', columns: 'id, department, content, stationName, location, startTime, endTime' },
+  survey: { table: 'dkct_surveys', columns: 'id, department, surveyTime, stationName, workContent, outageId, workId' },
+  plan: { table: 'dkct_plans', columns: 'id, department, docNumber, workTitle, stationName, startTime, surveyId, outageId, workId' },
+  registration: { table: 'dkct_registrations', columns: 'id, department, docNumber, workContent, startTime, outageId, workId, surveyId, planId' },
   confirmation: { table: 'dkct_confirmations', columns: 'id, department, docNumber, stationName, bays, workDate, registrationId, planId' }
 };
 /** Liên kết lưu ở chính hồ sơ (đi lên bước trước). */
 const PARENTS = {
-  survey: [['outage', 'outageId']],
-  plan: [['outage', 'outageId'], ['survey', 'surveyId']],
-  registration: [['outage', 'outageId']],
+  survey: [['outage', 'outageId'], ['work', 'workId']],
+  plan: [['outage', 'outageId'], ['work', 'workId'], ['survey', 'surveyId']],
+  registration: [['outage', 'outageId'], ['work', 'workId'], ['survey', 'surveyId'], ['plan', 'planId']],
   confirmation: [['registration', 'registrationId'], ['plan', 'planId']]
 };
 /** Hồ sơ bước sau trỏ về hồ sơ này. */
 const CHILDREN = {
   outage: [['survey', 'outageId'], ['plan', 'outageId'], ['registration', 'outageId']],
-  survey: [['plan', 'surveyId']],
-  plan: [['confirmation', 'planId']],
+  work: [['survey', 'workId'], ['plan', 'workId'], ['registration', 'workId']],
+  survey: [['plan', 'surveyId'], ['registration', 'surveyId']],
+  plan: [['confirmation', 'planId'], ['registration', 'planId']],
   registration: [['confirmation', 'registrationId']]
 };
 const MAX_NODES = 200;
-const ORDER = { outage: 'regStart', survey: 'surveyTime', plan: 'startTime', registration: 'startTime', confirmation: 'workDate' };
+const ORDER = { outage: 'regStart', work: 'startTime', survey: 'surveyTime', plan: 'startTime', registration: 'startTime', confirmation: 'workDate' };
 
 function workflowRouter({ db, policy, wrap, importer }) {
   const router = express.Router();
@@ -75,6 +78,7 @@ function workflowRouter({ db, policy, wrap, importer }) {
     res.json({
       selected: { type, id },
       outages: list('outage'),
+      works: list('work'),
       surveys: list('survey'),
       plans: list('plan'),
       registrations: list('registration'),

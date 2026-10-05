@@ -2,15 +2,23 @@
 
 export const APP_NAME = 'Chuẩn bị công tác';
 
-/** 5 bước theo trình tự công việc; tab: tab danh sách tương ứng, list: khóa danh sách trong kết quả /workflow. */
+/**
+ * 5 bước theo trình tự công việc; tab: tab danh sách tương ứng, list: khóa danh sách trong kết quả /workflow.
+ * Bước 1 là gốc của luồng: dòng lịch cắt điện, hoặc công việc không có lịch cắt điện (types/lists phụ).
+ */
 export const WORKFLOW_STEPS = [
-  { type: 'outage', tab: 'outages', list: 'outages', label: 'Lịch cắt điện', short: 'Lịch' },
+  { type: 'outage', types: ['outage', 'work'], tab: 'outages', list: 'outages', lists: ['outages', 'works'], label: 'Lịch / Công việc', short: 'Lịch' },
   { type: 'survey', tab: 'surveys', list: 'surveys', label: 'Khảo sát', short: 'KSHT' },
   { type: 'plan', tab: 'plans', list: 'plans', label: 'Phương án', short: 'PA' },
   { type: 'registration', tab: 'registrations', list: 'registrations', label: 'Giấy ĐKCT', short: 'ĐKCT' },
   { type: 'confirmation', tab: 'confirmations', list: 'confirmations', label: 'Giấy xác nhận', short: 'GXN' }
 ];
-export const stepOfType = (type) => WORKFLOW_STEPS.find(s => s.type === type) || null;
+export const stepOfType = (type) => WORKFLOW_STEPS.find(s => s.type === type || s.types?.includes(type)) || null;
+/** Tên loại hồ sơ (bước 1 có hai loại). */
+const TYPE_LABEL = { outage: 'Lịch cắt điện', work: 'Công việc' };
+export const typeLabel = (type) => TYPE_LABEL[type] || stepOfType(type)?.label || '';
+/** Khóa danh sách của một loại hồ sơ trong kết quả /workflow. */
+export const listOfType = (type) => (type === 'work' ? 'works' : stepOfType(type)?.list || null);
 export const stepOfTab = (tab) => WORKFLOW_STEPS.find(s => s.tab === tab) || null;
 
 const day = (v) => {
@@ -28,6 +36,7 @@ export function docLabel(type, row) {
   if (row.docNumber) return String(row.docNumber);
   if (type === 'outage') return day(row.regStart) || 'Lịch';
   if (type === 'survey') return day(row.surveyTime) ? `BB ${day(row.surveyTime)}` : 'Biên bản';
+  if (type === 'work') return day(row.startTime) ? `CV ${day(row.startTime)}` : 'Công việc';
   return '';
 }
 
@@ -36,7 +45,8 @@ export function selectionTitle(type, row) {
   const step = stepOfType(type);
   if (!step || !row) return '';
   const what = row.workTitle || row.workContent || row.content || [row.stationName, row.bays].filter(Boolean).join(' · ') || row.location || '';
-  return [`${step.label} ${docLabel(type, row)}`.trim(), clip(what)].filter(Boolean).join(' · ');
+  const label = type === 'work' ? (day(row.startTime) || '') : docLabel(type, row);
+  return [`${typeLabel(type)} ${label}`.trim(), clip(what)].filter(Boolean).join(' · ');
 }
 
 /**
@@ -45,9 +55,13 @@ export function selectionTitle(type, row) {
  */
 export function workflowSteps(chain, selection) {
   if (!chain || !selection) return WORKFLOW_STEPS.map(s => ({ ...s, docs: [], state: 'idle' }));
+  const selected = stepOfType(selection.type);
   const steps = WORKFLOW_STEPS.map(s => {
-    const docs = (chain[s.list] || []).map(row => ({ id: row.id, label: docLabel(s.type, row), row }));
-    const state = s.type === selection.type ? 'selected' : docs.length ? 'done' : 'todo';
+    const docs = (s.lists || [s.list]).flatMap(list => {
+      const type = list === 'works' ? 'work' : s.type;
+      return (chain[list] || []).map(row => ({ id: row.id, label: docLabel(type, row), row, type }));
+    });
+    const state = s === selected ? 'selected' : docs.length ? 'done' : 'todo';
     return { ...s, docs, state };
   });
   // bước kế tiếp: bước chưa có hồ sơ đầu tiên sau bước cuối cùng đã có
@@ -60,7 +74,7 @@ export function workflowSteps(chain, selection) {
 /** Id các hồ sơ cùng luồng (để tô trong danh sách). */
 export function linkedIds(chain) {
   const ids = new Set();
-  for (const s of WORKFLOW_STEPS) for (const row of chain?.[s.list] || []) ids.add(row.id);
+  for (const s of WORKFLOW_STEPS) for (const list of s.lists || [s.list]) for (const row of chain?.[list] || []) ids.add(row.id);
   return ids;
 }
 

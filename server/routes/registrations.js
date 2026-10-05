@@ -25,6 +25,9 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     docYear: row.docYear,
     department: row.department,
     outageId: row.outageId,
+    workId: row.workId,
+    surveyId: row.surveyId,
+    planId: row.planId,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -52,10 +55,14 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     }
     // chỉ giữ liên kết tới dòng lịch còn tồn tại
     if (data.outageId && !(await db.queryOne('SELECT id FROM dkct_outages WHERE id = ?', [data.outageId]))) data.outageId = null;
+    for (const [key, table] of [['workId', 'dkct_works'], ['surveyId', 'dkct_surveys'], ['planId', 'dkct_plans']]) {
+      if (data[key] && !(await db.queryOne(`SELECT id FROM ${table} WHERE id = ?`, [data[key]]))) data[key] = null;
+    }
     return data;
   }
 
-  const summary = (data) => [data.workContent.text.slice(0, 2000), data.time.start, data.time.end, data.recipient.name, data.outageId];
+  const summary = (data) => [data.workContent.text.slice(0, 2000), data.time.start, data.time.end, data.recipient.name, data.outageId,
+    data.workId, data.surveyId, data.planId];
 
   async function numberingInfo(actor) {
     const unit = await getUnit(actor.id);
@@ -104,7 +111,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
       params.push(...Array(3).fill(likePattern(search)));
     }
     const rows = await db.query(`
-      SELECT id, docNumber, docYear, department, outageId, workContent, startTime, endTime, recipientName, createdBy, createdAt, updatedAt
+      SELECT id, docNumber, docYear, department, outageId, workId, surveyId, planId, workContent, startTime, endTime, recipientName, createdBy, createdAt, updatedAt
       FROM dkct_registrations ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY docYear DESC, docSeq DESC LIMIT 500`, params);
     // quyền sửa theo tổ chỉ phụ thuộc (người lập, tổ): tính một lần cho mỗi tổ
@@ -137,8 +144,8 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     const id = newId('DKCT');
     await db.execute(`
       INSERT INTO dkct_registrations (id, docSeq, docYear, docDepartment, docNumber, department, workContent, startTime, endTime,
-        recipientName, outageId, data, createdBy, updatedBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        recipientName, outageId, workId, surveyId, planId, data, createdBy, updatedBy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, seq, year, unit.department, formatNumber(seq, unit.shortName), actor.department || unit.department,
       ...summary(data), JSON.stringify(data), actor.id, actor.id]);
     const row = await db.queryOne('SELECT * FROM dkct_registrations WHERE id = ?', [id]);
@@ -152,7 +159,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     if (!data) return;
     await db.execute(`
       UPDATE dkct_registrations SET workContent = ?, startTime = ?, endTime = ?, recipientName = ?, outageId = ?,
-        data = ?, updatedBy = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
+        workId = ?, surveyId = ?, planId = ?, data = ?, updatedBy = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
     [...summary(data), JSON.stringify(data), actor.id, row.id]);
     const updated = await db.queryOne('SELECT * FROM dkct_registrations WHERE id = ?', [row.id]);
     res.json({ registration: await present(updated, actor) });

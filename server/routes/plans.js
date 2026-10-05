@@ -16,8 +16,9 @@ const { createPlaces, DEFAULT_PLACE } = require('../services/places');
 const { vnYear, vnToday } = require('../services/clock');
 const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('../util');
 const TESTS_1901 = require('../seeds/tests1901.json');
+const { loadVisibleWork } = require('../services/work');
 
-const LIST_COLUMNS = 'id, docNumber, docYear, department, workTitle, stationName, startTime, substationId, surveyId, outageId, createdBy, createdAt, updatedAt';
+const LIST_COLUMNS = 'id, docNumber, docYear, department, workTitle, stationName, startTime, substationId, surveyId, outageId, workId, createdBy, createdAt, updatedAt';
 const DEFAULT_LEGAL_BASES = [
   'Căn cứ Quy trình an toàn điện của Tổng Công ty Truyền tải điện Quốc gia ban hành theo quyết định số 726/QĐ-EVNNPT, ngày 22 tháng 5 năm 2026;',
   'Căn cứ Quy định công tác an toàn điện trong Tổng Công ty Truyền tải điện Quốc gia ban hành theo quyết định số 728/QĐ-EVNNPT, ngày 22 tháng 5 năm 2026;',
@@ -77,6 +78,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     // chỉ giữ liên kết tới biên bản/lịch còn tồn tại (khóa ngoại)
     if (data.surveyId && !(await db.queryOne('SELECT id FROM dkct_surveys WHERE id = ?', [data.surveyId]))) data.surveyId = null;
     if (data.outageId && !(await db.queryOne('SELECT id FROM dkct_outages WHERE id = ?', [data.outageId]))) data.outageId = null;
+    if (data.workId && !(await db.queryOne('SELECT id FROM dkct_works WHERE id = ?', [data.workId]))) data.workId = null;
     // bảng mạch dòng từ thư viện: "đã xác nhận" do máy chủ đối chiếu thư viện, không lấy theo dữ liệu gửi lên
     for (const b of data.ctBlocks) if (b.ctId) b.status = await libraryBlockStatus(db, b);
     return data;
@@ -92,7 +94,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
   }
 
   const summary = (data, workTitle) => [workTitle.slice(0, 2000), data.station.name.slice(0, 255), data.time.start,
-    data.station.substationId, data.surveyId, data.outageId];
+    data.station.substationId, data.surveyId, data.outageId, data.workId];
   const titleOf = (data) => [`${data.workType} năm ${data.year || ''}`.trim(), data.equipmentText].join(' ');
 
   async function numberingInfo(actor, suffix = 'Nhatthu') {
@@ -147,6 +149,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
       ctBlocks: [],
       surveyId: null,
       outageId: null,
+      workId: null,
       preparedBy: profile?.fullName || ''
     };
   }
@@ -161,25 +164,41 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     res.json({ draft: await buildPlanDefaults(actor), numbering: await numberingInfo(actor) });
   }));
 
+  /** Phương án nháp từ một dòng lịch hoặc công việc: trạm (khớp danh mục), thiết bị, ngăn lộ, thời gian, các bước cô lập. */
+  async function planDraftFrom(actor, src, substationId = null) {
+    const subs = (await loadSubstations()).filter(s => s.active);
+    const sub = subs.find(s => substationId && s.id === substationId) || subs.find(s => sameUnitName(s.name, src.location));
+    const draft = await buildPlanDefaults(actor);
+    return {
+      ...draft,
+      equipmentText: src.content || '',
+      bays: baysFromScope(src.bays),
+      station: sub
+        ? { substationId: sub.id, name: sub.name, qlvhUnitId: sub.stationId, qlvhUnitName: sub.unitName, qlvhShort: sub.unitShort || '' }
+        : { ...draft.station, name: src.location || '' },
+      time: { start: src.start || null, end: src.end || null },
+      isolationSteps: src.isolation ? String(src.isolation).split('\n').map(s => s.trim()).filter(Boolean) : []
+    };
+  }
+
   router.get('/outages/:id/plan-draft', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
     const outage = await db.queryOne('SELECT * FROM dkct_outages WHERE id = ?', [req.params.id]);
     if (!outage) return res.status(404).json({ error: 'Không tìm thấy dòng lịch.' });
-    const sub = (await loadSubstations()).find(s => s.active && sameUnitName(s.name, outage.location));
-    const draft = await buildPlanDefaults(actor);
-    res.json({
-      draft: {
-        ...draft,
-        outageId: outage.id,
-        equipmentText: outage.content || '',
-        bays: baysFromScope(outage.scope),
-        station: sub
-          ? { substationId: sub.id, name: sub.name, qlvhUnitId: sub.stationId, qlvhUnitName: sub.unitName, qlvhShort: sub.unitShort || '' }
-          : { ...draft.station, name: outage.location || '' },
-        time: { start: outage.regStart || null, end: outage.regEnd || null },
-        isolationSteps: outage.scope ? String(outage.scope).split('\n').map(s => s.trim()).filter(Boolean) : []
-      }
+    const draft = await planDraftFrom(actor, {
+      content: outage.content, location: outage.location, bays: outage.scope, start: outage.regStart, end: outage.regEnd, isolation: outage.scope
     });
+    res.json({ draft: { ...draft, outageId: outage.id } });
+  }));
+
+  // công việc không có lịch cắt điện: ngăn lộ theo địa điểm/thiết bị; không có bước cô lập
+  router.get('/works/:id/plan-draft', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    const work = await loadVisibleWork(db, policy, actor, req.params.id);
+    const draft = await planDraftFrom(actor, {
+      content: work.content, location: work.stationName || work.location, bays: work.location, start: work.startTime, end: work.endTime
+    }, work.substationId);
+    res.json({ draft: { ...draft, workId: work.id }, numbering: await numberingInfo(actor) });
   }));
 
   router.get('/plan-numbering', wrap(async (req, res) => {
@@ -242,8 +261,8 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     const docNumber = formatPlanNumber(seq, unit.shortName, data.header.numberSuffix);
     await db.execute(`
       INSERT INTO dkct_plans (id, docSeq, docYear, docDepartment, docNumber, department, workTitle, stationName, startTime,
-        substationId, surveyId, outageId, data, createdBy, updatedBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        substationId, surveyId, outageId, workId, data, createdBy, updatedBy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, seq, year, unit.department, docNumber, actor.department || unit.department, ...summary(data, titleOf(data)),
       JSON.stringify(data), actor.id, actor.id]);
     const row = await db.queryOne(`SELECT ${LIST_COLUMNS}, data FROM dkct_plans WHERE id = ?`, [id]);
@@ -258,7 +277,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     data.preparedBy = safeParse(row.data).preparedBy || '';  // người lập giữ nguyên khi hiệu chỉnh
     await places.remember(data.header.place);
     await db.execute(`
-      UPDATE dkct_plans SET workTitle = ?, stationName = ?, startTime = ?, substationId = ?, surveyId = ?, outageId = ?,
+      UPDATE dkct_plans SET workTitle = ?, stationName = ?, startTime = ?, substationId = ?, surveyId = ?, outageId = ?, workId = ?,
         data = ?, updatedBy = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
     [...summary(data, titleOf(data)), JSON.stringify(data), actor.id, row.id]);
     const updated = await db.queryOne(`SELECT ${LIST_COLUMNS}, data FROM dkct_plans WHERE id = ?`, [row.id]);

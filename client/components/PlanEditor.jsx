@@ -4,6 +4,7 @@ import { useDkct } from '../context.jsx';
 import { Field, Section, TabButton, SourceBadge, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
+import LinkedWork from './LinkedWork.jsx';
 import PlaceSelect from './PlaceSelect.jsx';
 import PersonPicker from './PersonPicker.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
@@ -588,7 +589,9 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
           ))}
         </nav>
         {/* ngoài vùng cuộn: luôn thấy khi cuộn nội dung bên dưới */}
-        <LinkedOutage outageId={form.outageId} onChange={linkOutage} onOutage={setOutage} readOnly={readOnly} />
+        {form.workId
+          ? <LinkedWork workId={form.workId} onUnlink={() => setField('workId', null)} readOnly={readOnly} />
+          : <LinkedOutage outageId={form.outageId} onChange={linkOutage} onOutage={setOutage} readOnly={readOnly} />}
         <div className="flex-1 overflow-y-auto p-4">
           {errorList.length > 0 && (
             <div className="mb-3 flex gap-2 p-3 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 text-sm text-red-700 dark:text-red-300" role="alert">

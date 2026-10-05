@@ -6,7 +6,7 @@ export const ABOUT = {
     + 'theo mẫu của đơn vị, giữ nhãn ký số để ký trên ứng dụng ký số của Công ty.',
   features: [
     'Nạp lịch cắt điện từ Excel hoặc tự tải từ trang lịch của Công ty; so sánh khi nạp lại: hoãn, dời lịch, sửa nội dung, phát sinh.',
-    'Theo dõi luồng công việc 5 bước cho từng hồ sơ; cảnh báo khi lịch cắt điện của hồ sơ thay đổi.',
+    'Theo dõi luồng công việc 5 bước cho từng hồ sơ, kể cả công việc không có lịch cắt điện; cảnh báo khi lịch cắt điện của hồ sơ thay đổi.',
     'Lập biên bản khảo sát, phương án, giấy đăng ký công tác, giấy xác nhận; xem trước Word, tải Word/PDF.',
     'Thư viện cô lập mạch dòng TI và tự đọc bản vẽ mạch dòng PDF (không dùng AI).',
     'Danh mục nhân sự, đơn vị, trạm, rủi ro; khu vực phụ trách của tổ; mẫu Word thay đổi được không cần sửa phần mềm.'
@@ -19,7 +19,7 @@ export const HELP_SECTIONS = [
   {
     id: 'general', title: 'Bắt đầu',
     items: [
-      ['Luồng công việc', 'Thanh "1. Lịch cắt điện → 2. Khảo sát → 3. Phương án → 4. Giấy ĐKCT → 5. Giấy xác nhận" là trình tự chuẩn bị một công tác. Bấm một bước để mở danh sách của bước đó.'],
+      ['Luồng công việc', 'Thanh "1. Lịch / Công việc → 2. Khảo sát → 3. Phương án → 4. Giấy ĐKCT → 5. Giấy xác nhận" là trình tự chuẩn bị một công tác. Bấm một bước để mở danh sách của bước đó. Việc không đăng ký cắt điện thì bắt đầu từ "Công việc không có lịch cắt điện" ở bước 1.'],
       ['Theo dõi một hồ sơ', 'Bấm biểu tượng luồng ở đầu một dòng (hoặc mở hồ sơ): thanh luồng tô màu bước đã có (xanh lá ✓), bước đang chọn (xanh dương), bước nên làm tiếp (vàng); các hồ sơ cùng luồng được viền xanh trong danh sách.'],
       ['Cảnh báo lịch', 'Hồ sơ gắn dòng lịch đã hoãn / dời / sửa có nhãn "Lịch: …" trong danh sách và dải cảnh báo khi mở — kiểm tra lại trước khi in, nộp.'],
       ['Giao diện', 'Nút bảng màu ở đầu trang: chọn "Mặc định" hoặc "Chuyên nghiệp"; trình duyệt ghi nhớ lựa chọn.'],
@@ -27,8 +27,9 @@ export const HELP_SECTIONS = [
     ]
   },
   {
-    id: 'outages', title: 'Lịch cắt điện',
+    id: 'outages', title: 'Lịch cắt điện · Công việc',
     items: [
+      ['Công việc không có lịch cắt điện', 'Ở bước 1 chọn "Công việc không có lịch cắt điện" → "Thêm công việc": ghi nội dung, trạm, địa điểm/thiết bị, thời gian, điều kiện (mặc định "Không cắt điện."). Trên dòng công việc bấm Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — các mục tự điền và hồ sơ nối vào luồng như khi lập từ lịch. Công việc đã có hồ sơ thì không xóa được.'],
       ['Nạp lịch', '"Tải lịch cắt điện": máy chủ tự đăng nhập trang lịch Công ty, tải theo khoảng ngày rồi nạp luôn (cần cấu hình tài khoản). Hoặc "Chọn file lịch cắt điện (Excel)" → xem trước → "Cập nhật lịch".'],
       ['So sánh khi nạp lại', 'Chọn khoảng so sánh: dòng Hoãn (đỏ), Dời lịch (xanh), Sửa nội dung (tím), Phát sinh (vàng); không đổi để nguyên. Bấm một mục trong kết quả để tới dòng đó. Dời/sửa cập nhật tại chỗ nên hồ sơ đã gắn vẫn trỏ đúng.'],
       ['Tự tải và báo', 'Admin đặt giờ tải ở Danh mục → Tải lịch tự động; dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi.'],
@@ -60,10 +61,11 @@ export const HELP_SECTIONS = [
   {
     id: 'registrations', title: 'Giấy đăng ký công tác',
     items: [
-      ['Lập giấy', 'Từ dòng lịch cắt điện, từ biên bản khảo sát hoặc "Lập giấy mới". Nơi nhận chọn từ danh mục (email tự điền).'],
+      ['Lập giấy', 'Từ dòng lịch cắt điện, công việc không có lịch, biên bản khảo sát, phương án (nút "Lập giấy ĐKCT" ở tab Phương án) hoặc "Lập giấy mới".'],
+      ['Nơi nhận', 'Chọn từ danh mục (email tự điền); lập từ biên bản hoặc phương án thì tự chọn đơn vị QLVH của trạm.'],
       ['Đơn vị công tác', 'Có thể nhiều ĐVCT; mỗi ĐVCT bắt buộc có chỉ huy trực tiếp, có thời gian và địa điểm riêng; số nhân viên tự đếm. LĐCV, GSATĐ, người cảnh giới chọn từ danh mục hoặc tự ghi, bậc ATĐ tự hiện.'],
       ['Số giấy', 'Số theo tổ, theo năm (vd 215/ĐK-TNLĐ); trưởng/phó tổ đặt được số khởi đầu.'],
-      ['Tiếp theo', 'Tải Word; từ giấy lập giấy xác nhận đủ điều kiện đóng điện.']
+      ['Tiếp theo', 'Tải Word; từ giấy lập giấy xác nhận đủ điều kiện đóng điện (giấy lập từ phương án thì giấy xác nhận lấy luôn hạng mục của phương án đó).']
     ]
   },
   {

@@ -168,7 +168,8 @@ function normalizePlan(input = {}, { personnel, substations }) {
       .map(b => (b?.ctId ? libraryBlock(b) : legacyBlock(b)))
       .filter(b => (b.ctId ? b.cores.length : b.title || b.panel)),
     surveyId: input.surveyId ? text(input.surveyId).slice(0, 64) : null,
-    outageId: input.outageId ? text(input.outageId).slice(0, 64) : null
+    outageId: input.outageId ? text(input.outageId).slice(0, 64) : null,
+    workId: input.workId ? text(input.workId).slice(0, 64) : null
   };
   return { data, errors };
 }

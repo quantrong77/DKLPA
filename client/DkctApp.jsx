@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardCheck, BookUser, Archive, Plus, RefreshCw, Loader2 } from 'lucide-react';
+import { ClipboardCheck, BookUser, Archive, Plus, RefreshCw, Loader2, Zap, Briefcase } from 'lucide-react';
 import { useDkct } from './context.jsx';
 import { TabButton, btnPrimary, btnGhost } from './components/ui.jsx';
 import RegistrationList from './components/RegistrationList.jsx';
@@ -13,9 +13,12 @@ import PlanList from './components/PlanList.jsx';
 import PlanEditor from './components/PlanEditor.jsx';
 import ConfirmationList from './components/ConfirmationList.jsx';
 import ConfirmationEditor from './components/ConfirmationEditor.jsx';
+import WorkList from './components/WorkList.jsx';
+import WorkEditor from './components/WorkEditor.jsx';
 import WorkflowBar, { WorkflowMini } from './components/WorkflowBar.jsx';
 import { APP_NAME, linkedIds } from './lib/workflow.js';
-import { defaultWorkload, planFromSurvey } from './lib/plan.js';
+import { defaultWorkload, planFromSurvey, registrationFromPlan } from './lib/plan.js';
+import { confirmationFromPlan } from './lib/confirmation.js';
 import { fromSaved } from './lib/form.js';
 import { loadTheme, saveTheme, themeClass } from './lib/theme.js';
 import ThemePicker from './components/ThemePicker.jsx';
@@ -46,8 +49,14 @@ export default function DkctApp() {
   // hồ sơ đang theo dõi luồng { type, id } và các hồ sơ cùng luồng (kết quả /workflow)
   const [selection, setSelection] = useState(null);
   const [chain, setChain] = useState(null);
+  // bước 1: danh sách lịch cắt điện hoặc công việc không có lịch cắt điện
+  const [firstView, setFirstView] = useState('outages');
   const track = (type, item) => setSelection(s => (s?.type === type && s.id === item.id ? null : { type, id: item.id }));
-  const follow = (type, item) => { if (item?.id) setSelection({ type, id: item.id }); };
+  const follow = (type, item) => {
+    if (!item?.id) return;
+    setSelection({ type, id: item.id });
+    if (type === 'work') setFirstView('works');
+  };
 
   useEffect(() => {
     if (!selection) { setChain(null); return undefined; }
@@ -143,7 +152,10 @@ export default function DkctApp() {
   });
   const openConfirmationFromRegistration = (item) => withOpening(async () => {
     const [{ draft }, { numbering }] = await Promise.all([api.get(`/registrations/${item.id}/confirmation-draft`), api.get('/confirmation-numbering')]);
-    setConfirmationEditor({ initial: draft, confirmation: null, numberPreview: numbering.preview });
+    // giấy ĐKCT lập từ phương án: lấy luôn hạng mục của phương án đó
+    let initial = draft;
+    if (draft.planId) initial = confirmationFromPlan(draft, (await api.get(`/plans/${draft.planId}`)).plan);
+    setConfirmationEditor({ initial, confirmation: null, numberPreview: numbering.preview });
   });
   const openConfirmation = (item) => withOpening(async () => {
     follow('confirmation', item);
@@ -153,12 +165,45 @@ export default function DkctApp() {
 
   const registrationFromSurveyItem = (item) => withOpening(async () => {
     const { survey } = await api.get(`/surveys/${item.id}`);
-    const fromSurvey = registrationFromSurvey(survey.data);
+    const fromSurvey = registrationFromSurvey(survey.data, survey.id);
     const initial = fromSaved({
       ...meta.defaults, ...EMPTY_WORK, ...fromSurvey,
       header: { ...meta.defaults.header, ...fromSurvey.header }
     });
     setEditor({ initial, registration: null, outage: null });
+  });
+  const registrationFromPlanItem = (item) => withOpening(async () => {
+    const { plan } = await api.get(`/plans/${item.id}`);
+    const fromPlan = registrationFromPlan(plan);
+    const initial = fromSaved({
+      ...meta.defaults, ...EMPTY_WORK, ...fromPlan,
+      header: { ...meta.defaults.header, ...fromPlan.header }
+    });
+    setEditor({ initial, registration: null, outage: null });
+  });
+
+  // Công việc không có lịch cắt điện: thêm/sửa, lập biên bản KSHT / phương án / giấy ĐKCT điền sẵn từ công việc
+  const [workEditor, setWorkEditor] = useState(null); // { initial, work }
+  const openNewWork = () => withOpening(async () => {
+    const { draft } = await api.get('/work-defaults');
+    setWorkEditor({ initial: draft, work: null });
+  });
+  const openWork = (item) => withOpening(async () => {
+    follow('work', item);
+    const { work } = await api.get(`/works/${item.id}`);
+    setWorkEditor({ initial: work, work });
+  });
+  const openSurveyFromWork = (work) => withOpening(async () => {
+    const { draft } = await api.get(`/works/${work.id}/survey-draft`);
+    setSurveyEditor({ initial: surveyForm(draft), survey: null });
+  });
+  const openPlanFromWork = (work) => withOpening(async () => {
+    const { draft, numbering } = await api.get(`/works/${work.id}/plan-draft`);
+    setPlanEditor({ initial: planForm(draft), plan: null, numberPreview: numbering.preview });
+  });
+  const openRegistrationFromWork = (work) => withOpening(async () => {
+    const { draft } = await api.get(`/works/${work.id}/draft`);
+    setEditor({ initial: fromSaved(draft), registration: null, outage: null });
   });
 
   const permissions = meta?.permissions || {};
@@ -179,7 +224,9 @@ export default function DkctApp() {
           </div>
           <div className="flex items-center gap-2">
             {opening && <Loader2 className="w-4 h-4 animate-spin text-chatlan-600" aria-label="Đang mở" />}
-            {permissions.canCreate && (tab === 'surveys' ? (
+            {permissions.canCreate && (tab === 'outages' && firstView === 'works' ? (
+              <button type="button" className={btnPrimary} onClick={openNewWork} disabled={!meta}><Plus className="w-4 h-4" /> Thêm công việc</button>
+            ) : tab === 'surveys' ? (
               <button type="button" className={btnPrimary} onClick={openNewSurvey} disabled={!meta}><Plus className="w-4 h-4" /> Lập biên bản</button>
             ) : tab === 'plans' ? (
               <button type="button" className={btnPrimary} onClick={() => openNewPlan()} disabled={!meta}><Plus className="w-4 h-4" /> Lập phương án</button>
@@ -212,10 +259,20 @@ export default function DkctApp() {
           <SurveyList {...pick('survey')} reloadKey={reloadKey} onOpen={openSurvey} canCreate={permissions.canCreate} onCreateRegistration={registrationFromSurveyItem}
             onCreatePlan={(item) => openNewPlan(item)} />
         )}
-        {tab === 'plans' && <PlanList {...pick('plan')} reloadKey={reloadKey} onOpen={openPlan} canCreate={permissions.canCreate} />}
+        {tab === 'plans' && <PlanList {...pick('plan')} reloadKey={reloadKey} onOpen={openPlan} canCreate={permissions.canCreate} onCreateRegistration={registrationFromPlanItem} />}
         {tab === 'outages' && (
+          <div className="mb-3 inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80" role="group" aria-label="Gốc của luồng">
+            <TabButton icon={Zap} active={firstView === 'outages'} onClick={() => setFirstView('outages')}>Lịch cắt điện</TabButton>
+            <TabButton icon={Briefcase} active={firstView === 'works'} onClick={() => setFirstView('works')}>Công việc không có lịch cắt điện</TabButton>
+          </div>
+        )}
+        {tab === 'outages' && firstView === 'outages' && (
           <OutagePanel {...pick('outage')} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
             onCreatePlanFromOutage={openPlanFromOutage} />
+        )}
+        {tab === 'outages' && firstView === 'works' && (
+          <WorkList {...pick('work')} reloadKey={reloadKey} canCreate={permissions.canCreate} onOpen={openWork}
+            onCreateSurvey={openSurveyFromWork} onCreatePlan={openPlanFromWork} onCreateRegistration={openRegistrationFromWork} />
         )}
         {tab === 'catalogs' && <CatalogPanel catalogs={catalogs} canManage={permissions.canManageCatalog} isAdmin={permissions.isAdmin} onChanged={loadCatalog} />}
         {tab === 'legacy' && <LegacyPanel />}
@@ -247,6 +304,14 @@ export default function DkctApp() {
           departments={meta?.departments || []}
           onClose={() => setConfirmationEditor(null)}
           onSaved={(saved) => { follow('confirmation', saved); setConfirmationEditor(null); setTab('confirmations'); setReloadKey(k => k + 1); }}
+        />
+      )}
+      {workEditor && (
+        <WorkEditor
+          {...workEditor}
+          catalogs={catalogs}
+          onClose={() => setWorkEditor(null)}
+          onSaved={(saved) => { follow('work', saved); setWorkEditor(null); setTab('outages'); setReloadKey(k => k + 1); }}
         />
       )}
       {planEditor && (

@@ -83,8 +83,11 @@ export function surveyTimeLabel(iso) {
   return m ? `${m[4]}:${m[5]} ${m[3]}/${m[2]}/${m[1]}` : '';
 }
 
-/** Phần giấy ĐKCT lấy từ biên bản: căn cứ, nội dung (mục 1), địa điểm (mục 2), đánh giá rủi ro (mục 13). */
-export function registrationFromSurvey(data) {
+/**
+ * Phần giấy ĐKCT lấy từ biên bản: căn cứ, nội dung (mục 1), địa điểm (mục 2), đánh giá rủi ro (mục 13);
+ * giữ liên kết lịch / công việc của biên bản và chính biên bản (surveyId) để nối luồng.
+ */
+export function registrationFromSurvey(data, surveyId = null) {
   const place = [data.equipment, data.station?.name].filter(Boolean).join(' tại ');
   return {
     header: { basis: `Biên bản khảo sát hiện trường ngày ${shortDate(data.surveyTime)}` },
@@ -92,6 +95,8 @@ export function registrationFromSurvey(data) {
     workLocation: place,
     risks: (data.risks || []).map(r => ({ hazard: r.hazard, measures: r.measures, performer: r.performer })),
     outageId: data.outageId || null,
+    workId: data.workId || null,
+    surveyId,
     // nơi nhận giấy ĐKCT = đơn vị QLVH quản lý trạm đã khảo sát
     ...(data.station?.qlvhUnitId ? { recipient: { stationId: data.station.qlvhUnitId } } : {})
   };

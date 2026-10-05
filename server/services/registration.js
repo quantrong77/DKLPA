@@ -190,6 +190,10 @@ function normalizeRegistration(input = {}, ctx) {
 
   const data = {
     outageId: input.outageId ? String(input.outageId) : null,
+    // công việc không có lịch cắt điện; biên bản KSHT / phương án đã dùng để lập giấy (nối luồng khi không có lịch)
+    workId: input.workId ? String(input.workId).slice(0, 64) : null,
+    surveyId: input.surveyId ? String(input.surveyId).slice(0, 64) : null,
+    planId: input.planId ? String(input.planId).slice(0, 64) : null,
     header: {
       unitName: text(input.header?.unitName),
       teamName: text(input.header?.teamName),

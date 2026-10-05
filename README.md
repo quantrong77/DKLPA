@@ -1,7 +1,7 @@
 # dkct-module — Chuẩn bị công tác cho ChatLan
 
 Module gồm phần server (Express router) và giao diện (React/Tailwind), gắn vào ChatLan. Giao diện là một luồng công việc 5 bước:
-**Lịch cắt điện → Khảo sát → Phương án → Giấy ĐKCT → Giấy xác nhận**. Bấm biểu tượng luồng ở một hồ sơ (hoặc mở hồ sơ) để theo dõi:
+**Lịch cắt điện (hoặc Công việc không có lịch cắt điện) → Khảo sát → Phương án → Giấy ĐKCT → Giấy xác nhận**. Bấm biểu tượng luồng ở một hồ sơ (hoặc mở hồ sơ) để theo dõi:
 thanh luồng cho biết bước nào đã có hồ sơ, bước nào là bước tiếp theo, và tô các hồ sơ cùng luồng trong từng danh sách.
 Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`). Chức năng:
 
@@ -25,7 +25,15 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   "Chuẩn bị công tác") cho người lập và tổ trưởng/tổ phó của tổ có hồ sơ gắn dòng lịch, và tổ trưởng/tổ phó của tổ phụ trách
   khu vực. **Chỉ tổ của tôi**: dòng thuộc khu vực TTĐ tổ phụ trách (admin chọn ở Danh mục → Khu vực của tổ; khớp theo ô
   đơn vị "TTĐ …" hoặc TBA trong danh mục) hoặc tổ đã lập hồ sơ.
-- Lập **giấy đăng ký công tác** từ một dòng lịch hoặc tự ghi:
+- **Công việc không có lịch cắt điện** (bước 1, cạnh Lịch cắt điện): việc không đăng ký cắt điện (làm việc không cắt điện,
+  kiểm tra, xử lý tồn tại…) làm gốc của luồng thay cho dòng lịch.
+  - Ghi nội dung, trạm (chọn danh mục TBA hoặc tự ghi), địa điểm/thiết bị, thời gian (tùy chọn), điều kiện (mặc định
+    "Không cắt điện."), ghi chú. Thuộc tổ lập (lịch cắt điện thì dùng chung); quyền như giấy ĐKCT.
+  - Trên dòng công việc: **Lập biên bản KSHT / Lập phương án / Tạo giấy ĐKCT**, tự điền trạm + đơn vị QLVH, nội dung,
+    địa điểm, thời gian, điều kiện; hồ sơ gắn `workId` và nối vào thanh luồng. Công việc đã có hồ sơ thì không xóa được.
+  - Nối luồng khi không có lịch: giấy ĐKCT lập từ biên bản KSHT lưu `surveyId`, lập từ phương án (nút "Lập giấy ĐKCT" ở tab
+    Phương án) lưu `planId`; giấy xác nhận lập từ giấy ĐKCT có `planId` thì lấy luôn hạng mục của phương án đó.
+- Lập **giấy đăng ký công tác** từ một dòng lịch, công việc, biên bản KSHT, phương án hoặc tự ghi:
   - Nơi nhận chọn từ danh mục, email tự điền.
   - LĐCV, GSATĐ, người cảnh giới: chọn từ danh mục hoặc tự ghi, có thể để trống. Bậc ATĐ tự hiển thị.
   - Nhiều ĐVCT. Mỗi ĐVCT bắt buộc có CHTT, có thời gian và địa điểm riêng. Số nhân viên tự đếm, không tính CHTT.
@@ -77,7 +85,7 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
 
 ```
 server/   index.js (factory), schema.js (bảng dkct_* cho MySQL + SQLite), policy.js,
-          routes/ (catalogs, outages, registrations, surveys),
+          routes/ (catalogs, outages, works, registrations, surveys),
           services/ (outageExcel, registration, docxView, docxRender, numbering, survey, surveyView, surveyRender), seeds/
 client/   index.jsx (<DkctModule services>), DkctApp.jsx, components/, lib/ (form.js, survey.js thuần; api.js)
 templates/ template_dkct.source.docx (mẫu gốc) -> template_dkct.docx (có thẻ, sinh bằng scripts/tag_template.py)
@@ -118,13 +126,14 @@ Server nhận các tham số sau (ChatLan truyền trong `server/src/dkct.js`):
 | Nhóm | Endpoint |
 |---|---|
 | Danh mục | `GET/POST /personnel`, `PUT/DELETE /personnel/:id` (tương tự cho `/stations`, `/substations`, `/duties`, `/risks`); DELETE là ẩn |
+| Công việc (không có lịch) | `GET /work-defaults`, `GET/POST /works` (`?search&year`), `GET/PUT/DELETE /works/:id` (DELETE: 409 khi đã có hồ sơ), `GET /works/:id/draft` (giấy ĐKCT), `GET /works/:id/survey-draft`, `GET /works/:id/plan-draft` |
 | Lịch cắt điện | `POST /outages/import/preview`, `POST /outages/import/commit` (multipart `file`), `GET /outages?from&to&search`, `GET /outages/:id/draft`, `DELETE /outages/:id` |
 | Giấy ĐKCT | `GET /meta`, `GET/PUT /numbering`, `GET/POST /registrations`, `GET/PUT/DELETE /registrations/:id`, `GET /registrations/:id/docx` |
 | BBKSHT | `GET /survey-defaults`, `GET /outages/:id/survey-draft`, `GET/POST /surveys`, `GET/PUT/DELETE /surveys/:id`, `GET/PUT/DELETE /surveys/:id/diagram` (PUT multipart `file`), `GET /surveys/:id/docx` |
 | Phương án | `GET /plan-defaults`, `GET /outages/:id/plan-draft`, `GET/PUT /plan-numbering`, `GET /tests1901`, `GET/POST /plans`, `GET/PUT/DELETE /plans/:id`, `GET /plans/:id/docx` |
 | Giấy xác nhận | `GET /confirmation-defaults`, `GET /registrations/:id/confirmation-draft`, `GET/PUT /confirmation-numbering`, `GET/POST /confirmations`, `GET/PUT/DELETE /confirmations/:id`, `GET /confirmations/:id/docx` |
 | Mạch dòng TI | `GET/POST /ct-library` (`?substationId=`), `GET/PUT/DELETE /ct-library/:id` (PUT gửi cả TI kèm `cores[].points[6]`), `POST /ct-library/:id/verify`, `GET /ct-library/:id/audit`, `POST /ct-library/:id/pages` (multipart `image` + `pageLabel`, `fileName`, `newRevision=1`), `GET /ct-pages/:id/image`, `DELETE /ct-pages/:id`; ghi: chỉ admin |
-| Luồng công việc | `GET /workflow/:type/:id` (`type`: `outage`, `survey`, `plan`, `registration`, `confirmation`): các hồ sơ cùng luồng theo liên kết lịch/KSHT/phương án/giấy ĐKCT/giấy xác nhận; chỉ trả hồ sơ người xem được phép xem |
+| Luồng công việc | `GET /workflow/:type/:id` (`type`: `outage`, `work`, `survey`, `plan`, `registration`, `confirmation`): các hồ sơ cùng luồng theo liên kết lịch/công việc/KSHT/phương án/giấy ĐKCT/giấy xác nhận (`outages`, `works`, `surveys`, …); chỉ trả hồ sơ người xem được phép xem |
 | Bản vẽ trạm | `GET /substation-drawings`, `GET/POST /substations/:id/drawings` (POST multipart `label` + `pdf` + `image` + `page`, `pageCount`), `PUT/DELETE /drawings/:id` (PUT: `label`, kèm file thì thay file), `GET /drawings/:id/image`, `GET /drawings/:id/pdf` |
 
 Quan hệ bảng: `dkct_substations.stationId` → `dkct_stations.id` (TBA thuộc đơn vị QLVH; không xóa được đơn vị còn TBA),
@@ -133,6 +142,8 @@ Quan hệ bảng: `dkct_substations.stationId` → `dkct_stations.id` (TBA thu�
 biên bản giữ bản sao ảnh đã dùng; bảng cũ `dkct_substation_drawings` được chuyển sang khi migrate, tên "Sơ đồ trạm"),
 `dkct_plans.substationId / surveyId / outageId` → TBA / biên bản / lịch cắt điện (xóa thì phương án bỏ liên kết);
 `dkct_confirmations.substationId / registrationId / planId` → TBA / giấy ĐKCT / phương án (xóa thì giấy xác nhận bỏ liên kết);
+`dkct_works.substationId` → TBA; `dkct_surveys / dkct_plans / dkct_registrations.workId` → công việc không có lịch,
+`dkct_registrations.surveyId / planId` → biên bản / phương án đã dùng để lập giấy (xóa thì bỏ liên kết);
 `dkct_ct_transformers.substationId` → TBA; `dkct_ct_pages / dkct_ct_cores.transformerId` → TI, `dkct_ct_points.coreId` → core
 (xóa thì xóa theo; `transformerId` vì `ctid` trùng cột hệ thống của Postgres), `dkct_ct_cores.pageId` → trang (xóa trang thì bỏ liên kết);
 sơ đồ in ở Phụ lục IV lưu trong `data.drawingIds` (null: phương án cũ, in mọi sơ đồ của trạm). Danh sách TBA – đơn vị QLVH –

@@ -86,3 +86,30 @@ test('baysFromScope: ngăn lộ cắt điện cô lập từ phạm vi cắt đi
   assert.equal(baysFromScope('Ngăn 272'), 'Ngăn 272');
   assert.equal(baysFromScope(null), '');
 });
+
+test('registrationFromPlan: giấy ĐKCT lấy căn cứ, nội dung, địa điểm, thời gian, rủi ro, nơi nhận và giữ liên kết', async () => {
+  const { registrationFromPlan } = await load();
+  const plan = {
+    id: 'PA-1', docNumber: '12/PA-TNLĐ.Nhatthu',
+    data: {
+      workType: 'Thí nghiệm định kỳ', equipmentText: 'MBA AT1', bays: 'Ngăn 231, 131',
+      station: { substationId: 'TBA-1', name: 'TBA 220kV Bảo Lộc', qlvhUnitId: 'ST-1' },
+      time: { start: '2026-10-12T07:00', end: '2026-10-12T17:00' },
+      risks: [{ hazard: 'Điện cảm ứng', measures: 'Nối đất', performer: 'ĐVCT', extra: 1 }],
+      surveyId: 'KS-1', outageId: null, workId: 'CV-1'
+    }
+  };
+  const r = registrationFromPlan(plan);
+  assert.equal(r.header.basis, 'Phương án thi công, biện pháp an toàn số 12/PA-TNLĐ.Nhatthu');
+  assert.deepEqual(r.workContent, { text: 'Thí nghiệm định kỳ MBA AT1', source: 'manual' });
+  assert.equal(r.workLocation, 'Ngăn 231, 131 tại TBA 220kV Bảo Lộc');
+  assert.deepEqual(r.time, { start: '2026-10-12T07:00', end: '2026-10-12T17:00', source: 'manual' });
+  assert.deepEqual(r.risks, [{ hazard: 'Điện cảm ứng', measures: 'Nối đất', performer: 'ĐVCT' }]);
+  assert.deepEqual([r.planId, r.surveyId, r.outageId, r.workId], ['PA-1', 'KS-1', null, 'CV-1']);
+  assert.deepEqual(r.recipient, { stationId: 'ST-1' });
+  // nội dung đã bắt đầu bằng loại công việc thì không lặp; chưa có giờ thì không ghi đè thời gian của form
+  const r2 = registrationFromPlan({ id: 'PA-2', data: { workType: 'Kiểm tra', equipmentText: 'Kiểm tra tủ ngăn 271', station: {} } });
+  assert.equal(r2.workContent.text, 'Kiểm tra tủ ngăn 271');
+  assert.equal('time' in r2, false);
+  assert.equal(r2.recipient, undefined);
+});

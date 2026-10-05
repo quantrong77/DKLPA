@@ -97,23 +97,27 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
   // Lập từ giấy ĐKCT: trạm theo lịch cắt điện (hoặc địa điểm), ngăn lộ/thiết bị/mục kết quả theo nội dung, tổ và người ký theo giấy
   router.get('/registrations/:id/confirmation-draft', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    const reg = await db.queryOne('SELECT id, department, outageId, data FROM dkct_registrations WHERE id = ?', [req.params.id]);
+    const reg = await db.queryOne('SELECT id, department, outageId, workId, planId, data FROM dkct_registrations WHERE id = ?', [req.params.id]);
     if (!reg) throw notFound('Không tìm thấy giấy ĐKCT.');
     if (!policy.canView(actor, reg)) throw forbidden('Giấy ĐKCT này thuộc tổ khác.');
     const data = safeParse(reg.data);
     const outage = reg.outageId ? await db.queryOne('SELECT location, regEnd FROM dkct_outages WHERE id = ?', [reg.outageId]) : null;
-    const places = [outage?.location, data.workLocation].filter(Boolean);
+    // công việc không có lịch cắt điện: trạm đã chọn trong danh mục
+    const work = reg.workId ? await db.queryOne('SELECT substationId, stationName, endTime FROM dkct_works WHERE id = ?', [reg.workId]) : null;
+    const places = [outage?.location, work?.stationName, data.workLocation].filter(Boolean);
     const substations = (await loadSubstations()).filter(s => s.active);
-    const sub = substations.find(s => places.some(p => sameUnitName(s.name, p)))
+    const sub = substations.find(s => work?.substationId && s.id === work.substationId)
+      || substations.find(s => places.some(p => sameUnitName(s.name, p)))
       || substations.find(s => places.some(p => String(p).toLocaleLowerCase('vi').includes(String(s.name).replace(/^TBA\s+/i, '').toLocaleLowerCase('vi'))));
     const draft = await buildDefaults(actor);
     const from = confirmationFromRegistration({ id: reg.id, data }, sub || null);
     // ngày thực hiện: ngày kết thúc công tác theo giấy (nếu có), không thì hôm nay
-    const end = String(data.time?.end || outage?.regEnd || '').slice(0, 10);
+    const end = String(data.time?.end || outage?.regEnd || work?.endTime || '').slice(0, 10);
     res.json({
       draft: {
         ...draft,
         ...from,
+        planId: reg.planId || null, // giấy lập từ phương án: lấy hạng mục từ phương án đó
         header: { ...draft.header, teamName: from.team.teamName || draft.header.teamName, unitName: from.team.unitName || draft.header.unitName },
         workDate: /^\d{4}-\d{2}-\d{2}$/.test(end) ? end : draft.workDate,
         signer: from.signer || draft.signer,

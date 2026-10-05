@@ -108,24 +108,25 @@ function tables(t) {
       sourceFile ${t.str},
       importedBy ${t.id},
       importedAt ${t.now}`,
-    dkct_registrations: `
+    // Công việc không có lịch cắt điện (làm việc không cắt điện, lịch nội bộ...): gốc của luồng thay cho dòng lịch;
+    // biên bản KSHT, phương án, giấy ĐKCT gắn qua workId. Thuộc tổ lập (khác lịch cắt điện dùng chung mọi tổ).
+    dkct_works: `
       id ${t.id} PRIMARY KEY,
-      docSeq ${t.int} NOT NULL,
-      docYear ${t.int} NOT NULL,
-      docDepartment ${t.short} NOT NULL,
-      docNumber ${t.short} NOT NULL,
       department ${t.short},
-      outageId ${t.id},
-      workContent ${t.text},
+      content ${t.text} NOT NULL,
+      stationName ${t.str},
+      substationId ${t.id},
+      location ${t.text},
+      scope ${t.text},
       startTime ${t.time},
       endTime ${t.time},
-      recipientName ${t.str},
-      data ${t.long} NOT NULL,
+      note ${t.text},
       createdBy ${t.id},
       updatedBy ${t.id},
       createdAt ${t.now},
       updatedAt ${t.now},
-      UNIQUE (docDepartment, docYear, docSeq)`,
+      CONSTRAINT fk_dkct_works_substation FOREIGN KEY (substationId) REFERENCES dkct_substations (id)
+        ON UPDATE CASCADE ON DELETE SET NULL`,
     // Biên bản khảo sát hiện trường; ảnh sơ đồ một sợi (base64) để cột riêng, không đọc khi liệt kê
     dkct_surveys: `
       id ${t.id} PRIMARY KEY,
@@ -135,6 +136,7 @@ function tables(t) {
       substationId ${t.id},
       workContent ${t.text},
       outageId ${t.id},
+      workId ${t.id},
       data ${t.long} NOT NULL,
       diagram ${t.long},
       diagramType ${t.short},
@@ -143,6 +145,8 @@ function tables(t) {
       createdAt ${t.now},
       updatedAt ${t.now},
       CONSTRAINT fk_dkct_surveys_substation FOREIGN KEY (substationId) REFERENCES dkct_substations (id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+      CONSTRAINT fk_dkct_surveys_work FOREIGN KEY (workId) REFERENCES dkct_works (id)
         ON UPDATE CASCADE ON DELETE SET NULL`,
     // Phương án thi công, biện pháp an toàn (thí nghiệm); số "<n>/PA-<tổ>.<hậu tố>" đếm riêng theo tổ, năm
     dkct_plans: `
@@ -158,6 +162,7 @@ function tables(t) {
       substationId ${t.id},
       surveyId ${t.id},
       outageId ${t.id},
+      workId ${t.id},
       data ${t.long} NOT NULL,
       createdBy ${t.id},
       updatedBy ${t.id},
@@ -169,6 +174,36 @@ function tables(t) {
       CONSTRAINT fk_dkct_plans_survey FOREIGN KEY (surveyId) REFERENCES dkct_surveys (id)
         ON UPDATE CASCADE ON DELETE SET NULL,
       CONSTRAINT fk_dkct_plans_outage FOREIGN KEY (outageId) REFERENCES dkct_outages (id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+      CONSTRAINT fk_dkct_plans_work FOREIGN KEY (workId) REFERENCES dkct_works (id)
+        ON UPDATE CASCADE ON DELETE SET NULL`,
+    // Giấy ĐKCT: lập từ dòng lịch (outageId), công việc không cắt điện (workId), biên bản KSHT (surveyId) hoặc phương án (planId)
+    dkct_registrations: `
+      id ${t.id} PRIMARY KEY,
+      docSeq ${t.int} NOT NULL,
+      docYear ${t.int} NOT NULL,
+      docDepartment ${t.short} NOT NULL,
+      docNumber ${t.short} NOT NULL,
+      department ${t.short},
+      outageId ${t.id},
+      workId ${t.id},
+      surveyId ${t.id},
+      planId ${t.id},
+      workContent ${t.text},
+      startTime ${t.time},
+      endTime ${t.time},
+      recipientName ${t.str},
+      data ${t.long} NOT NULL,
+      createdBy ${t.id},
+      updatedBy ${t.id},
+      createdAt ${t.now},
+      updatedAt ${t.now},
+      UNIQUE (docDepartment, docYear, docSeq),
+      CONSTRAINT fk_dkct_reg_work FOREIGN KEY (workId) REFERENCES dkct_works (id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+      CONSTRAINT fk_dkct_reg_survey FOREIGN KEY (surveyId) REFERENCES dkct_surveys (id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+      CONSTRAINT fk_dkct_reg_plan FOREIGN KEY (planId) REFERENCES dkct_plans (id)
         ON UPDATE CASCADE ON DELETE SET NULL`,
     // Giấy xác nhận đủ điều kiện đóng điện: số "<n>/GXN-<tổ>" đếm riêng theo tổ, năm; lập từ giấy ĐKCT hoặc tự ghi
     dkct_confirmations: `
@@ -345,6 +380,12 @@ const INDEXES = [
   ['idx_dkct_outage_fetches_started', 'dkct_outage_fetches', 'startedAt'],
   ['idx_dkct_reg_department', 'dkct_registrations', 'department'],
   ['idx_dkct_reg_outage', 'dkct_registrations', 'outageId'],
+  ['idx_dkct_reg_work', 'dkct_registrations', 'workId'],
+  ['idx_dkct_reg_survey', 'dkct_registrations', 'surveyId'],
+  ['idx_dkct_reg_plan', 'dkct_registrations', 'planId'],
+  ['idx_dkct_works_department', 'dkct_works', 'department'],
+  ['idx_dkct_survey_work', 'dkct_surveys', 'workId'],
+  ['idx_dkct_plan_work', 'dkct_plans', 'workId'],
   ['idx_dkct_personnel_name', 'dkct_personnel', 'fullName'],
   ['idx_dkct_survey_department', 'dkct_surveys', 'department'],
   ['idx_dkct_substation_station', 'dkct_substations', 'stationId'],
@@ -370,7 +411,12 @@ const ADDED_COLUMNS = (t) => [
   ['dkct_outages', 'prevStart', t.time],
   ['dkct_outages', 'prevEnd', t.time],
   ['dkct_surveys', 'substationId', t.id,
-    { name: 'fk_dkct_surveys_substation', ref: 'dkct_substations (id)', rule: 'ON UPDATE CASCADE ON DELETE SET NULL' }]
+    { name: 'fk_dkct_surveys_substation', ref: 'dkct_substations (id)', rule: 'ON UPDATE CASCADE ON DELETE SET NULL' }],
+  // công việc không có lịch cắt điện; giấy ĐKCT nối biên bản KSHT / phương án đã dùng để lập
+  ...[['dkct_surveys', 'workId', 'fk_dkct_surveys_work', 'dkct_works'], ['dkct_plans', 'workId', 'fk_dkct_plans_work', 'dkct_works'],
+    ['dkct_registrations', 'workId', 'fk_dkct_reg_work', 'dkct_works'], ['dkct_registrations', 'surveyId', 'fk_dkct_reg_survey', 'dkct_surveys'],
+    ['dkct_registrations', 'planId', 'fk_dkct_reg_plan', 'dkct_plans']]
+    .map(([table, column, name, ref]) => [table, column, t.id, { name, ref: `${ref} (id)`, rule: 'ON UPDATE CASCADE ON DELETE SET NULL' }])
 ];
 
 async function addColumn(db, [table, column, type, fk]) {

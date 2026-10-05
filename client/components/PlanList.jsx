@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FileStack, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye, Upload } from 'lucide-react';
+import { FileStack, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye, Upload, FilePlus2 } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
@@ -8,7 +8,7 @@ import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 import { OutageChangeTag } from './OutageAlert.jsx';
 
 /** Danh sách phương án thi công, biện pháp an toàn của tổ (admin thấy tất cả). */
-export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpen, canCreate }) {
+export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpen, canCreate, onCreateRegistration }) {
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +89,7 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
 
       {!loading && items.length === 0 ? (
         <EmptyState icon={FileStack} title="Chưa có phương án"
-          description={canCreate ? 'Bấm "Lập phương án", hoặc lập từ lịch cắt điện / biên bản khảo sát.' : 'Phương án do trưởng/phó tổ lập sẽ hiện ở đây.'} />
+          description={canCreate ? 'Bấm "Lập phương án", hoặc lập từ lịch cắt điện / công việc / biên bản khảo sát.' : 'Phương án do trưởng/phó tổ lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (
@@ -103,7 +103,13 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
                 {item.outageChange && <span className="block mt-0.5"><OutageChangeTag change={item.outageChange} /></span>}
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.stationName}{item.startTime ? ` · ${formatDateTime(item.startTime)}` : ''}</p>
               </button>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
+                {canCreate && onCreateRegistration && (
+                  <button type="button" className={btnSecondary} onClick={() => onCreateRegistration(item)}
+                    title="Lập giấy ĐKCT với căn cứ, nội dung, địa điểm, thời gian và rủi ro lấy từ phương án này">
+                    <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Lập giấy ĐKCT
+                  </button>
+                )}
                 {item.canEdit ? (
                   <button type="button" className={btnSecondary} onClick={() => onOpen(item)}><Pencil className="w-4 h-4 text-chatlan-600" /> Sửa</button>
                 ) : (

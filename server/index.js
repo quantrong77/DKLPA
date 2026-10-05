@@ -29,6 +29,7 @@ const { createPolicy } = require('./policy');
 const { createNumbering } = require('./services/numbering');
 const { catalogRouter } = require('./routes/catalogs');
 const { outageRouter } = require('./routes/outages');
+const { workRouter } = require('./routes/works');
 const { registrationRouter } = require('./routes/registrations');
 const { surveyRouter } = require('./routes/surveys');
 const { drawingRouter } = require('./routes/drawings');
@@ -144,6 +145,7 @@ function createDkctModule(deps) {
   router.use(express.json({ limit: '2mb' }));
   router.use(catalogRouter(shared));
   router.use(outageRouter(shared));
+  router.use(workRouter(shared));
   router.use(registrationRouter(shared));
   router.use(surveyRouter(shared));
   router.use(drawingRouter(shared));

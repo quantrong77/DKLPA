@@ -12,6 +12,7 @@ const { normalizeSurvey, surveyFromOutage } = require('../services/survey');
 const { renderSurveyDocx, imageInfo } = require('../services/surveyRender');
 const { vnNow } = require('../services/clock');
 const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('../util');
+const { workAsOutage, loadVisibleWork, timeTextOf, DEFAULT_SCOPE } = require('../services/work');
 
 const MAX_DIAGRAM_BYTES = 10 * 1024 * 1024;
 const MAX_DIAGRAM_SIDE = 12000;
@@ -21,7 +22,7 @@ const upload = multer({
   fileFilter: (req, file, cb) => cb(null, /^image\/(png|jpeg)$/.test(file.mimetype))
 });
 
-const LIST_COLUMNS = 'id, department, surveyTime, stationName, substationId, workContent, outageId, diagramType, createdBy, createdAt, updatedAt';
+const LIST_COLUMNS = 'id, department, surveyTime, stationName, substationId, workContent, outageId, workId, diagramType, createdBy, createdAt, updatedAt';
 
 function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
   const router = express.Router();
@@ -34,6 +35,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     substationId: row.substationId,
     workContent: row.workContent,
     outageId: row.outageId,
+    workId: row.workId,
     hasDiagram: !!row.diagramType,
     createdBy: row.createdBy,
     createdAt: row.createdAt,
@@ -67,10 +69,11 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
       return null;
     }
     if (data.outageId && !(await db.queryOne('SELECT id FROM dkct_outages WHERE id = ?', [data.outageId]))) data.outageId = null;
+    if (data.workId && !(await db.queryOne('SELECT id FROM dkct_works WHERE id = ?', [data.workId]))) data.workId = null;
     return data;
   }
 
-  const summary = (data) => [data.surveyTime, data.station.name.slice(0, 255), data.station.substationId, data.workContent.slice(0, 2000), data.outageId];
+  const summary = (data) => [data.surveyTime, data.station.name.slice(0, 255), data.station.substationId, data.workContent.slice(0, 2000), data.outageId, data.workId];
 
   /** Biên bản mới: tổ và người đại diện theo người đang đăng nhập, thời điểm là bây giờ. */
   async function buildSurveyDefaults(actor) {
@@ -99,7 +102,8 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
       timeText: 'theo lịch cắt điện được duyệt.',
       risks: [],
       diagramDate: null,
-      outageId: null
+      outageId: null,
+      workId: null
     };
   }
 
@@ -114,6 +118,30 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     // địa điểm của lịch trùng tên một TBA trong danh mục -> gắn TBA và đơn vị QLVH
     const substation = (await loadSubstations()).find(s => s.active && sameUnitName(s.name, outage.location)) || null;
     res.json({ draft: { ...(await buildSurveyDefaults(actor)), ...surveyFromOutage(outage, substation) } });
+  }));
+
+  // công việc không có lịch cắt điện: trạm (danh mục), địa điểm/thiết bị, nội dung, điều kiện lấy từ công việc
+  router.get('/works/:id/survey-draft', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    const work = await loadVisibleWork(db, policy, actor, req.params.id);
+    const subs = (await loadSubstations()).filter(s => s.active);
+    const substation = subs.find(s => s.id === work.substationId) || subs.find(s => sameUnitName(s.name, work.stationName)) || null;
+    const draft = await buildSurveyDefaults(actor);
+    const from = surveyFromOutage(workAsOutage(work), substation);
+    const lines = (v) => String(v || '').split('\n').map(x => x.trim()).filter(Boolean);
+    // phạm vi công tác = địa điểm/thiết bị; điều kiện chỉ là biện pháp khi khác "Không cắt điện."
+    res.json({
+      draft: {
+        ...draft,
+        ...from,
+        scopeItems: lines(work.location).length ? lines(work.location) : [''],
+        risks: work.scope && work.scope !== DEFAULT_SCOPE ? from.risks : [],
+        outageId: null,
+        workId: work.id,
+        equipment: work.location || '',
+        timeText: timeTextOf(work)
+      }
+    });
   }));
 
   router.get('/surveys', wrap(async (req, res) => {
@@ -151,8 +179,8 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     if (!data) return;
     const id = newId('KS');
     await db.execute(`
-      INSERT INTO dkct_surveys (id, department, surveyTime, stationName, substationId, workContent, outageId, data, createdBy, updatedBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      INSERT INTO dkct_surveys (id, department, surveyTime, stationName, substationId, workContent, outageId, workId, data, createdBy, updatedBy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, actor.department || '', ...summary(data), JSON.stringify(data), actor.id, actor.id]);
     const row = await db.queryOne(`SELECT ${LIST_COLUMNS}, data FROM dkct_surveys WHERE id = ?`, [id]);
     res.status(201).json({ survey: await present(row, actor) });
@@ -163,7 +191,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     const data = await normalize(req.body, res);
     if (!data) return;
     await db.execute(`
-      UPDATE dkct_surveys SET surveyTime = ?, stationName = ?, substationId = ?, workContent = ?, outageId = ?, data = ?,
+      UPDATE dkct_surveys SET surveyTime = ?, stationName = ?, substationId = ?, workContent = ?, outageId = ?, workId = ?, data = ?,
         updatedBy = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
     [...summary(data), JSON.stringify(data), actor.id, row.id]);
     const updated = await db.queryOne(`SELECT ${LIST_COLUMNS}, data FROM dkct_surveys WHERE id = ?`, [row.id]);

@@ -6,6 +6,7 @@ import EditorPeople from './EditorPeople.jsx';
 import EditorAppendix from './EditorAppendix.jsx';
 import { TabButton, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
+import LinkedWork from './LinkedWork.jsx';
 import { fieldErrors, pruneAfterChange } from '../lib/form.js';
 
 const STEPS = [
@@ -112,6 +113,7 @@ export default function RegistrationEditor({ initial, registration, outage, cata
             </TabButton>
           ))}
         </nav>
+        {form.workId && <LinkedWork workId={form.workId} onUnlink={() => update(f => ({ ...f, workId: null }))} readOnly={readOnly} />}
 
         <div className="flex-1 overflow-y-auto p-4">
           {errorList.length > 0 && (

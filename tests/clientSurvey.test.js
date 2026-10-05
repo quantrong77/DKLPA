@@ -46,6 +46,9 @@ test('registrationFromSurvey: giấy ĐKCT kế thừa căn cứ, nội dung, đ
   assert.deepEqual(r.risks, SURVEY.risks);
   assert.equal(r.outageId, null);
   assert.equal(r.recipient, undefined);
+  assert.deepEqual([r.surveyId, r.workId], [null, null]);
+  const linked = registrationFromSurvey({ ...SURVEY, workId: 'CV-1' }, 'KS-1');
+  assert.deepEqual([linked.surveyId, linked.workId], ['KS-1', 'CV-1'], 'giữ liên kết để nối luồng');
   const withUnit = registrationFromSurvey({ ...SURVEY, station: { ...SURVEY.station, qlvhUnitId: 'ST-1' } });
   assert.deepEqual(withUnit.recipient, { stationId: 'ST-1' }, 'nơi nhận = đơn vị QLVH của trạm');
 });

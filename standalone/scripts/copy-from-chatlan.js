@@ -15,10 +15,12 @@ const path = require('node:path');
 // Thứ tự chèn theo khóa ngoại; xóa theo thứ tự ngược lại
 const TABLES = [
   'dkct_stations', 'dkct_substations', 'dkct_drawings', 'dkct_personnel', 'dkct_duties', 'dkct_risks',
-  'dkct_outages', 'dkct_surveys', 'dkct_plans', 'dkct_registrations', 'dkct_confirmations',
+  'dkct_outages', 'dkct_works', 'dkct_surveys', 'dkct_plans', 'dkct_registrations', 'dkct_confirmations',
   'dkct_counters', 'dkct_settings'
 ];
-const RECORD_TABLES = ['dkct_outages', 'dkct_surveys', 'dkct_plans', 'dkct_registrations', 'dkct_confirmations', 'dkct_drawings'];
+// bảng có từ bản sau: ChatLan chưa cập nhật module thì chưa có, coi như trống
+const OPTIONAL_TABLES = new Set(['dkct_works']);
+const RECORD_TABLES = ['dkct_outages', 'dkct_works', 'dkct_surveys', 'dkct_plans', 'dkct_registrations', 'dkct_confirmations', 'dkct_drawings'];
 const DEPARTMENT_SOURCES = ['dkct_registrations', 'dkct_plans', 'dkct_surveys', 'dkct_confirmations', 'dkct_personnel'];
 
 const plain = (v) => (v instanceof Uint8Array && !Buffer.isBuffer(v) ? Buffer.from(v) : v);
@@ -43,7 +45,7 @@ async function copyAll({ source, target, force = false, log = () => {} }) {
     const targetCols = new Set((await target.query(
       'SELECT column_name AS c FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ?', [t]
     )).map(r => r.c.toLowerCase()));
-    const rows = await source.query(`SELECT * FROM ${t}`);
+    const rows = await source.query(`SELECT * FROM ${t}`).catch(e => (OPTIONAL_TABLES.has(t) ? [] : Promise.reject(e)));
     for (const row of rows) {
       const cols = Object.keys(row).filter(c => targetCols.has(c.toLowerCase()));
       await target.execute(`INSERT INTO ${t} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,

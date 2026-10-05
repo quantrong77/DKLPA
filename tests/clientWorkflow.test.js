@@ -14,7 +14,7 @@ const CHAIN = {
 test('workflowSteps: chưa chọn hồ sơ thì mọi bước ở trạng thái idle', async () => {
   const { workflowSteps } = await load();
   const steps = workflowSteps(null, null);
-  assert.deepEqual(steps.map(s => s.label), ['Lịch cắt điện', 'Khảo sát', 'Phương án', 'Giấy ĐKCT', 'Giấy xác nhận']);
+  assert.deepEqual(steps.map(s => s.label), ['Lịch / Công việc', 'Khảo sát', 'Phương án', 'Giấy ĐKCT', 'Giấy xác nhận']);
   assert.ok(steps.every(s => s.state === 'idle' && s.docs.length === 0));
 });
 
@@ -37,4 +37,26 @@ test('selectionTitle, linkedIds: mô tả hồ sơ đang theo dõi và tập h�
   assert.equal(selectionTitle('outage', CHAIN.outages[0]), 'Lịch cắt điện 5/10/2026 · TNĐK ngăn 232');
   assert.deepEqual([...linkedIds(CHAIN)].sort(), ['O1', 'P1', 'S1']);
   assert.equal(linkedIds(null).size, 0);
+});
+
+test('công việc không có lịch cắt điện: là bước 1 của luồng, nhãn và mô tả riêng', async () => {
+  const { workflowSteps, selectionTitle, linkedIds, stepOfType, listOfType, docLabel } = await load();
+  const chain = {
+    outages: [],
+    works: [{ id: 'W1', startTime: '2026-10-12T08:00', content: 'Kiểm tra tủ điều khiển ngăn 271' }],
+    surveys: [{ id: 'S1', surveyTime: '2026-10-06T08:00' }],
+    plans: [],
+    registrations: [],
+    confirmations: []
+  };
+  assert.equal(stepOfType('work').type, 'outage');
+  assert.equal(listOfType('work'), 'works');
+  assert.equal(listOfType('plan'), 'plans');
+  assert.equal(docLabel('work', chain.works[0]), 'CV 12/10/2026');
+  const steps = workflowSteps(chain, { type: 'work', id: 'W1' });
+  assert.deepEqual(steps.map(s => s.state), ['selected', 'done', 'next', 'todo', 'todo']);
+  assert.deepEqual(steps[0].docs.map(d => [d.type, d.label]), [['work', 'CV 12/10/2026']]);
+  assert.equal(workflowSteps(chain, { type: 'survey', id: 'S1' })[0].state, 'done');
+  assert.equal(selectionTitle('work', chain.works[0]), 'Công việc 12/10/2026 · Kiểm tra tủ điều khiển ngăn 271');
+  assert.deepEqual([...linkedIds(chain)].sort(), ['S1', 'W1']);
 });

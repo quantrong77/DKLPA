@@ -98,7 +98,8 @@ function normalizeSurvey(input = {}, { substations }) {
       .filter(r => r.hazard || r.measures),
     diagramMarks: normalizeMarks(input.diagramMarks),
     diagramDate: DATE_RE.test(text(input.diagramDate)) ? text(input.diagramDate) : (surveyTime ? surveyTime.slice(0, 10) : null),
-    outageId: input.outageId ? text(input.outageId).slice(0, 64) : null
+    outageId: input.outageId ? text(input.outageId).slice(0, 64) : null,
+    workId: input.workId ? text(input.workId).slice(0, 64) : null
   };
   return { data, errors };
 }
