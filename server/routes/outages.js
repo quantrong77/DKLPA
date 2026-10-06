@@ -12,7 +12,7 @@ const { sourceConfig, configured, fetchOutageWorkbook } = require('../services/o
 const { isoDate } = require('../services/outageImport');
 const { fetchAndImport, MAX_DAYS } = require('../services/outageAutoFetch');
 const { newId } = require('../schema');
-const { areaResolver, loadAreaSubstations, areaKey, areaOptions } = require('../services/outageArea');
+const { teamResolver, loadTeamAreas, loadAreaSubstations, areaKey, areaOptions } = require('../services/outageArea');
 const { executeIn } = require('../services/outageChange');
 
 // dòng lịch đã có biên bản KSHT / phương án / giấy ĐKCT gắn: không xóa khi dọn lịch cũ
@@ -142,17 +142,18 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
       FROM dkct_outages o ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY regStart LIMIT 1000`, params);
     const count = (v) => Number(v) || 0;
-    // "của tổ tôi": tổ đã lập hồ sơ cho dòng lịch, hoặc dòng lịch thuộc khu vực tổ phụ trách
+    // "của tổ tôi": tổ đã lập hồ sơ cho dòng lịch, hoặc dòng lịch ở trạm giao riêng cho tổ / thuộc khu vực tổ phụ trách
     const myAreas = (await db.query('SELECT area FROM dkct_team_areas WHERE department = ? ORDER BY area', [dept])).map(r => r.area);
-    const myKeys = new Set(myAreas.map(areaKey));
-    const areasOf = areaResolver(myKeys.size ? await loadAreaSubstations(db) : []);
+    const substations = await loadAreaSubstations(db);
+    const teamsOf = teamResolver(await loadTeamAreas(db), substations);
     res.json({
       myAreas,
+      mySubstations: substations.filter(s => dept && s.teamDepartment === dept).map(s => s.name).sort((a, b) => a.localeCompare(b, 'vi')),
       items: items.map(o => {
         const linked = count(o.surveyCount) + count(o.planCount) + count(o.registrationCount) > 0;
         return {
           ...o, surveyCount: count(o.surveyCount), planCount: count(o.planCount), registrationCount: count(o.registrationCount),
-          changeCount: count(o.changeCount), mine: linked || (myKeys.size > 0 && [...areasOf(o)].some(k => myKeys.has(k)))
+          changeCount: count(o.changeCount), mine: linked || (!!dept && teamsOf(o).has(dept))
         };
       })
     });
@@ -174,10 +175,31 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
     rows.forEach(r => { if (!byDept.has(r.department)) byDept.set(r.department, []); byDept.get(r.department).push(r.area); });
     const departments = await listDepartments();
     const names = [...new Set([...departments.map(d => d.name), ...byDept.keys()])];
+    // trạm theo khu vực: tổ phụ trách khu vực (mặc định) và tổ được giao riêng (nếu có)
+    const subs = await db.query(`SELECT id, name, transmissionName, teamDepartment FROM dkct_substations
+      WHERE active = 1 ORDER BY transmissionName, sortOrder, name`);
+    const areaTeams = (sub) => names.filter(n => (byDept.get(n) || []).some(a => sub.transmissionName && areaKey(a) === areaKey(sub.transmissionName)));
     res.json({
       teams: names.map(name => ({ department: name, shortName: departments.find(d => d.name === name)?.shortName || '', areas: byDept.get(name) || [] })),
-      options: await areaOptions(db)
+      options: await areaOptions(db),
+      substations: subs.map(s => ({ ...s, teamDepartment: s.teamDepartment || null, areaTeams: areaTeams(s) }))
     });
+  }));
+
+  // Giao riêng một trạm cho một tổ (department rỗng = trả về theo khu vực): chỉ admin
+  router.put('/team-substations/:id', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    if (!policy.isAdmin(actor)) throw forbidden('Chỉ admin được giao trạm cho tổ.');
+    const sub = await db.queryOne('SELECT id, name FROM dkct_substations WHERE id = ?', [req.params.id]);
+    if (!sub) return res.status(404).json({ error: 'Không tìm thấy trạm biến áp.' });
+    const department = String(req.body?.department || '').trim().slice(0, 191) || null;
+    if (department) {
+      const known = new Set([...(await listDepartments()).map(d => d.name),
+        ...(await db.query('SELECT DISTINCT department FROM dkct_team_areas')).map(r => r.department)]);
+      if (!known.has(department)) throw Object.assign(new Error('Tổ không có trong danh sách tổ.'), { status: 400 });
+    }
+    await db.execute('UPDATE dkct_substations SET teamDepartment = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?', [department, sub.id]);
+    res.json({ id: sub.id, name: sub.name, teamDepartment: department });
   }));
 
   router.put('/team-areas', wrap(async (req, res) => {

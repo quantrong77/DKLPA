@@ -387,6 +387,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
   // "Chỉ tổ của tôi": dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ (nhớ theo trình duyệt)
   const [mineOnly, setMineOnly] = useState(() => { try { return localStorage.getItem(MINE_KEY) === '1'; } catch { return false; } });
   const [myAreas, setMyAreas] = useState([]);
+  const [mySubs, setMySubs] = useState([]); // trạm giao riêng cho tổ
   const [historyOf, setHistoryOf] = useState(() => new Set()); // dòng đang mở lịch sử
   const [refresh, setRefresh] = useState(0);
   const [show, setShow] = useState(loadShow);
@@ -407,6 +408,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
       const res = await api.get(`/outages?${q}`);
       setItems(res.items);
       setMyAreas(res.myAreas || []);
+      setMySubs(res.mySubstations || []);
       setRefresh(n => n + 1);
     } catch (err) { notify(err.message, 'error'); } finally { setLoading(false); }
   }, [api, notify, from, to, search]);
@@ -470,8 +472,9 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
       </div>
       {mineOnly && (
         <p className="text-xs text-slate-600 dark:text-slate-300" role="note">
-          {myAreas.length
-            ? <>Khu vực tổ phụ trách: <b>{myAreas.join(', ')}</b> (cùng các dòng tổ đã lập hồ sơ).</>
+          {myAreas.length || mySubs.length
+            ? <>{myAreas.length > 0 && <>Khu vực tổ phụ trách: <b>{myAreas.join(', ')}</b> (trừ trạm do tổ khác phụ trách). </>}
+              {mySubs.length > 0 && <>Trạm giao riêng: <b>{mySubs.join(', ')}</b>. </>}Cùng các dòng tổ đã lập hồ sơ.</>
             : <>Tổ chưa chọn khu vực phụ trách — chỉ hiện dòng tổ đã lập hồ sơ. Admin chọn khu vực ở <b>Danh mục</b>.</>}
         </p>
       )}

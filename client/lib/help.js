@@ -82,7 +82,7 @@ export const HELP_SECTIONS = [
     items: [
       ['Danh mục chung', 'Nhân sự ATĐ, Đơn vị QLVH (nơi nhận), Trạm biến áp (kèm bản vẽ sơ đồ trạm), Nhiệm vụ, Thư viện rủi ro — dùng để chọn khi lập hồ sơ.'],
       ['Mạch dòng TI (admin)', 'Thư viện cô lập mạch dòng theo trạm / TI, dùng cho Phụ lục II của phương án.'],
-      ['Khu vực của tổ (admin)', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng.'],
+      ['Khu vực của tổ (admin)', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng. Trạm trong khu vực do tổ khác phụ trách: ở mục "Trạm do tổ khác phụ trách" chọn tổ cho trạm đó (mặc định theo khu vực).'],
       ['Tải lịch tự động (admin)', 'Tên đăng nhập, mật khẩu trang lịch cắt điện của Công ty (mật khẩu lưu mã hóa, không hiện lại), giờ tự tải hằng ngày (vd 07:00, 15:00; để trống = tắt) và số ngày tới. "Thử kết nối" kiểm tra đăng nhập. Lưu là có hiệu lực ngay; ô để trống dùng giá trị trong .env của máy chủ.'],
       ['Mẫu văn bản (admin)', 'Tải mẫu Word về sửa (giữ thẻ {…} và nhãn ((…))), tải lên: phần mềm kiểm tra, thử điền, cho xem thử; "Lưu & dùng ngay" hoặc quay về mẫu gốc bất cứ lúc nào.']
     ]

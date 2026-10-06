@@ -12,7 +12,7 @@ const { readOutageWorkbook } = require('./outageExcel');
 const { changedRows } = require('../util');
 const { vnNow } = require('./clock');
 const { pairChanges, changeNote, queryIn, markCutoff, MARK_DAYS } = require('./outageChange');
-const { areaResolver, loadTeamAreas, loadAreaSubstations } = require('./outageArea');
+const { teamResolver, loadTeamAreas, loadAreaSubstations } = require('./outageArea');
 
 // tình trạng ghi "Hoãn" trong file lịch
 const POSTPONED_STATUS = /ho[ãa]n/i;
@@ -211,8 +211,8 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => 
       const rows = await queryIn(db, `SELECT id, outageId, department, createdBy, ${title} AS title FROM ${table} WHERE outageId IN ({in})`, ids);
       rows.forEach(d => docs.push({ ...d, label: table === 'dkct_surveys' ? `${label} ${short(d.title) || ''}`.trim() : `${label} ${d.title || ''}`.trim() }));
     }
-    const teamAreas = await loadTeamAreas(db);
-    const areasOf = areaResolver(await loadAreaSubstations(db));
+    // tổ phụ trách: trạm giao riêng cho tổ, còn lại theo khu vực TTĐ
+    const teamsOf = teamResolver(await loadTeamAreas(db), await loadAreaSubstations(db));
     const leadsCache = new Map();
     const leadsOf = async (dept) => {
       if (!listTeamLeads || !dept) return [];
@@ -239,9 +239,7 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => 
           for (const lead of await leadsOf(d.department)) push(lead, ev, line);
         }
       }
-      const areas = areasOf(o);
-      for (const [dept, keys] of teamAreas) {
-        if (![...keys].some(k => areas.has(k))) continue;
+      for (const dept of teamsOf(o)) {
         for (const lead of await leadsOf(dept)) if (!perUser.get(lead)?.has(ev.id)) push(lead, ev, `${head}${note}`);
       }
     }

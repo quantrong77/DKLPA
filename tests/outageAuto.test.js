@@ -333,3 +333,50 @@ test('tự tải bù: máy chủ ngủ lúc giờ hẹn (Render) thì thức d�
     assert.match(items[0].sourceFile, /^Tự tải 09:00 05\/10\/2024 \(tải bù lúc 09:47\)/);
   } finally { console.info = info; app.close(); }
 });
+
+test('giao riêng trạm cho tổ: trạm trong khu vực do tổ khác phụ trách; "của tổ tôi" và báo thay đổi theo tổ được giao', async () => {
+  const OT = USERS.other.department; // Tổ Vận tải
+  const sent = [];
+  const app = await startApp({
+    notifyUsers: async (msgs) => { sent.push(...msgs); },
+    listTeamLeads: async (dept) => (dept === LD ? [USERS.lead.id] : dept === OT ? [USERS.other.id] : [])
+  });
+  try {
+    await app.call('admin', 'PUT', '/team-areas', { department: LD, areas: ['Truyền tải điện Lâm Đồng'] });
+    const row = (d, loc, what, unit) => [`${d}/10/2024 07h00`, `${d}/10/2024 17h00`, loc, what, '', unit, unit, ''];
+    const first = [row('05', 'TBA 220kV Đức Trọng', 'Việc 1', 'TTĐ Lâm Đồng'), row('06', 'TBA 500kV Di Linh', 'Việc 2', 'Đội SCTN3'),
+      row('07', 'TBA 220kV Tháp Chàm', 'Việc 3', 'TTĐ Khánh Hòa')];
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom(first));
+    const mineOf = async (user) => Object.fromEntries((await app.call(user, 'GET', '/outages?from=2024-10-01')).body.items.map(o => [o.content, o.mine]));
+    assert.deepEqual(await mineOf('lead'), { 'Việc 1': true, 'Việc 2': true, 'Việc 3': false });
+
+    const subs = (await app.call('admin', 'GET', '/team-areas')).body.substations;
+    const sub = (name) => subs.find(s => s.name === name);
+    assert.deepEqual(sub('TBA 500kV Di Linh').areaTeams, [LD], 'mặc định: tổ phụ trách khu vực');
+    assert.equal(sub('TBA 500kV Di Linh').teamDepartment, null);
+
+    assert.equal((await app.call('lead', 'PUT', `/team-substations/${sub('TBA 500kV Di Linh').id}`, { department: OT })).status, 403, 'chỉ admin');
+    assert.equal((await app.call('admin', 'PUT', `/team-substations/${sub('TBA 500kV Di Linh').id}`, { department: 'Tổ lạ' })).status, 400);
+    assert.equal((await app.call('admin', 'PUT', '/team-substations/khong-co', { department: OT })).status, 404);
+    // Di Linh (Lâm Đồng) giao cho Tổ Vận tải; Nha Trang (Khánh Hòa) giao cho tổ Lâm Đồng
+    assert.equal((await app.call('admin', 'PUT', `/team-substations/${sub('TBA 500kV Di Linh').id}`, { department: OT })).body.teamDepartment, OT);
+    await app.call('admin', 'PUT', `/team-substations/${sub('TBA 220kV Tháp Chàm').id}`, { department: LD });
+    assert.deepEqual(await mineOf('lead'), { 'Việc 1': true, 'Việc 2': false, 'Việc 3': true });
+    assert.deepEqual(await mineOf('other'), { 'Việc 1': false, 'Việc 2': true, 'Việc 3': false });
+    assert.deepEqual((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.mySubstations, ['TBA 220kV Tháp Chàm']);
+
+    // nạp lại: cả ba dời ngày -> tổ trưởng nhận theo tổ phụ trách trạm
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([row('08', 'TBA 220kV Đức Trọng', 'Việc 1', 'TTĐ Lâm Đồng'),
+      row('09', 'TBA 500kV Di Linh', 'Việc 2', 'Đội SCTN3'), row('10', 'TBA 220kV Tháp Chàm', 'Việc 3', 'TTĐ Khánh Hòa')], ['2024-10-05', '2024-10-10']));
+    const to = Object.fromEntries(sent.map(m => [m.userId, m.text]));
+    assert.match(to[USERS.lead.id], /Đức Trọng/);
+    assert.match(to[USERS.lead.id], /Tháp Chàm/);
+    assert.doesNotMatch(to[USERS.lead.id], /Di Linh/);
+    assert.match(to[USERS.other.id], /Di Linh/);
+    assert.doesNotMatch(to[USERS.other.id], /Đức Trọng|Tháp Chàm/);
+
+    // bỏ giao: về lại theo khu vực
+    await app.call('admin', 'PUT', `/team-substations/${sub('TBA 500kV Di Linh').id}`, { department: '' });
+    assert.equal((await mineOf('lead'))['Việc 2'], true);
+  } finally { app.close(); }
+});

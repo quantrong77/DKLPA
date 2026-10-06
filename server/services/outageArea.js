@@ -5,6 +5,8 @@
  * (bảng dkct_team_areas, tên như "Truyền tải điện Lâm Đồng"). Dòng lịch thuộc khu vực nếu:
  *  - ô đơn vị đăng ký / đơn vị công tác có "TTĐ <khu vực>" (viết tắt hay đầy đủ, có dấu hay không), hoặc
  *  - địa điểm là một TBA trong danh mục có "Truyền tải điện" là khu vực đó.
+ * Trạm trong khu vực có thể do tổ khác phụ trách: admin giao riêng trạm cho một tổ (dkct_substations.teamDepartment);
+ * dòng lịch ở trạm đó thuộc tổ được giao, không tính cho tổ phụ trách khu vực.
  */
 const { sameUnitName } = require('../schema');
 
@@ -44,6 +46,27 @@ function areaResolver(substations) {
   };
 }
 
+/** TBA trong danh mục ứng với địa điểm của dòng lịch (không có -> undefined). */
+const substationOf = (substations, o) => (substations || []).find(s => sameUnitName(s.name, o.location));
+
+/**
+ * Bộ xác định tổ phụ trách dòng lịch: (outage) -> Set<department>.
+ * Trạm được giao riêng cho một tổ -> chỉ tổ đó; còn lại -> các tổ phụ trách khu vực TTĐ của dòng lịch.
+ * @param teamAreas   Map<department, Set<areaKey>> (loadTeamAreas)
+ * @param substations [{ name, transmissionName, teamDepartment }] (loadAreaSubstations)
+ */
+function teamResolver(teamAreas, substations) {
+  const areasOf = areaResolver(substations);
+  return (o) => {
+    const sub = substationOf(substations, o);
+    if (sub?.teamDepartment) return new Set([sub.teamDepartment]);
+    const areas = areasOf(o);
+    const out = new Set();
+    for (const [dept, keys] of teamAreas) if ([...keys].some(k => areas.has(k))) out.add(dept);
+    return out;
+  };
+}
+
 /** Tổ và khu vực: Map<department, Set<areaKey>>. */
 async function loadTeamAreas(db) {
   const rows = await db.query('SELECT department, area FROM dkct_team_areas');
@@ -55,7 +78,7 @@ async function loadTeamAreas(db) {
   return map;
 }
 
-const loadAreaSubstations = (db) => db.query('SELECT name, transmissionName FROM dkct_substations WHERE transmissionName IS NOT NULL');
+const loadAreaSubstations = (db) => db.query('SELECT id, name, transmissionName, teamDepartment FROM dkct_substations');
 
 /**
  * Tên khu vực để chọn (danh mục TBA + đơn vị "TTĐ …" đã gặp trong lịch), dạng "Truyền tải điện <tên>".
@@ -73,4 +96,4 @@ async function areaOptions(db) {
   return [...names.values()].sort((a, b) => a.localeCompare(b, 'vi'));
 }
 
-module.exports = { areaKey, areasInUnits, areaResolver, loadTeamAreas, loadAreaSubstations, areaOptions };
+module.exports = { areaKey, areasInUnits, areaResolver, teamResolver, substationOf, loadTeamAreas, loadAreaSubstations, areaOptions };

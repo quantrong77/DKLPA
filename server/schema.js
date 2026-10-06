@@ -403,6 +403,8 @@ const ADDED_COLUMNS = (t) => [
   ['dkct_stations', 'shortName', t.short],
   ['dkct_stations', 'leaderName', t.str],
   ['dkct_substations', 'transmissionName', t.str],
+  // tổ thí nghiệm phụ trách riêng trạm này (trống = theo khu vực TTĐ của tổ, xem services/outageArea)
+  ['dkct_substations', 'teamDepartment', t.short],
   // so sánh khi nạp lại lịch: NEW (phát sinh) | POSTPONED (hoãn) | MOVED (dời lịch) | EDITED (sửa nội dung);
   // thời điểm so sánh, ghi chú (lý do / giờ cũ -> mới), giờ đăng ký trước khi dời
   ['dkct_outages', 'changeKind', t.short],
