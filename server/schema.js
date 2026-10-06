@@ -342,6 +342,15 @@ function tables(t) {
       area ${t.short} NOT NULL,
       createdAt ${t.now},
       CONSTRAINT uq_dkct_team_areas UNIQUE (department, area)`,
+    // Trạm giao riêng cho tổ (trạm trong khu vực do tổ khác phụ trách), theo khóa trạm "220|phanthiet"
+    // (services/outageArea: nhận cả trạm chỉ có trong lịch cắt điện, chưa có trong danh mục TBA)
+    dkct_team_substations: `
+      id ${t.id} PRIMARY KEY,
+      subKey ${t.short} NOT NULL UNIQUE,
+      name ${t.str} NOT NULL,
+      department ${t.short} NOT NULL,
+      updatedBy ${t.id},
+      updatedAt ${t.now}`,
     // Mẫu Word admin tải lên cho từng loại văn bản (survey | plan | registration | confirmation); active = 1: đang dùng
     // (mỗi loại tối đa một mẫu đang dùng; không có thì dùng mẫu gốc trong templates/)
     dkct_doc_templates: `
@@ -403,7 +412,7 @@ const ADDED_COLUMNS = (t) => [
   ['dkct_stations', 'shortName', t.short],
   ['dkct_stations', 'leaderName', t.str],
   ['dkct_substations', 'transmissionName', t.str],
-  // tổ thí nghiệm phụ trách riêng trạm này (trống = theo khu vực TTĐ của tổ, xem services/outageArea)
+  // (cũ) tổ phụ trách riêng trạm: đã chuyển sang dkct_team_substations khi migrate
   ['dkct_substations', 'teamDepartment', t.short],
   // so sánh khi nạp lại lịch: NEW (phát sinh) | POSTPONED (hoãn) | MOVED (dời lịch) | EDITED (sửa nội dung);
   // thời điểm so sánh, ghi chú (lý do / giờ cũ -> mới), giờ đăng ký trước khi dời
@@ -559,6 +568,22 @@ async function migrate(db) {
   await seed(db);
   await importSubstations(db);
   await importTransmissionNames(db);
+  await migrateTeamSubstations(db);
+}
+
+/** Chuyển trạm đã giao riêng theo cột cũ dkct_substations.teamDepartment sang dkct_team_substations (một lần). */
+async function migrateTeamSubstations(db) {
+  const rows = await db.query('SELECT name, teamDepartment FROM dkct_substations WHERE teamDepartment IS NOT NULL');
+  if (!rows.length) return;
+  const { subKey } = require('./services/outageArea');
+  for (const r of rows) {
+    const key = subKey(r.name);
+    if (key) {
+      await db.execute('INSERT IGNORE INTO dkct_team_substations (id, subKey, name, department) VALUES (?, ?, ?, ?)',
+        [newId('TGR'), key, r.name, r.teamDepartment]);
+    }
+  }
+  await db.execute('UPDATE dkct_substations SET teamDepartment = NULL WHERE teamDepartment IS NOT NULL');
 }
 
 module.exports = { migrate, COLUMN_TEXT, newId, sameUnitName, drawingSortOrder, DEFAULT_DRAWING_LABEL };

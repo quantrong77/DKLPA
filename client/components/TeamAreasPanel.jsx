@@ -18,9 +18,9 @@ function SubstationTeams({ data, canManage, onChanged }) {
     return t?.shortName || dept;
   };
   const assign = async (sub, department) => {
-    setBusy(sub.id);
+    setBusy(sub.key);
     try {
-      await api.put(`/team-substations/${sub.id}`, { department });
+      await api.put('/team-substations', { key: sub.key, name: sub.name, department });
       notify(department ? `${sub.name}: giao cho ${department}.` : `${sub.name}: theo khu vực.`, 'success');
       await onChanged();
     } catch (err) { notify(err.message, 'error'); } finally { setBusy(null); }
@@ -28,7 +28,7 @@ function SubstationTeams({ data, canManage, onChanged }) {
   const q = query.trim().toLowerCase();
   const shown = data.substations.filter(s => !q || s.name.toLowerCase().includes(q));
   const groups = new Map();
-  shown.forEach(s => { const k = s.transmissionName || NO_AREA; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
+  shown.forEach(s => { const k = s.areaLabel || NO_AREA; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
   const assigned = data.substations.filter(s => s.teamDepartment).length;
 
   return (
@@ -38,8 +38,9 @@ function SubstationTeams({ data, canManage, onChanged }) {
         <span className="text-xs font-normal text-slate-500">({assigned} trạm giao riêng)</span>
       </h3>
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Mặc định mỗi trạm thuộc tổ phụ trách khu vực của trạm. Trạm nào trong khu vực do tổ thí nghiệm khác phụ trách thì chọn tổ đó:
-        lịch cắt điện ở trạm này tính cho tổ được chọn ("Chỉ tổ của tôi", báo thay đổi cho tổ trưởng), không tính cho tổ của khu vực.
+        Danh sách gồm trạm trong danh mục và trạm ghi trong lịch cắt điện. Mặc định mỗi trạm thuộc tổ phụ trách khu vực của trạm.
+        Trạm nào do tổ thí nghiệm khác phụ trách thì chọn tổ đó: lịch cắt điện ghi trạm này (vd "Trạm 220kV Phan Thiết, ĐZ …")
+        tính cho tổ được chọn ("Chỉ tổ của tôi", báo thay đổi cho tổ trưởng), không tính cho tổ của khu vực.
       </p>
       <div className="relative max-w-sm">
         <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -57,10 +58,14 @@ function SubstationTeams({ data, canManage, onChanged }) {
               {subs.map(s => {
                 const byArea = s.areaTeams.length ? s.areaTeams.map(label).join(', ') : 'chưa có tổ';
                 return (
-                  <li key={s.id} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
-                    <span className={`flex-1 min-w-[10rem] text-sm ${s.teamDepartment ? 'font-semibold text-chatlan-700 dark:text-chatlan-300' : 'text-slate-700 dark:text-slate-200'}`}>{s.name}</span>
+                  <li key={s.key} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
+                    <span className={`flex-1 min-w-[10rem] text-sm ${s.teamDepartment ? 'font-semibold text-chatlan-700 dark:text-chatlan-300' : 'text-slate-700 dark:text-slate-200'}`}>
+                      {s.name}
+                      {s.count > 0 && <span className="ml-1.5 text-[11px] font-normal text-slate-500">· {s.count} dòng lịch</span>}
+                      {!s.inCatalog && <span className="ml-1.5 text-[11px] font-normal text-amber-700 dark:text-amber-400" title="Trạm ghi trong lịch cắt điện, chưa có trong danh mục Trạm biến áp">· ngoài danh mục</span>}
+                    </span>
                     {canManage ? (
-                      <select aria-label={`Tổ phụ trách ${s.name}`} value={s.teamDepartment || ''} disabled={busy === s.id}
+                      <select aria-label={`Tổ phụ trách ${s.name}`} value={s.teamDepartment || ''} disabled={busy === s.key}
                         onChange={e => assign(s, e.target.value)} className={`${inputCls} ${inputBorder()} !w-auto max-w-[18rem]`}>
                         <option value="">Theo khu vực ({byArea})</option>
                         {data.teams.map(t => <option key={t.department} value={t.department}>{t.department}{t.shortName ? ` (${t.shortName})` : ''}</option>)}
@@ -68,7 +73,7 @@ function SubstationTeams({ data, canManage, onChanged }) {
                     ) : (
                       <span className="text-xs text-slate-600 dark:text-slate-300">{s.teamDepartment || `Theo khu vực (${byArea})`}</span>
                     )}
-                    {busy === s.id && <Loader2 className="w-4 h-4 animate-spin text-chatlan-600" aria-label="Đang lưu" />}
+                    {busy === s.key && <Loader2 className="w-4 h-4 animate-spin text-chatlan-600" aria-label="Đang lưu" />}
                   </li>
                 );
               })}
