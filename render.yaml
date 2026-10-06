@@ -20,3 +20,6 @@ services:
         sync: false
       - key: ADMIN_EMAILS
         sync: false
+      # khóa mã hóa mật khẩu trang lịch cắt điện admin lưu trên giao diện (Render tự sinh; giữ cố định)
+      - key: DKCT_SECRET_KEY
+        generateValue: true

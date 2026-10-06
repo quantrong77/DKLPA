@@ -195,6 +195,16 @@ Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Su
 
 Gói miễn phí: Render ngủ sau 15 phút không dùng (lần mở đầu chờ ~1 phút); Supabase tạm dừng dự án sau 7 ngày không có truy cập (bấm *Restore* trên trang Supabase).
 
+**Tự tải lịch cắt điện trên Render** (không cần ChatLan, không cần máy ở cơ quan bật):
+1. Render → service → *Environment*: có `DKCT_SECRET_KEY` (blueprint tự tạo; service tạo trước đó thì thêm tay một chuỗi ngẫu
+   nhiên dài) để admin lưu được mật khẩu trang lịch trên giao diện.
+2. Mở ứng dụng bằng tài khoản admin → tab Lịch cắt điện → **Cài đặt tải lịch**: tên đăng nhập, mật khẩu, giờ tải
+   (vd `09:00, 15:00`) → Lưu → **Thử kết nối** (máy chủ Render phải vào được trang lịch của Công ty).
+3. Render ngủ thì bộ hẹn giờ không chạy: tạo lịch gọi đánh thức miễn phí ở https://cron-job.org — mỗi giờ tải một lịch
+   gọi `https://dkct.onrender.com/healthz` đúng giờ đó (vd 09:00 và 15:00, múi giờ Asia/Ho_Chi_Minh). Máy chủ thức dậy
+   (~1 phút) thấy lỡ giờ hẹn thì **tải bù** ngay (trong vòng 2 giờ sau giờ hẹn); mỗi giờ hẹn mỗi ngày chỉ tải một lần,
+   kể cả khi bản chạy ở máy dùng chung CSDL Supabase.
+
 Chuyển dữ liệu đang dùng trong ChatLan sang Supabase (chạy ở máy có MySQL của ChatLan, sau khi đã có `standalone/.env`):
 `node standalone/scripts/copy-from-chatlan.js <đường dẫn server/.env của ChatLan>` — chép mọi bảng `dkct_*` trong một giao dịch và tạo sẵn các tổ; Supabase đã có hồ sơ thì dừng (thêm `--force` để ghi đè).
 

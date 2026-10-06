@@ -7,6 +7,8 @@
  *   SUPABASE_ANON_KEY  khóa "anon public" (công khai, trình duyệt cũng dùng)
  *   ADMIN_EMAILS       email quản trị viên, cách nhau dấu phẩy
  *   PORT               Render tự đặt
+ *   DKCT_SECRET_KEY    khóa mã hóa mật khẩu trang lịch admin lưu (tùy chọn; không có thì mật khẩu đặt bằng OUTAGE_SOURCE_PASSWORD)
+ *   OUTAGE_*           tài khoản, giờ tự tải lịch cắt điện mặc định (admin đổi được trên giao diện)
  */
 const path = require('node:path');
 const { Pool, types } = require('pg');

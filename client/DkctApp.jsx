@@ -292,7 +292,7 @@ export default function DkctApp() {
           </div>
         )}
         {tab === 'outages' && firstView === 'outages' && (
-          <OutagePanel {...pick('outage')} reloadKey={reloadKey} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
+          <OutagePanel {...pick('outage')} reloadKey={reloadKey} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} canConfigure={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
             onCreatePlanFromOutage={openPlanFromOutage} />
         )}
         {tab === 'outages' && firstView === 'works' && (

@@ -374,7 +374,7 @@ function StepTracker({ outage }) {
 }
 
 /** Lịch cắt điện = kế hoạch công tác: import Excel, lọc, theo dõi tiến độ, lập biên bản/phương án/giấy từ một dòng. */
-export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
+export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, canConfigure, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
   const { api, notify, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -441,7 +441,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
     <div className="space-y-3">
       {/* ẩn bằng CSS (không gỡ khỏi trang): đang xem trước file / kết quả so sánh thì vẫn giữ nguyên */}
       <div className="space-y-3" hidden={!show.fetch}>
-        <AutoFetchStatus refresh={refresh} />
+        <AutoFetchStatus refresh={refresh} canConfigure={canConfigure} />
         {canCreate && <ImportBox onDone={load} onLocate={locate} />}
       </div>
       <div className="flex flex-wrap items-end gap-2">

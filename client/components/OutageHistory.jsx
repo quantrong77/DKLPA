@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Loader2, CalendarClock, AlertTriangle, Settings, X } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { formatDateTime } from './ui.jsx';
+import { formatDateTime, btnGhost, btnSecondary } from './ui.jsx';
+import OutageSettingsPanel from './OutageSettingsPanel.jsx';
 import { CHANGE_TONES } from './OutageAlert.jsx';
 
 const KIND_LABEL = { NEW: 'Phát sinh', POSTPONED: 'Hoãn', MOVED: 'Dời lịch', EDITED: 'Sửa nội dung', RESTORED: 'Có lại' };
@@ -39,12 +40,35 @@ export function OutageHistory({ outageId }) {
 
 const SUMMARY_PARTS = [['postponed', 'hoãn'], ['moved', 'dời lịch'], ['edited', 'sửa nội dung'], ['added', 'phát sinh'], ['restored', 'có lại']];
 
-/** "Tự tải lúc 07:00, 15:00 hằng ngày · Lần gần nhất: …" (cho mọi người xem; chỉ hiện khi máy chủ đã bật tự tải). */
-export function AutoFetchStatus({ refresh }) {
+/** Hộp cấu hình tải lịch (admin) mở ngay từ tab Lịch cắt điện. */
+function OutageSettingsDialog({ onClose }) {
+  const { ModalOverlay } = useDkct();
+  return (
+    <ModalOverlay onClose={onClose} className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-4 bg-slate-900/40 overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-labelledby="dkct-outage-settings-title"
+        className="w-full max-w-2xl bg-slate-50 dark:bg-slate-950 rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
+        <header className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+          <Settings className="w-5 h-5 text-chatlan-600" aria-hidden="true" />
+          <h2 id="dkct-outage-settings-title" className="flex-1 text-base font-bold text-slate-900 dark:text-white">Cài đặt tải lịch cắt điện</h2>
+          <button type="button" className={btnGhost} onClick={onClose} aria-label="Đóng"><X className="w-5 h-5" /></button>
+        </header>
+        <div className="p-4"><OutageSettingsPanel /></div>
+      </div>
+    </ModalOverlay>
+  );
+}
+
+/**
+ * "Tự tải lúc 07:00, 15:00 hằng ngày · Lần gần nhất: …" cho mọi người xem (khi đã bật tự tải hoặc đã có lần tải).
+ * Admin luôn thấy dòng này kèm nút "Cài đặt tải lịch" (tài khoản trang lịch, giờ tự tải).
+ */
+export function AutoFetchStatus({ refresh, canConfigure }) {
   const { api } = useDkct();
   const [src, setSrc] = useState(null);
-  useEffect(() => { api.get('/outages/source').then(setSrc).catch(() => setSrc(null)); }, [api, refresh]);
-  if (!src?.auto && !src?.runs?.length) return null;
+  const [open, setOpen] = useState(false);
+  const [reload, setReload] = useState(0);
+  useEffect(() => { api.get('/outages/source').then(setSrc).catch(() => setSrc(null)); }, [api, refresh, reload]);
+  if (!src || (!canConfigure && !src.auto && !src.runs?.length)) return null;
   const last = src.runs?.[0];
   let lastText = null;
   if (last) {
@@ -56,12 +80,18 @@ export function AutoFetchStatus({ refresh }) {
         : `${formatDateTime(last.startedAt)} — đang tải…`;
   }
   return (
-    <p className="text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-x-2 gap-y-0.5" role="status">
+    <div className="text-xs text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-x-2 gap-y-1" role="status">
       <CalendarClock className="w-3.5 h-3.5 text-chatlan-600" aria-hidden="true" />
       {src.auto
         ? <span>Tự tải lịch lúc <b>{src.auto.times.join(', ')}</b> hằng ngày ({src.auto.days} ngày tới), báo thay đổi cho người liên quan.</span>
-        : <span>Chưa bật tự tải theo giờ.</span>}
+        : <span>Chưa bật tự tải theo giờ{canConfigure ? (src.configured ? ' (đã có tài khoản trang lịch, chưa đặt giờ tải)' : ' (chưa có tài khoản trang lịch)') : ''}.</span>}
       {lastText && <span>Lần tải gần nhất: {lastText}</span>}
-    </p>
+      {canConfigure && (
+        <button type="button" className={`${btnSecondary} !py-1`} onClick={() => setOpen(true)}>
+          <Settings className="w-3.5 h-3.5" /> Cài đặt tải lịch
+        </button>
+      )}
+      {open && <OutageSettingsDialog onClose={() => { setOpen(false); setReload(n => n + 1); }} />}
+    </div>
   );
 }

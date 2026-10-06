@@ -16,6 +16,16 @@ const { fetchOutageWorkbook, sourceConfig, configured } = require('./outageSourc
 const DEFAULT_DAYS = 14;
 const MAX_DAYS = 62;
 const TICK_MS = 30 * 1000;
+// lỡ giờ hẹn (máy chủ đang ngủ / khởi động lại, vd Render gói miễn phí) thì tải bù khi thức dậy, trong vòng 2 giờ
+const CATCH_UP_MIN = 120;
+const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+/** Giờ hẹn cần tải lúc `hhmm`: giờ hẹn gần nhất đã tới, chưa quá CATCH_UP_MIN phút (không có -> null). */
+function dueTime(times, hhmm) {
+  const now = minutesOf(hhmm);
+  const due = times.filter(t => minutesOf(t) <= now && now - minutesOf(t) < CATCH_UP_MIN);
+  return due.length ? due[due.length - 1] : null;
+}
 
 /** "07:00, 15:30" -> ["07:00", "15:30"] (bỏ giờ sai, sắp xếp, không trùng) */
 function parseTimes(text) {
@@ -86,13 +96,15 @@ async function fetchAndImport({ db, importer, outageSource, from, to, mode, slot
 }
 
 /**
- * Bộ hẹn giờ: mỗi 30 giây xem đã tới giờ hẹn chưa. -> { start(), stop(), tick(now), enabled(), config() }
+ * Bộ hẹn giờ: mỗi 30 giây (và ngay khi khởi động) xem có giờ hẹn cần tải không. -> { start(), stop(), tick(now), enabled(), config() }
  * Giờ hẹn và tài khoản đọc lại mỗi lần (admin đổi trên giao diện có hiệu lực ngay, không cần khởi động lại).
+ * Mỗi giờ hẹn mỗi ngày tải đúng một lần (slot trong CSDL), kể cả tải bù sau khi máy chủ thức dậy.
  * @param settings { autoOptions(), sourceOptions() } (services/outageSettings)
  */
 function createAutoFetch({ db, importer, settings, log = console }) {
   let timer = null;
   let running = false;
+  const tried = new Set(); // slot đã thử trong tiến trình này: không hỏi CSDL lại mỗi 30 giây
 
   const config = () => settings.autoOptions();
   async function enabled() {
@@ -106,13 +118,18 @@ function createAutoFetch({ db, importer, settings, log = console }) {
     running = true;
     try {
       const cfg = await config();
-      if (!cfg.times.includes(hhmm)) return null;
+      const due = dueTime(cfg.times, hhmm);
+      if (!due) return null;
+      const from = vnToday(now);
+      const slot = `auto:${from} ${due}`;
+      if (tried.has(slot)) return null;
       const outageSource = await settings.sourceOptions();
       if (!configured(sourceConfig(outageSource))) return null;
-      const from = vnToday(now);
+      if (tried.size > 50) tried.clear();
+      tried.add(slot);
       const to = addDays(from, cfg.days - 1);
-      const label = `Tự tải ${hhmm} ${from.split('-').reverse().join('/')}`;
-      const result = await fetchAndImport({ db, importer, outageSource, from, to, mode: 'AUTO', slot: `auto:${from} ${hhmm}`, label, now });
+      const label = `Tự tải ${due} ${from.split('-').reverse().join('/')}${due === hhmm ? '' : ` (tải bù lúc ${hhmm})`}`;
+      const result = await fetchAndImport({ db, importer, outageSource, from, to, mode: 'AUTO', slot, label, now });
       if (result) log.info?.(`[dkct] ${label}: ${result.rows} dòng, ${result.logged} thay đổi, báo ${result.notified} người.`);
       return result;
     } catch (err) {
@@ -131,6 +148,8 @@ function createAutoFetch({ db, importer, settings, log = console }) {
       if (timer) return true;
       timer = setInterval(() => { tick().catch(() => {}); }, TICK_MS);
       timer.unref?.();
+      // vừa khởi động (vd Render thức dậy vì có người gọi): tải bù ngay nếu lỡ giờ hẹn
+      setTimeout(() => { tick().catch(() => {}); }, 3000).unref?.();
       config().then(async (cfg) => {
         if (await enabled()) log.info?.(`[dkct] Tự tải lịch cắt điện lúc ${cfg.times.join(', ')} hằng ngày (${cfg.days} ngày tới).`);
       }).catch(() => {});
@@ -141,4 +160,4 @@ function createAutoFetch({ db, importer, settings, log = console }) {
   };
 }
 
-module.exports = { createAutoFetch, fetchAndImport, parseTimes, autoConfig, addDays, MAX_DAYS };
+module.exports = { createAutoFetch, fetchAndImport, parseTimes, autoConfig, addDays, dueTime, MAX_DAYS, CATCH_UP_MIN };

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const XLSX = require('xlsx');
 const { startApp, USERS } = require('./helpers/app');
-const { parseTimes, autoConfig } = require('../server/services/outageAutoFetch');
+const { parseTimes, autoConfig, dueTime } = require('../server/services/outageAutoFetch');
 const { areaKey, areasInUnits } = require('../server/services/outageArea');
 
 const HEADER = ['Thời gian bắt đầu', 'Thời gian kết thúc', 'Địa điểm', 'Nội dung', 'Phạm vi', 'Đơn vị đăng ký', 'Đơn vị công tác', 'Tình trạng đăng ký'];
@@ -287,4 +287,49 @@ test('cấu hình tải lịch: máy chủ không có khóa thì không lưu m�
     assert.deepEqual([view.passwordUnreadable, view.passwordFrom], [true, '']);
     assert.equal((await b.sourceOptions()).password, '', 'không giải mã được thì không dùng');
   } finally { app.close(); }
+});
+
+test('dueTime: giờ hẹn gần nhất đã tới, tải bù trong vòng 2 giờ', () => {
+  const times = ['07:00', '09:00', '15:00'];
+  assert.equal(dueTime(times, '06:59'), null);
+  assert.equal(dueTime(times, '07:00'), '07:00');
+  assert.equal(dueTime(times, '08:59'), '07:00');
+  assert.equal(dueTime(times, '09:40'), '09:00', 'lỡ cả 07:00 lẫn 09:00 thì tải theo giờ gần nhất');
+  assert.equal(dueTime(times, '11:00'), null, 'quá 2 giờ thì không tải bù');
+  assert.equal(dueTime([], '09:00'), null);
+});
+
+test('tự tải bù: máy chủ ngủ lúc giờ hẹn (Render) thì thức dậy tải bù một lần; quá 2 giờ thì bỏ', async () => {
+  let posts = 0;
+  const fakeFetch = async (url, init) => {
+    if (init.method === 'GET') {
+      return new Response('<input type="hidden" name="__VIEWSTATE" value="vs" /><input name="txtTuNgay" />', { headers: { 'content-type': 'text/html' } });
+    }
+    posts += 1;
+    return new Response(xlsx([['05/10/2024 07h00', '05/10/2024 17h00', 'Trạm A', 'Việc A', '', '', '', '']]),
+      { headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
+  };
+  const app = await startApp({ outageSource: { url: 'https://lich.test/lcd.aspx', user: 'u', password: 'p', fetch: fakeFetch }, outageAuto: { times: '09:00, 15:00', days: 2 } });
+  const info = console.info;
+  console.info = () => {};
+  try {
+    const auto = app.dkct.autoFetch;
+    const late = await auto.tick(new Date('2024-10-05T02:47:00Z')); // 09:47 VN: lỡ 09:00
+    assert.equal(late.rows, 1);
+    assert.equal(await auto.tick(new Date('2024-10-05T02:48:00Z')), null, 'không tải lại');
+    // tiến trình khác (vd máy khác cùng CSDL) cũng không tải lại slot đó
+    const { createAutoFetch } = require('../server/services/outageAutoFetch');
+    const { createOutageImporter } = require('../server/services/outageImport');
+    const other = createAutoFetch({
+      db: app.db, importer: createOutageImporter({ db: app.db }),
+      settings: { autoOptions: async () => ({ times: ['09:00'], days: 2 }), sourceOptions: async () => ({ url: 'https://lich.test/lcd.aspx', user: 'u', password: 'p', fetch: fakeFetch }) }
+    });
+    assert.equal(await other.tick(new Date('2024-10-05T02:50:00Z')), null);
+    assert.equal(await auto.tick(new Date('2024-10-05T10:30:00Z')), null, '17:30: quá 2 giờ sau 15:00, không tải bù');
+    assert.equal(posts, 1);
+    const src = (await app.call('member', 'GET', '/outages/source')).body;
+    assert.match(src.runs[0].mode, /AUTO/);
+    const items = (await app.call('member', 'GET', '/outages?from=2024-10-01')).body.items;
+    assert.match(items[0].sourceFile, /^Tự tải 09:00 05\/10\/2024 \(tải bù lúc 09:47\)/);
+  } finally { console.info = info; app.close(); }
 });
