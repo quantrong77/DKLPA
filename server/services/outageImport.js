@@ -12,7 +12,7 @@ const { readOutageWorkbook } = require('./outageExcel');
 const { changedRows } = require('../util');
 const { vnNow } = require('./clock');
 const { pairChanges, changeNote, queryIn, markCutoff, MARK_DAYS } = require('./outageChange');
-const { teamResolver, substationsIn, loadTeamAreas, loadTeamSubstations, loadAreaSubstations } = require('./outageArea');
+const { teamResolver, substationsIn, loadTeamAreas, loadTeamStations, loadAreaSubstations } = require('./outageArea');
 
 // tình trạng ghi "Hoãn" trong file lịch
 const POSTPONED_STATUS = /ho[ãa]n/i;
@@ -211,9 +211,9 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => 
       const rows = await queryIn(db, `SELECT id, outageId, department, createdBy, ${title} AS title FROM ${table} WHERE outageId IN ({in})`, ids);
       rows.forEach(d => docs.push({ ...d, label: table === 'dkct_surveys' ? `${label} ${short(d.title) || ''}`.trim() : `${label} ${d.title || ''}`.trim() }));
     }
-    // tổ phụ trách: trạm giao riêng cho tổ, còn lại theo khu vực TTĐ
+    // tổ phụ trách: trạm tổ đã tích chọn, tổ chưa tích trạm thì theo khu vực TTĐ
     const known = [...outages.values()].flatMap(o => substationsIn(o.location).strong.map(x => x.key));
-    const teamsOf = teamResolver(await loadTeamAreas(db), await loadAreaSubstations(db), await loadTeamSubstations(db), known);
+    const teamsOf = teamResolver(await loadTeamAreas(db), await loadAreaSubstations(db), await loadTeamStations(db), known);
     const leadsCache = new Map();
     const leadsOf = async (dept) => {
       if (!listTeamLeads || !dept) return [];

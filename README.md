@@ -24,9 +24,10 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   chỉ tải một lần (kể cả nhiều tiến trình), nhật ký lần tải hiện ở đầu tab. Có thay đổi thì báo (ChatLan: tin nhắn riêng từ
   "Chuẩn bị công tác") cho người lập và tổ trưởng/tổ phó của tổ có hồ sơ gắn dòng lịch, và tổ trưởng/tổ phó của tổ phụ trách
   khu vực. **Chỉ tổ của tôi**: dòng thuộc khu vực TTĐ tổ phụ trách (admin chọn ở Danh mục → Khu vực của tổ; khớp theo ô
-  đơn vị "TTĐ …" hoặc TBA trong danh mục) hoặc tổ đã lập hồ sơ. Trạm trong khu vực do tổ khác phụ trách: admin giao
-  riêng trạm cho tổ đó (Khu vực của tổ → Trạm do tổ khác phụ trách, cột `dkct_substations.teamDepartment`); lịch ở trạm
-  được giao chỉ tính cho tổ được giao (lọc và báo thay đổi), không tính cho tổ của khu vực.
+  đơn vị "TTĐ …" hoặc TBA trong danh mục) hoặc tổ đã lập hồ sơ. Admin còn tích đúng các trạm tổ
+  phụ trách (Khu vực của tổ → sửa tổ, bảng `dkct_team_stations`; trạm nhận từ địa điểm ghi tự do "Trạm 220kV Phan Thiết,
+  ĐZ …", kể cả trạm chưa có trong danh mục): tổ đã tích trạm thì lọc và báo thay đổi chỉ gồm các trạm đó; dòng lịch không
+  ghi rõ trạm vẫn theo khu vực.
 - **Công việc không có lịch cắt điện** (bước 1, cạnh Lịch cắt điện): việc không đăng ký cắt điện (làm việc không cắt điện,
   kiểm tra, xử lý tồn tại…) làm gốc của luồng thay cho dòng lịch.
   - Ghi nội dung, trạm (chọn danh mục TBA hoặc tự ghi), địa điểm/thiết bị, thời gian (tùy chọn), điều kiện (mặc định

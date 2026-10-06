@@ -349,7 +349,7 @@ test('substationsIn / subKey: nhận trạm trong địa điểm ghi tự do c�
   assert.equal(subKey('Đội SCTN3'), null);
 });
 
-test('giao riêng trạm cho tổ: nhận trạm trong địa điểm ghi tự do (cả trạm ngoài danh mục); "của tổ tôi" và báo thay đổi theo tổ được giao', async () => {
+test('tổ tích chọn trạm: "Chỉ tổ của tôi" và báo thay đổi chỉ gồm trạm đã tích; dòng không rõ trạm theo khu vực; chưa tích thì theo khu vực', async () => {
   const OT = USERS.other.department; // Tổ Vận tải
   const sent = [];
   const app = await startApp({
@@ -357,64 +357,75 @@ test('giao riêng trạm cho tổ: nhận trạm trong địa điểm ghi tự d
     listTeamLeads: async (dept) => (dept === LD ? [USERS.lead.id] : dept === OT ? [USERS.other.id] : [])
   });
   try {
+    // tổ Lâm Đồng phụ trách 2 khu vực; Tổ Vận tải chỉ đặt khu vực Khánh Hòa (chưa tích trạm)
     await app.call('admin', 'PUT', '/team-areas', { department: LD, areas: ['Truyền tải điện Lâm Đồng', 'Truyền tải điện Khánh Hòa'] });
+    await app.call('admin', 'PUT', '/team-areas', { department: OT, areas: ['Truyền tải điện Khánh Hòa'] });
     const row = (d, loc, what, unit) => [`${d}/10/2024 07h00`, `${d}/10/2024 17h00`, loc, what, '', unit, unit, ''];
     const rows = (days) => [
       row(days[0], 'Trạm 220kV Đức Trọng; ĐZ 271 Đức Trọng - 272 Di Linh', 'Việc 1', 'TTĐ Lâm Đồng'),
       row(days[1], 'Trạm 500KV Di Linh, ĐZ 573_/DiLinh-574_/TanDinh', 'Việc 2', 'Đội SCTN3'),
       row(days[2], 'Trạm 220kV Nha Trang; ĐZ 271_/NhaTrang-273_/KrongBuk', 'Việc 3', 'TTĐ Khánh Hòa'),
-      row(days[3], 'ĐZ 271 Phước Thái - 273 Tháp Chàm', 'Việc 4', 'TTĐ Khánh Hòa')
+      row(days[3], 'ĐZ 273 Xuân Lộc 2 - 272 Hàm Thuận', 'Việc 4', 'TTĐ Lâm Đồng')
     ];
     await app.call('lead', 'POST', '/outages/import/commit', excelFrom(rows(['05', '06', '07', '08'])));
     const mineOf = async (user) => Object.fromEntries((await app.call(user, 'GET', '/outages?from=2024-10-01')).body.items.map(o => [o.content, o.mine]));
-    assert.deepEqual(await mineOf('lead'), { 'Việc 1': true, 'Việc 2': true, 'Việc 3': true, 'Việc 4': true });
+    assert.deepEqual(await mineOf('lead'), { 'Việc 1': true, 'Việc 2': true, 'Việc 3': true, 'Việc 4': true }, 'chưa tích trạm: theo khu vực');
+    assert.deepEqual(await mineOf('other'), { 'Việc 1': false, 'Việc 2': false, 'Việc 3': true, 'Việc 4': false });
 
-    const subs = (await app.call('admin', 'GET', '/team-areas')).body.substations;
-    const sub = (name) => subs.find(s => s.name === name);
-    assert.deepEqual([sub('TBA 500kV Di Linh').areaTeams, sub('TBA 500kV Di Linh').teamDepartment, sub('TBA 500kV Di Linh').inCatalog], [[LD], null, true]);
+    const data = (await app.call('admin', 'GET', '/team-areas')).body;
+    const sub = (name) => data.substations.find(s => s.name === name);
     const nt = sub('Trạm 220kV Nha Trang');
-    assert.ok(nt, 'trạm chỉ có trong lịch cũng được liệt kê để giao');
-    assert.deepEqual([nt.inCatalog, nt.count, nt.areaLabel, nt.areaTeams], [false, 1, 'Truyền tải điện Khánh Hòa', [LD]]);
+    assert.ok(nt, 'trạm chỉ có trong lịch cũng có để tích');
+    assert.deepEqual([nt.inCatalog, nt.count, nt.areaLabel], [false, 1, 'Truyền tải điện Khánh Hòa']);
+    const pick = (...names) => names.map(n => ({ key: sub(n).key, name: sub(n).name }));
 
-    const di = sub('TBA 500kV Di Linh');
-    assert.equal((await app.call('lead', 'PUT', '/team-substations', { key: di.key, name: di.name, department: OT })).status, 403, 'chỉ admin');
-    assert.equal((await app.call('admin', 'PUT', '/team-substations', { key: di.key, name: di.name, department: 'Tổ lạ' })).status, 400);
-    assert.equal((await app.call('admin', 'PUT', '/team-substations', { key: 'khong hop le', name: 'x', department: OT })).status, 400);
-    // Di Linh (Lâm Đồng) và Nha Trang (ngoài danh mục) giao cho Tổ Vận tải; Tháp Chàm giao cho tổ Lâm Đồng (vẫn của tổ)
-    assert.equal((await app.call('admin', 'PUT', '/team-substations', { key: di.key, name: di.name, department: OT })).body.teamDepartment, OT);
-    await app.call('admin', 'PUT', '/team-substations', { key: nt.key, name: nt.name, department: OT });
-    const tc = sub('TBA 220kV Tháp Chàm');
-    await app.call('admin', 'PUT', '/team-substations', { key: tc.key, name: tc.name, department: LD });
-    assert.deepEqual(await mineOf('lead'), { 'Việc 1': true, 'Việc 2': false, 'Việc 3': false, 'Việc 4': true },
-      'Việc 4 (chỉ ghi đường dây): đầu Tháp Chàm giao cho tổ, đầu Phước Thái thuộc khu vực của tổ');
-    assert.deepEqual(await mineOf('other'), { 'Việc 1': false, 'Việc 2': true, 'Việc 3': true, 'Việc 4': false });
-    assert.deepEqual((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.mySubstations, ['TBA 220kV Tháp Chàm']);
+    assert.equal((await app.call('lead', 'PUT', '/team-areas', { department: LD, areas: [], stations: pick('TBA 220kV Đức Trọng') })).status, 403, 'chỉ admin');
+    // tổ Lâm Đồng chỉ tích Đức Trọng và Di Linh (bỏ ký tự lạ, trùng)
+    const put = (await app.call('admin', 'PUT', '/team-areas', {
+      department: LD, areas: ['Truyền tải điện Lâm Đồng', 'Truyền tải điện Khánh Hòa'],
+      stations: [...pick('TBA 220kV Đức Trọng', 'TBA 500kV Di Linh'), ...pick('TBA 500kV Di Linh'), { key: 'sai', name: 'x' }]
+    })).body;
+    assert.deepEqual(put.stations.map(s => s.name).sort(), ['TBA 220kV Đức Trọng', 'TBA 500kV Di Linh']);
+    assert.deepEqual(await mineOf('lead'), { 'Việc 1': true, 'Việc 2': true, 'Việc 3': false, 'Việc 4': true },
+      'Nha Trang (khu vực Khánh Hòa) không tích -> không còn; Việc 4 chỉ ghi đường dây -> theo khu vực');
+    assert.deepEqual(await mineOf('other'), { 'Việc 1': false, 'Việc 2': false, 'Việc 3': true, 'Việc 4': false }, 'tổ khác không đổi');
+    assert.deepEqual((await app.call('lead', 'GET', '/outages?from=2024-10-01')).body.mySubstations, ['TBA 220kV Đức Trọng', 'TBA 500kV Di Linh']);
+    const team = (await app.call('member', 'GET', '/team-areas')).body.teams.find(t => t.department === LD);
+    assert.equal(team.stations.length, 2);
+    // chỉ sửa khu vực (không gửi stations) thì giữ trạm đã tích
+    await app.call('admin', 'PUT', '/team-areas', { department: LD, areas: ['Truyền tải điện Lâm Đồng'] });
+    assert.equal((await app.call('admin', 'GET', '/team-areas')).body.teams.find(t => t.department === LD).stations.length, 2);
 
-    // nạp lại: cả bốn dời ngày -> tổ trưởng nhận theo tổ phụ trách trạm
+    // nạp lại: cả bốn dời ngày -> tổ trưởng nhận theo trạm / khu vực của tổ
     await app.call('lead', 'POST', '/outages/import/commit', excelFrom(rows(['09', '10', '11', '12']), ['2024-10-05', '2024-10-12']));
     const to = Object.fromEntries(sent.map(m => [m.userId, m.text]));
     assert.match(to[USERS.lead.id], /Đức Trọng/);
-    assert.match(to[USERS.lead.id], /Tháp Chàm/);
-    assert.doesNotMatch(to[USERS.lead.id], /Trạm 500KV Di Linh|Nha Trang/);
-    assert.match(to[USERS.other.id], /Di Linh/);
+    assert.match(to[USERS.lead.id], /Trạm 500KV Di Linh/);
+    assert.match(to[USERS.lead.id], /Xuân Lộc/);
+    assert.doesNotMatch(to[USERS.lead.id], /Nha Trang/);
     assert.match(to[USERS.other.id], /Nha Trang/);
-    assert.doesNotMatch(to[USERS.other.id], /Đức Trọng|Tháp Chàm/);
+    assert.doesNotMatch(to[USERS.other.id], /Đức Trọng|Di Linh/);
 
-    // bỏ giao: về lại theo khu vực
-    await app.call('admin', 'PUT', '/team-substations', { key: di.key, name: di.name, department: '' });
-    assert.equal((await mineOf('lead'))['Việc 2'], true);
+    // bỏ tích tất cả: về lại theo khu vực
+    await app.call('admin', 'PUT', '/team-areas', { department: LD, areas: ['Truyền tải điện Lâm Đồng', 'Truyền tải điện Khánh Hòa'], stations: [] });
+    assert.equal((await mineOf('lead'))['Việc 3'], true);
   } finally { app.close(); }
 });
 
-test('chuyển trạm đã giao theo cột cũ dkct_substations.teamDepartment sang bảng giao trạm', async () => {
+test('chuyển trạm giao theo cách cũ (cột teamDepartment, bảng dkct_team_substations) sang trạm tổ tích chọn', async () => {
   const app = await startApp();
   try {
     await app.db.execute("UPDATE dkct_substations SET teamDepartment = ? WHERE name = 'TBA 500kV Di Linh'", [USERS.other.department]);
+    await app.db.execute(`CREATE TABLE dkct_team_substations (id VARCHAR(64) PRIMARY KEY, subKey VARCHAR(191) NOT NULL UNIQUE,
+      name VARCHAR(255) NOT NULL, department VARCHAR(191) NOT NULL, updatedBy VARCHAR(64))`);
+    await app.db.execute("INSERT INTO dkct_team_substations (id, subKey, name, department) VALUES ('X1', '220|nhatrang', 'Trạm 220kV Nha Trang', ?)", [LD]);
     const { migrate } = require('../server/schema');
     await migrate(app.db);
-    const rows = await app.db.query('SELECT subKey, name, department FROM dkct_team_substations');
-    assert.deepEqual(rows.map(r => [r.subKey, r.department]), [['500|dilinh', USERS.other.department]]);
+    const rows = await app.db.query('SELECT department, subKey FROM dkct_team_stations ORDER BY subKey');
+    assert.deepEqual(rows.map(r => [r.subKey, r.department]), [['220|nhatrang', LD], ['500|dilinh', USERS.other.department]]);
     assert.equal((await app.db.queryOne("SELECT teamDepartment FROM dkct_substations WHERE name = 'TBA 500kV Di Linh'")).teamDepartment, null);
+    await migrate(app.db); // chạy lại không lỗi, không nhân đôi
+    assert.equal((await app.db.query('SELECT id FROM dkct_team_stations')).length, 2);
   } finally { app.close(); }
 });
 

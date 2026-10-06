@@ -387,7 +387,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
   // "Chỉ tổ của tôi": dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ (nhớ theo trình duyệt)
   const [mineOnly, setMineOnly] = useState(() => { try { return localStorage.getItem(MINE_KEY) === '1'; } catch { return false; } });
   const [myAreas, setMyAreas] = useState([]);
-  const [mySubs, setMySubs] = useState([]); // trạm giao riêng cho tổ
+  const [mySubs, setMySubs] = useState([]); // trạm tổ đã tích chọn
   const [historyOf, setHistoryOf] = useState(() => new Set()); // dòng đang mở lịch sử
   const [refresh, setRefresh] = useState(0);
   const [show, setShow] = useState(loadShow);
@@ -473,8 +473,11 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
       {mineOnly && (
         <p className="text-xs text-slate-600 dark:text-slate-300" role="note">
           {myAreas.length || mySubs.length
-            ? <>{myAreas.length > 0 && <>Khu vực tổ phụ trách: <b>{myAreas.join(', ')}</b> (trừ trạm do tổ khác phụ trách). </>}
-              {mySubs.length > 0 && <>Trạm giao riêng: <b>{mySubs.join(', ')}</b>. </>}Cùng các dòng tổ đã lập hồ sơ.</>
+            ? <>{mySubs.length > 0
+              ? <>Trạm tổ phụ trách ({mySubs.length}): <b>{mySubs.length > 10 ? `${mySubs.slice(0, 10).join(', ')}…` : mySubs.join(', ')}</b>. </>
+              : <>Khu vực tổ phụ trách: <b>{myAreas.join(', ')}</b>. </>}
+              {mySubs.length > 0 && myAreas.length > 0 && <>Dòng lịch không ghi rõ trạm: theo khu vực {myAreas.join(', ')}. </>}
+              Cùng các dòng tổ đã lập hồ sơ.</>
             : <>Tổ chưa chọn khu vực phụ trách — chỉ hiện dòng tổ đã lập hồ sơ. Admin chọn khu vực ở <b>Danh mục</b>.</>}
         </p>
       )}

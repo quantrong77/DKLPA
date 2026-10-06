@@ -1,99 +1,100 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2, Save, Pencil, X, Zap, Search } from 'lucide-react';
+import { Loader2, Save, Pencil, X, Search } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnPrimary, btnSecondary, inputCls, inputBorder } from './ui.jsx';
 
-const NO_AREA = 'Chưa có khu vực';
+const NO_AREA = 'Chưa rõ khu vực';
+const SHOW_NAMES = 8;
+
+/** "Truyền tải điện Đắk Lắk" / "TTĐ ĐăkLăk" -> "daklak" (so khu vực không phân biệt dấu, khoảng trắng). */
+const areaKey = (name) => String(name || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd')
+  .toLowerCase().replace(/^(truyen tai dien|ttd)\s+/, '').replace(/[^a-z0-9]/g, '');
 
 /**
- * Giao riêng trạm cho tổ: trạm trong một khu vực có thể do tổ thí nghiệm khác phụ trách.
- * Mỗi trạm: "Theo khu vực" (tổ phụ trách khu vực của trạm) hoặc một tổ cụ thể.
+ * Tích chọn trạm tổ phụ trách, gom theo khu vực (khu vực của tổ mở sẵn); tích cả khu vực một lần.
+ * `stations`: Map<khóa, tên> đang tích; `onChange(Map)`.
  */
-function SubstationTeams({ data, canManage, onChanged }) {
-  const { api, notify } = useDkct();
+function StationPicker({ substations, teamAreas, stations, onChange }) {
   const [query, setQuery] = useState('');
-  const [busy, setBusy] = useState(null);
-  const label = (dept) => {
-    const t = data.teams.find(x => x.department === dept);
-    return t?.shortName || dept;
-  };
-  const assign = async (sub, department) => {
-    setBusy(sub.key);
-    try {
-      await api.put('/team-substations', { key: sub.key, name: sub.name, department });
-      notify(department ? `${sub.name}: giao cho ${department}.` : `${sub.name}: theo khu vực.`, 'success');
-      await onChanged();
-    } catch (err) { notify(err.message, 'error'); } finally { setBusy(null); }
-  };
+  const mine = new Set(teamAreas.map(areaKey));
   const q = query.trim().toLowerCase();
-  const shown = data.substations.filter(s => !q || s.name.toLowerCase().includes(q));
+  const shown = substations.filter(s => !q || s.name.toLowerCase().includes(q));
   const groups = new Map();
   shown.forEach(s => { const k = s.areaLabel || NO_AREA; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
-  const assigned = data.substations.filter(s => s.teamDepartment).length;
+  const set = (list, on) => {
+    const next = new Map(stations);
+    list.forEach(s => { if (on) next.set(s.key, s.name); else next.delete(s.key); });
+    onChange(next);
+  };
 
   return (
-    <section className="space-y-2 pt-2" aria-labelledby="dkct-subteams-title">
-      <h3 id="dkct-subteams-title" className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
-        <Zap className="w-4 h-4 text-chatlan-600" aria-hidden="true" /> Trạm do tổ khác phụ trách
-        <span className="text-xs font-normal text-slate-500">({assigned} trạm giao riêng)</span>
-      </h3>
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+        Trạm tổ phụ trách <span className="font-normal text-slate-500">({stations.size} trạm đã tích)</span>
+      </legend>
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Danh sách gồm trạm trong danh mục và trạm ghi trong lịch cắt điện. Mặc định mỗi trạm thuộc tổ phụ trách khu vực của trạm.
-        Trạm nào do tổ thí nghiệm khác phụ trách thì chọn tổ đó: lịch cắt điện ghi trạm này (vd "Trạm 220kV Phan Thiết, ĐZ …")
-        tính cho tổ được chọn ("Chỉ tổ của tôi", báo thay đổi cho tổ trưởng), không tính cho tổ của khu vực.
+        Đã tích trạm: "Chỉ tổ của tôi" và tin báo lịch thay đổi chỉ gồm lịch của các trạm đã tích (dòng lịch không ghi rõ trạm,
+        vd chỉ ghi đường dây, vẫn theo khu vực ở trên). Không tích trạm nào: tổ phụ trách mọi trạm trong các khu vực đã chọn.
+        Một trạm có thể tích cho nhiều tổ.
       </p>
-      <div className="relative max-w-sm">
-        <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-        <input type="search" aria-label="Tìm trạm" placeholder="Tìm trạm…" value={query} onChange={e => setQuery(e.target.value)}
-          className={`${inputCls} ${inputBorder()} pl-8`} />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[12rem] max-w-sm">
+          <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <input type="search" aria-label="Tìm trạm" placeholder="Tìm trạm…" value={query} onChange={e => setQuery(e.target.value)}
+            className={`${inputCls} ${inputBorder()} pl-8`} />
+        </div>
+        {stations.size > 0 && (
+          <button type="button" className={btnSecondary} onClick={() => onChange(new Map())}>Bỏ tích tất cả</button>
+        )}
       </div>
       {[...groups].map(([area, subs]) => {
-        const custom = subs.filter(s => s.teamDepartment).length;
+        const picked = subs.filter(s => stations.has(s.key)).length;
+        const all = picked === subs.length;
         return (
-          <details key={area} open={!!q || custom > 0} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+          <details key={area} open={!!q || picked > 0 || mine.has(areaKey(area))}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
             <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {area} <span className="font-normal text-xs text-slate-500">· {subs.length} trạm{custom ? ` · ${custom} giao riêng` : ''}</span>
+              {area} <span className="font-normal text-xs text-slate-500">· {picked}/{subs.length} trạm</span>
             </summary>
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
-              {subs.map(s => {
-                const byArea = s.areaTeams.length ? s.areaTeams.map(label).join(', ') : 'chưa có tổ';
-                return (
-                  <li key={s.key} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
-                    <span className={`flex-1 min-w-[10rem] text-sm ${s.teamDepartment ? 'font-semibold text-chatlan-700 dark:text-chatlan-300' : 'text-slate-700 dark:text-slate-200'}`}>
+            <div className="border-t border-slate-100 dark:border-slate-800 px-3 py-2 space-y-1">
+              <label className="flex items-center gap-2 text-xs font-semibold text-chatlan-700 dark:text-chatlan-300">
+                <input type="checkbox" checked={all} ref={el => { if (el) el.indeterminate = picked > 0 && !all; }}
+                  onChange={() => set(subs, !all)} aria-label={`Tích cả ${area}`} /> Cả khu vực
+              </label>
+              <div className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                {subs.map(s => (
+                  <label key={s.key} className="flex items-start gap-2 text-sm text-slate-800 dark:text-slate-100">
+                    <input type="checkbox" className="mt-1" checked={stations.has(s.key)} onChange={e => set([s], e.target.checked)} />
+                    <span>
                       {s.name}
-                      {s.count > 0 && <span className="ml-1.5 text-[11px] font-normal text-slate-500">· {s.count} dòng lịch</span>}
-                      {!s.inCatalog && <span className="ml-1.5 text-[11px] font-normal text-amber-700 dark:text-amber-400" title="Trạm ghi trong lịch cắt điện, chưa có trong danh mục Trạm biến áp">· ngoài danh mục</span>}
+                      {s.count > 0 && <span className="ml-1 text-[11px] text-slate-500">· {s.count} dòng lịch</span>}
+                      {!s.inCatalog && <span className="ml-1 text-[11px] text-amber-700 dark:text-amber-400" title="Trạm ghi trong lịch cắt điện, chưa có trong danh mục Trạm biến áp">· ngoài danh mục</span>}
                     </span>
-                    {canManage ? (
-                      <select aria-label={`Tổ phụ trách ${s.name}`} value={s.teamDepartment || ''} disabled={busy === s.key}
-                        onChange={e => assign(s, e.target.value)} className={`${inputCls} ${inputBorder()} !w-auto max-w-[18rem]`}>
-                        <option value="">Theo khu vực ({byArea})</option>
-                        {data.teams.map(t => <option key={t.department} value={t.department}>{t.department}{t.shortName ? ` (${t.shortName})` : ''}</option>)}
-                      </select>
-                    ) : (
-                      <span className="text-xs text-slate-600 dark:text-slate-300">{s.teamDepartment || `Theo khu vực (${byArea})`}</span>
-                    )}
-                    {busy === s.key && <Loader2 className="w-4 h-4 animate-spin text-chatlan-600" aria-label="Đang lưu" />}
-                  </li>
-                );
-              })}
-            </ul>
+                  </label>
+                ))}
+              </div>
+            </div>
           </details>
         );
       })}
       {!shown.length && <p className="text-sm text-slate-500" role="status">Không có trạm nào khớp.</p>}
-    </section>
+    </fieldset>
   );
 }
 
+/** "a, b, c và 5 trạm khác" */
+const nameList = (names) => (names.length > SHOW_NAMES
+  ? `${names.slice(0, SHOW_NAMES).join(', ')} và ${names.length - SHOW_NAMES} trạm khác`
+  : names.join(', '));
+
 /**
- * Khu vực truyền tải điện (TTĐ) mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" ở tab Lịch cắt điện
- * và để báo thay đổi lịch cho tổ trưởng. Trạm trong khu vực có thể giao riêng cho tổ khác. Mọi người xem; admin sửa.
+ * Khu vực truyền tải điện (TTĐ) và trạm mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" ở tab Lịch cắt điện
+ * và để báo thay đổi lịch cho tổ trưởng. Mọi người xem; admin sửa.
  */
 export default function TeamAreasPanel({ canManage }) {
   const { api, notify } = useDkct();
-  const [data, setData] = useState(null); // { teams: [{ department, shortName, areas }], options }
-  const [editing, setEditing] = useState(null); // { department, areas: Set, extra }
+  const [data, setData] = useState(null); // { teams: [{ department, shortName, areas, stations }], options, substations }
+  const [editing, setEditing] = useState(null); // { department, areas: Set, extra, stations: Map<key, name> }
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => api.get('/team-areas').then(setData).catch(err => notify(err.message, 'error')), [api, notify]);
@@ -108,24 +109,21 @@ export default function TeamAreasPanel({ canManage }) {
     setSaving(true);
     try {
       const areas = [...editing.areas, ...editing.extra.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean)];
-      await api.put('/team-areas', { department: editing.department, areas });
-      notify(`Đã lưu khu vực của ${editing.department}.`, 'success');
+      const stations = [...editing.stations].map(([key, name]) => ({ key, name }));
+      await api.put('/team-areas', { department: editing.department, areas, stations });
+      notify(`Đã lưu khu vực và trạm của ${editing.department}.`, 'success');
       setEditing(null);
       load();
     } catch (err) { notify(err.message, 'error'); } finally { setSaving(false); }
   };
 
-  const subs = data?.substations || [];
-  const own = (t) => subs.filter(s => s.teamDepartment === t.department).map(s => s.name);
-  const except = (t) => subs.filter(s => s.teamDepartment && s.teamDepartment !== t.department && s.areaTeams.includes(t.department)).map(s => s.name);
-
   if (!data) return <Loader2 className="w-5 h-5 animate-spin text-chatlan-600" aria-label="Đang tải" />;
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Lịch cắt điện của Công ty chỉ ghi đơn vị TTĐ (vd "TTĐ Lâm Đồng"), không ghi tổ. Chọn khu vực mỗi tổ phụ trách để lọc
-        "Chỉ tổ của tôi" và báo lịch thay đổi cho tổ trưởng/tổ phó. Dòng lịch thuộc khu vực khi ô đơn vị ghi TTĐ đó, hoặc
-        địa điểm là TBA có "Truyền tải điện" là khu vực đó trong danh mục TBA.
+        Lịch cắt điện của Công ty chỉ ghi đơn vị TTĐ (vd "TTĐ Lâm Đồng") và địa điểm, không ghi tổ. Mỗi tổ chọn khu vực, và
+        tích đúng các trạm tổ phụ trách: "Chỉ tổ của tôi" và tin báo lịch thay đổi cho tổ trưởng/tổ phó chỉ gồm các trạm đó.
+        Trạm được nhận từ địa điểm của dòng lịch (vd "Trạm 220kV Phan Thiết, ĐZ …").
       </p>
       {data.teams.length === 0 && (
         <p className="text-sm text-slate-500 dark:text-slate-400" role="status">Chưa có tổ nào. Thêm tổ ở phần quản trị (danh sách tổ/phòng) trước.</p>
@@ -133,6 +131,7 @@ export default function TeamAreasPanel({ canManage }) {
       <ul className="space-y-2">
         {data.teams.map(t => {
           const open = editing?.department === t.department;
+          const stationNames = t.stations.map(s => s.name);
           return (
             <li key={t.department} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -143,32 +142,40 @@ export default function TeamAreasPanel({ canManage }) {
                   <span className="text-xs text-slate-600 dark:text-slate-300">{t.areas.length ? t.areas.join(', ') : <i className="text-slate-400">chưa chọn khu vực</i>}</span>
                 )}
                 {canManage && !open && (
-                  <button type="button" className={btnGhost} aria-label={`Sửa khu vực của ${t.department}`}
-                    onClick={() => setEditing({ department: t.department, areas: new Set(t.areas), extra: '' })}>
+                  <button type="button" className={btnGhost} aria-label={`Sửa khu vực và trạm của ${t.department}`}
+                    onClick={() => setEditing({
+                      department: t.department, areas: new Set(t.areas), extra: '',
+                      stations: new Map(t.stations.map(s => [s.key, s.name]))
+                    })}>
                     <Pencil className="w-4 h-4" />
                   </button>
                 )}
-                {!open && (own(t).length > 0 || except(t).length > 0) && (
+                {!open && (
                   <span className="basis-full text-xs text-slate-500 dark:text-slate-400">
-                    {own(t).length > 0 && <>Trạm giao riêng: <b className="text-slate-700 dark:text-slate-200">{own(t).join(', ')}</b>. </>}
-                    {except(t).length > 0 && <>Trừ (tổ khác phụ trách): {except(t).join(', ')}.</>}
+                    {stationNames.length
+                      ? <>Trạm phụ trách ({stationNames.length}): <b className="text-slate-700 dark:text-slate-200">{nameList(stationNames)}</b>.</>
+                      : <>Chưa tích trạm: phụ trách mọi trạm trong khu vực đã chọn.</>}
                   </span>
                 )}
               </div>
               {open && (
-                <div className="mt-2 space-y-2">
-                  <fieldset className="flex flex-wrap gap-x-4 gap-y-1">
-                    <legend className="sr-only">Khu vực của {t.department}</legend>
-                    {[...new Set([...data.options, ...editing.areas])].map(a => (
-                      <label key={a} className="inline-flex items-center gap-1.5 text-sm text-slate-800 dark:text-slate-100">
-                        <input type="checkbox" checked={editing.areas.has(a)} onChange={() => toggle(a)} /> {a}
-                      </label>
-                    ))}
+                <div className="mt-2 space-y-3">
+                  <fieldset className="space-y-1">
+                    <legend className="text-xs font-semibold text-slate-600 dark:text-slate-300">Khu vực</legend>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {[...new Set([...data.options, ...editing.areas])].map(a => (
+                        <label key={a} className="inline-flex items-center gap-1.5 text-sm text-slate-800 dark:text-slate-100">
+                          <input type="checkbox" checked={editing.areas.has(a)} onChange={() => toggle(a)} /> {a}
+                        </label>
+                      ))}
+                    </div>
                   </fieldset>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">Khu vực khác (cách nhau bởi dấu phẩy)
                     <input value={editing.extra} onChange={e => setEditing(v => ({ ...v, extra: e.target.value }))} placeholder="vd Truyền tải điện Phú Yên"
                       className={`${inputCls} ${inputBorder()} block mt-1`} />
                   </label>
+                  <StationPicker substations={data.substations || []} teamAreas={[...editing.areas]} stations={editing.stations}
+                    onChange={stations => setEditing(v => ({ ...v, stations }))} />
                   <div className="flex gap-2">
                     <button type="button" className={btnPrimary} onClick={save} disabled={saving}>
                       {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu
@@ -181,7 +188,6 @@ export default function TeamAreasPanel({ canManage }) {
           );
         })}
       </ul>
-      {subs.length > 0 && <SubstationTeams data={data} canManage={canManage} onChanged={load} />}
     </div>
   );
 }

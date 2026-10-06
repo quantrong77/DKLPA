@@ -342,15 +342,16 @@ function tables(t) {
       area ${t.short} NOT NULL,
       createdAt ${t.now},
       CONSTRAINT uq_dkct_team_areas UNIQUE (department, area)`,
-    // Trạm giao riêng cho tổ (trạm trong khu vực do tổ khác phụ trách), theo khóa trạm "220|phanthiet"
-    // (services/outageArea: nhận cả trạm chỉ có trong lịch cắt điện, chưa có trong danh mục TBA)
-    dkct_team_substations: `
+    // Trạm tổ tích chọn phụ trách, theo khóa trạm "220|phanthiet" (services/outageArea: nhận cả trạm chỉ có trong lịch
+    // cắt điện); tổ đã tích trạm thì "Chỉ tổ của tôi" chỉ gồm các trạm này. Một trạm có thể thuộc nhiều tổ.
+    dkct_team_stations: `
       id ${t.id} PRIMARY KEY,
-      subKey ${t.short} NOT NULL UNIQUE,
-      name ${t.str} NOT NULL,
       department ${t.short} NOT NULL,
+      subKey ${t.short} NOT NULL,
+      name ${t.str} NOT NULL,
       updatedBy ${t.id},
-      updatedAt ${t.now}`,
+      createdAt ${t.now},
+      CONSTRAINT uq_dkct_team_stations UNIQUE (department, subKey)`,
     // Mẫu Word admin tải lên cho từng loại văn bản (survey | plan | registration | confirmation); active = 1: đang dùng
     // (mỗi loại tối đa một mẫu đang dùng; không có thì dùng mẫu gốc trong templates/)
     dkct_doc_templates: `
@@ -412,7 +413,7 @@ const ADDED_COLUMNS = (t) => [
   ['dkct_stations', 'shortName', t.short],
   ['dkct_stations', 'leaderName', t.str],
   ['dkct_substations', 'transmissionName', t.str],
-  // (cũ) tổ phụ trách riêng trạm: đã chuyển sang dkct_team_substations khi migrate
+  // (cũ) tổ phụ trách riêng trạm: đã chuyển sang dkct_team_stations khi migrate
   ['dkct_substations', 'teamDepartment', t.short],
   // so sánh khi nạp lại lịch: NEW (phát sinh) | POSTPONED (hoãn) | MOVED (dời lịch) | EDITED (sửa nội dung);
   // thời điểm so sánh, ghi chú (lý do / giờ cũ -> mới), giờ đăng ký trước khi dời
@@ -571,19 +572,27 @@ async function migrate(db) {
   await migrateTeamSubstations(db);
 }
 
-/** Chuyển trạm đã giao riêng theo cột cũ dkct_substations.teamDepartment sang dkct_team_substations (một lần). */
+/**
+ * Trạm giao cho tổ theo cách cũ (cột dkct_substations.teamDepartment, bảng dkct_team_substations) -> trạm tổ tích chọn
+ * (dkct_team_stations); xóa dữ liệu cũ để chỉ chuyển một lần.
+ */
 async function migrateTeamSubstations(db) {
-  const rows = await db.query('SELECT name, teamDepartment FROM dkct_substations WHERE teamDepartment IS NOT NULL');
-  if (!rows.length) return;
   const { subKey } = require('./services/outageArea');
+  const rows = (await db.query('SELECT name, teamDepartment AS department FROM dkct_substations WHERE teamDepartment IS NOT NULL'))
+    .map(r => ({ ...r, subKey: subKey(r.name) }));
+  const exists = db.dialect === 'postgres'
+    ? await db.queryOne("SELECT 1 AS ok FROM information_schema.tables WHERE table_name = 'dkct_team_substations'")
+    : db.isMySQL
+      ? await db.queryOne("SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'dkct_team_substations'")
+      : await db.queryOne("SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = 'dkct_team_substations'");
+  if (exists) rows.push(...await db.query('SELECT subKey, name, department FROM dkct_team_substations'));
   for (const r of rows) {
-    const key = subKey(r.name);
-    if (key) {
-      await db.execute('INSERT IGNORE INTO dkct_team_substations (id, subKey, name, department) VALUES (?, ?, ?, ?)',
-        [newId('TGR'), key, r.name, r.teamDepartment]);
-    }
+    if (!r.subKey || !r.department) continue;
+    await db.execute('INSERT IGNORE INTO dkct_team_stations (id, department, subKey, name) VALUES (?, ?, ?, ?)',
+      [newId('TTR'), r.department, r.subKey, r.name]);
   }
   await db.execute('UPDATE dkct_substations SET teamDepartment = NULL WHERE teamDepartment IS NOT NULL');
+  if (exists) await db.execute('DROP TABLE dkct_team_substations');
 }
 
 module.exports = { migrate, COLUMN_TEXT, newId, sameUnitName, drawingSortOrder, DEFAULT_DRAWING_LABEL };

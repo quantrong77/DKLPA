@@ -12,7 +12,7 @@ const { sourceConfig, configured, fetchOutageWorkbook } = require('../services/o
 const { isoDate } = require('../services/outageImport');
 const { fetchAndImport, MAX_DAYS } = require('../services/outageAutoFetch');
 const { newId } = require('../schema');
-const { teamResolver, substationsIn, loadTeamAreas, loadTeamSubstations, loadAreaSubstations, areaKey, areaOptions, substationChoices } = require('../services/outageArea');
+const { teamResolver, substationsIn, loadTeamAreas, loadTeamStations, loadAreaSubstations, areaKey, areaOptions, substationChoices } = require('../services/outageArea');
 const { executeIn } = require('../services/outageChange');
 
 // dòng lịch đã có biên bản KSHT / phương án / giấy ĐKCT gắn: không xóa khi dọn lịch cũ
@@ -142,13 +142,12 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
       FROM dkct_outages o ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY regStart LIMIT 1000`, params);
     const count = (v) => Number(v) || 0;
-    // "của tổ tôi": tổ đã lập hồ sơ cho dòng lịch, hoặc dòng lịch ở trạm giao riêng cho tổ / thuộc khu vực tổ phụ trách
+    // "của tổ tôi": tổ đã lập hồ sơ cho dòng lịch, hoặc dòng lịch ở trạm tổ đã tích chọn (chưa tích: thuộc khu vực của tổ)
     const myAreas = (await db.query('SELECT area FROM dkct_team_areas WHERE department = ? ORDER BY area', [dept])).map(r => r.area);
-    const assignments = await loadTeamSubstations(db);
     const known = items.flatMap(o => substationsIn(o.location).strong.map(x => x.key));
-    const teamsOf = teamResolver(await loadTeamAreas(db), await loadAreaSubstations(db), assignments, known);
+    const teamsOf = teamResolver(await loadTeamAreas(db), await loadAreaSubstations(db), await loadTeamStations(db), known);
     const mySubstations = dept
-      ? (await db.query('SELECT name FROM dkct_team_substations WHERE department = ?', [dept])).map(r => r.name).sort((a, b) => a.localeCompare(b, 'vi'))
+      ? (await db.query('SELECT name FROM dkct_team_stations WHERE department = ?', [dept])).map(r => r.name).sort((a, b) => a.localeCompare(b, 'vi'))
       : [];
     res.json({
       myAreas,
@@ -179,40 +178,25 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
     rows.forEach(r => { if (!byDept.has(r.department)) byDept.set(r.department, []); byDept.get(r.department).push(r.area); });
     const departments = await listDepartments();
     const names = [...new Set([...departments.map(d => d.name), ...byDept.keys()])];
-    // trạm (danh mục + ghi trong lịch) theo khu vực: tổ phụ trách khu vực (mặc định) và tổ được giao riêng (nếu có)
-    const assignments = await loadTeamSubstations(db);
-    const areaTeams = (area) => names.filter(n => area && (byDept.get(n) || []).some(a => areaKey(a) === area));
+    // trạm để tích chọn (danh mục + ghi trong lịch), theo khu vực; trạm mỗi tổ đã tích
+    const stationRows = await db.query('SELECT department, subKey, name FROM dkct_team_stations ORDER BY name');
+    const stationsOf = (dept) => stationRows.filter(r => r.department === dept).map(r => ({ key: r.subKey, name: r.name }));
     const substations = (await substationChoices(db))
-      .map(s => ({ ...s, teamDepartment: assignments.get(s.key) || null, areaTeams: areaTeams(s.area) }))
       .sort((a, b) => (a.areaLabel || '~').localeCompare(b.areaLabel || '~', 'vi') || a.name.localeCompare(b.name, 'vi'));
     res.json({
-      teams: names.map(name => ({ department: name, shortName: departments.find(d => d.name === name)?.shortName || '', areas: byDept.get(name) || [] })),
+      teams: names.map(name => ({
+        department: name, shortName: departments.find(d => d.name === name)?.shortName || '',
+        areas: byDept.get(name) || [], stations: stationsOf(name)
+      })),
       options: await areaOptions(db),
       substations
     });
   }));
 
-  // Giao riêng một trạm cho một tổ (department rỗng = trả về theo khu vực): chỉ admin. Trạm theo khóa "220|phanthiet".
-  router.put('/team-substations', wrap(async (req, res) => {
-    const actor = await policy.actorOf(req);
-    if (!policy.isAdmin(actor)) throw forbidden('Chỉ admin được giao trạm cho tổ.');
-    const key = String(req.body?.key || '');
-    const name = String(req.body?.name || '').trim().slice(0, 255);
-    if (!/^\d{2,3}\|[a-z0-9]{1,120}$/.test(key) || !name) throw Object.assign(new Error('Chọn trạm biến áp.'), { status: 400 });
-    const department = String(req.body?.department || '').trim().slice(0, 191) || null;
-    if (department) {
-      const known = new Set([...(await listDepartments()).map(d => d.name),
-        ...(await db.query('SELECT DISTINCT department FROM dkct_team_areas')).map(r => r.department)]);
-      if (!known.has(department)) throw Object.assign(new Error('Tổ không có trong danh sách tổ.'), { status: 400 });
-    }
-    await db.execute('DELETE FROM dkct_team_substations WHERE subKey = ?', [key]);
-    if (department) {
-      await db.execute('INSERT INTO dkct_team_substations (id, subKey, name, department, updatedBy) VALUES (?, ?, ?, ?, ?)',
-        [newId('TGR'), key, name, department, actor.id]);
-    }
-    res.json({ key, name, teamDepartment: department });
-  }));
-
+  /**
+   * Đặt khu vực và trạm tổ phụ trách (chỉ admin). stations: [{ key: "220|phanthiet", name }] — có trạm thì "Chỉ tổ của tôi"
+   * chỉ gồm các trạm này; rỗng = theo khu vực. Không gửi stations thì giữ nguyên trạm đã tích.
+   */
   router.put('/team-areas', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
     if (!policy.isAdmin(actor)) throw forbidden('Chỉ admin được đặt khu vực phụ trách của tổ.');
@@ -220,11 +204,25 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
     if (!department) throw Object.assign(new Error('Chọn tổ.'), { status: 400 });
     const areas = [...new Map((Array.isArray(req.body?.areas) ? req.body.areas : [])
       .map(a => String(a || '').trim().slice(0, 191)).filter(a => areaKey(a)).map(a => [areaKey(a), a])).values()].slice(0, 30);
+    const stations = Array.isArray(req.body?.stations)
+      ? [...new Map(req.body.stations
+        .map(s => ({ key: String(s?.key || ''), name: String(s?.name || '').trim().slice(0, 255) }))
+        .filter(s => /^\d{2,3}\|[a-z0-9]{1,120}$/.test(s.key) && s.name)
+        .map(s => [s.key, s])).values()].slice(0, 500)
+      : null;
     await db.execute('DELETE FROM dkct_team_areas WHERE department = ?', [department]);
     for (const area of areas) {
       await db.execute('INSERT INTO dkct_team_areas (id, department, area) VALUES (?, ?, ?)', [newId('KV'), department, area]);
     }
-    res.json({ department, areas });
+    if (stations) {
+      await db.execute('DELETE FROM dkct_team_stations WHERE department = ?', [department]);
+      for (const s of stations) {
+        await db.execute('INSERT INTO dkct_team_stations (id, department, subKey, name, updatedBy) VALUES (?, ?, ?, ?, ?)',
+          [newId('TTR'), department, s.key, s.name, actor.id]);
+      }
+    }
+    const saved = await db.query('SELECT subKey, name FROM dkct_team_stations WHERE department = ? ORDER BY name', [department]);
+    res.json({ department, areas, stations: saved.map(r => ({ key: r.subKey, name: r.name })) });
   }));
 
   // Chi tiết một dòng lịch (khung "Lịch cắt điện liên quan" của biên bản KSHT, phương án); lịch dùng chung mọi tổ

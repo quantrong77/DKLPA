@@ -2,15 +2,15 @@
  * Tổ phụ trách dòng lịch cắt điện: theo trạm biến áp ghi trong địa điểm, rồi theo khu vực truyền tải điện (TTĐ).
  *
  * Lịch Công ty không ghi tên tổ, chỉ ghi đơn vị như "TTĐ Lâm Đồng", "Đội SCTN3". Mỗi tổ chọn các khu vực mình phụ trách
- * (bảng dkct_team_areas, tên như "Truyền tải điện Lâm Đồng"). Trạm trong khu vực có thể do tổ khác phụ trách: admin giao
- * riêng trạm cho tổ (bảng dkct_team_substations, theo khóa trạm "220|phanthiet").
+ * (bảng dkct_team_areas, tên như "Truyền tải điện Lâm Đồng"), và có thể tích chọn đúng các trạm mình phụ trách
+ * (bảng dkct_team_stations, theo khóa trạm "220|phanthiet"): khi đã tích trạm thì chỉ các trạm đó là của tổ.
  *
  * Địa điểm ghi tự do: "Trạm 220kV Phan Thiết,ĐZ 272/…", "Trạm 220KV KrongBuk", "ĐZ 271 Phước Thái - 273 Tháp Chàm"…
  * Trạm được nhận theo "Trạm/TBA <cấp điện áp>kV <tên>" (không phân biệt dấu, hoa thường, khoảng trắng); địa điểm chỉ có
- * đường dây thì nhận các đầu "<số ngăn> <tên trạm>" là trạm đã biết. Mỗi trạm của dòng lịch:
- *  - giao riêng cho tổ -> tổ đó;
- *  - còn lại -> các tổ phụ trách khu vực của trạm (danh mục TBA), hoặc khu vực ghi ở ô đơn vị ("TTĐ …").
- * Dòng lịch không nhận ra trạm nào -> theo khu vực ở ô đơn vị.
+ * đường dây thì nhận các đầu "<số ngăn> <tên trạm>" là trạm đã biết. Dòng lịch thuộc tổ khi:
+ *  - tổ đã tích trạm: một trạm của dòng lịch nằm trong các trạm đã tích;
+ *  - tổ chưa tích trạm: trạm thuộc khu vực của tổ (khu vực trong danh mục TBA, hoặc ghi ở ô đơn vị "TTĐ …");
+ *  - dòng lịch không nhận ra trạm nào: khu vực ghi ở ô đơn vị là khu vực của tổ.
  */
 
 /** "Truyền tải điện Đắk Lắk" / "TTĐ Đắk lăk." -> "dak lak" (bỏ dấu, bỏ tiền tố TTĐ). */
@@ -83,43 +83,52 @@ const unitAreasOf = (o) => areasInUnits(o.registrationUnit, o.workUnit);
 
 /**
  * Bộ xác định tổ phụ trách dòng lịch: (outage) -> Set<department>.
- * @param teamAreas   Map<department, Set<areaKey>> (loadTeamAreas)
- * @param catalog     [{ name, transmissionName }] danh mục TBA (loadAreaSubstations)
- * @param assignments Map<khóa trạm, department> trạm giao riêng (loadTeamSubstations)
- * @param known       khóa trạm đã biết thêm (vd trạm ghi trong lịch) để nhận đầu đường dây
+ * Tổ đã tích chọn trạm: chỉ dòng lịch ở các trạm đã tích; tổ chưa tích trạm nào: theo khu vực.
+ * Dòng lịch không nhận ra trạm nào: theo khu vực ghi ở ô đơn vị (mọi tổ).
+ * @param teamAreas    Map<department, Set<areaKey>> (loadTeamAreas)
+ * @param catalog      [{ name, transmissionName }] danh mục TBA (loadAreaSubstations)
+ * @param teamStations Map<department, Set<khóa trạm>> trạm tổ tích chọn (loadTeamStations)
+ * @param known        khóa trạm đã biết thêm (vd trạm ghi trong lịch) để nhận đầu đường dây
  */
-function teamResolver(teamAreas, catalog, assignments = new Map(), known = []) {
+function teamResolver(teamAreas, catalog, teamStations = new Map(), known = []) {
   const catalogByKey = new Map();
   for (const s of catalog || []) {
     const k = subKey(s.name);
     if (k && !catalogByKey.has(k)) catalogByKey.set(k, s);
   }
-  const knownKeys = new Set([...catalogByKey.keys(), ...assignments.keys(), ...known]);
-  const teamsOfAreas = (areas, out) => {
-    for (const [dept, keys] of teamAreas) if ([...keys].some(k => areas.has(k))) out.add(dept);
-    return out;
-  };
+  const listed = new Set([...teamStations.values()].flatMap(set => [...set]));
+  const knownKeys = new Set([...catalogByKey.keys(), ...listed, ...known]);
+  const teams = [...new Set([...teamAreas.keys(), ...teamStations.keys()])];
+  const inAreas = (dept, areas) => [...(teamAreas.get(dept) || [])].some(k => areas.has(k));
   return (o) => {
     const found = substationsIn(o.location);
     let keys = found.strong.map(x => x.key);
     if (!keys.length) keys = found.weak.map(x => x.key).filter(k => knownKeys.has(k));
     const unitAreas = unitAreasOf(o);
-    if (!keys.length) return teamsOfAreas(unitAreas, new Set());
-    const out = new Set();
-    for (const k of new Set(keys)) {
-      const owner = assignments.get(k);
-      if (owner) { out.add(owner); continue; }
+    // khu vực của từng trạm: danh mục TBA, không có thì khu vực ở ô đơn vị
+    const stationAreas = new Set(keys.flatMap(k => {
       const sub = catalogByKey.get(k);
-      teamsOfAreas(sub?.transmissionName ? new Set([areaKey(sub.transmissionName)]) : unitAreas, out);
+      return sub?.transmissionName ? [areaKey(sub.transmissionName)] : [...unitAreas];
+    }));
+    const out = new Set();
+    for (const dept of teams) {
+      const own = teamStations.get(dept);
+      if (!keys.length) { if (inAreas(dept, unitAreas)) out.add(dept); continue; }
+      if (own?.size) { if (keys.some(k => own.has(k))) out.add(dept); continue; }
+      if (inAreas(dept, stationAreas)) out.add(dept);
     }
     return out;
   };
 }
 
-/** Trạm giao riêng: Map<khóa trạm, department>. */
-async function loadTeamSubstations(db) {
-  const rows = await db.query('SELECT subKey, department FROM dkct_team_substations');
-  return new Map(rows.map(r => [r.subKey, r.department]));
+/** Trạm tổ tích chọn: Map<department, Set<khóa trạm>>. */
+async function loadTeamStations(db) {
+  const map = new Map();
+  for (const r of await db.query('SELECT department, subKey FROM dkct_team_stations')) {
+    if (!map.has(r.department)) map.set(r.department, new Set());
+    map.get(r.department).add(r.subKey);
+  }
+  return map;
 }
 
 /** Tổ và khu vực: Map<department, Set<areaKey>>. */
@@ -181,5 +190,5 @@ async function substationChoices(db) {
 
 module.exports = {
   areaKey, areasInUnits, subKey, substationsIn, teamResolver,
-  loadTeamAreas, loadTeamSubstations, loadAreaSubstations, areaOptions, substationChoices
+  loadTeamAreas, loadTeamStations, loadAreaSubstations, areaOptions, substationChoices
 };
