@@ -50,6 +50,9 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   - Mục 8 đánh giá rủi ro: mục tự ghi (chuẩn bị biện pháp kỹ thuật) đứng đầu, tick thêm từ thư viện rủi ro.
   - Sơ đồ một sợi in ở trang cuối khổ ngang: tự lấy **bản vẽ PDF của trạm** (danh mục Trạm biến áp), hoặc chọn/dán ảnh
     (PNG/JPG ≤ 10 MB). Khoanh "Khu vực công tác" bằng chuột: khi xuất Word thành khung đỏ + nhãn nổi trên ảnh (sửa tiếp được trong Word).
+  - **Hình ảnh khảo sát hiện trường (nếu có)**: chọn nhiều ảnh / kéo thả / dán, chú thích, thứ tự; ảnh thu nhỏ ở trình duyệt
+    (cạnh dài ≤ 1600 điểm ảnh, JPEG), tối đa 30 ảnh (bảng `dkct_survey_photos`). In ở trang "HÌNH ẢNH KHẢO SÁT HIỆN TRƯỜNG"
+    sau sơ đồ, 2 ảnh mỗi hàng (4 ảnh mỗi trang ngang), chú thích "Ảnh n: …"; mẫu Word có thẻ `{@photosXml}` thì in tại đó.
 - Lập **Phương án thi công, biện pháp an toàn** (thí nghiệm), tự ghi hoặc từ lịch cắt điện / biên bản khảo sát:
   - Số `<n>/PA-<tổ>.<hậu tố>` (vd `12/PA-TNLĐ.Nhatthu`) đếm riêng theo tổ, năm; đặt được số khởi đầu.
   - Bảng 1 "Hạng mục thí nghiệm" tự lập khi chọn loại thiết bị + chu kỳ, theo bảng khối lượng của **QĐ 1901/QĐ-EVNNPT**
@@ -132,7 +135,7 @@ Server nhận các tham số sau (ChatLan truyền trong `server/src/dkct.js`):
 | Công việc (không có lịch) | `GET /work-defaults`, `GET/POST /works` (`?search&year`), `GET/PUT/DELETE /works/:id` (DELETE: 409 khi đã có hồ sơ), `GET /works/:id/draft` (giấy ĐKCT), `GET /works/:id/survey-draft`, `GET /works/:id/plan-draft` |
 | Lịch cắt điện | `POST /outages/import/preview`, `POST /outages/import/commit` (multipart `file`), `GET /outages?from&to&search`, `GET /outages/:id/draft`, `DELETE /outages/:id` |
 | Giấy ĐKCT | `GET /meta`, `GET/PUT /numbering`, `GET/POST /registrations`, `GET/PUT/DELETE /registrations/:id`, `GET /registrations/:id/docx` |
-| BBKSHT | `GET /survey-defaults`, `GET /outages/:id/survey-draft`, `GET/POST /surveys`, `GET/PUT/DELETE /surveys/:id`, `GET/PUT/DELETE /surveys/:id/diagram` (PUT multipart `file`), `GET /surveys/:id/docx` |
+| BBKSHT | `GET /survey-defaults`, `GET /outages/:id/survey-draft`, `GET/POST /surveys`, `GET/PUT/DELETE /surveys/:id`, `GET/PUT/DELETE /surveys/:id/diagram` (PUT multipart `file`), `GET/POST/PUT /surveys/:id/photos` (POST multipart `file` + `caption`; PUT `{ items: [{ id, caption }] }` = chú thích + thứ tự), `GET/DELETE /surveys/:id/photos/:photoId`, `GET /surveys/:id/docx` |
 | Phương án | `GET /plan-defaults`, `GET /outages/:id/plan-draft`, `GET/PUT /plan-numbering`, `GET /tests1901`, `GET/POST /plans`, `GET/PUT/DELETE /plans/:id`, `GET /plans/:id/docx` |
 | Giấy xác nhận | `GET /confirmation-defaults`, `GET /registrations/:id/confirmation-draft`, `GET/PUT /confirmation-numbering`, `GET/POST /confirmations`, `GET/PUT/DELETE /confirmations/:id`, `GET /confirmations/:id/docx` |
 | Mạch dòng TI | `GET/POST /ct-library` (`?substationId=`), `GET/PUT/DELETE /ct-library/:id` (PUT gửi cả TI kèm `cores[].points[6]`), `POST /ct-library/:id/verify`, `GET /ct-library/:id/audit`, `POST /ct-library/:id/pages` (multipart `image` + `pageLabel`, `fileName`, `newRevision=1`), `GET /ct-pages/:id/image`, `DELETE /ct-pages/:id`; ghi: chỉ admin |

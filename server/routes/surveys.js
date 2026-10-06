@@ -1,5 +1,6 @@
 /**
- * Biên bản khảo sát hiện trường (BBKSHT): danh sách/xem/lập/sửa/xóa, ảnh sơ đồ một sợi, xuất DOCX theo mẫu.
+ * Biên bản khảo sát hiện trường (BBKSHT): danh sách/xem/lập/sửa/xóa, ảnh sơ đồ một sợi, hình ảnh khảo sát hiện trường,
+ * xuất DOCX theo mẫu.
  * Quyền giống giấy ĐKCT: trưởng/phó tổ, trưởng phòng, admin lập; người lập hoặc lãnh đạo tổ sửa; cùng tổ xem.
  */
 const express = require('express');
@@ -16,6 +17,7 @@ const { workAsOutage, loadVisibleWork, timeTextOf, DEFAULT_SCOPE } = require('..
 
 const MAX_DIAGRAM_BYTES = 10 * 1024 * 1024;
 const MAX_DIAGRAM_SIDE = 12000;
+const MAX_PHOTOS = 30;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_DIAGRAM_BYTES, files: 1, fields: 5 },
@@ -200,6 +202,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
 
   router.delete('/surveys/:id', wrap(async (req, res) => {
     const { row } = await loadEditable(req, LIST_COLUMNS);
+    await db.execute('DELETE FROM dkct_survey_photos WHERE surveyId = ?', [row.id]);
     await db.execute('DELETE FROM dkct_surveys WHERE id = ?', [row.id]);
     res.json({ success: true });
   }));
@@ -235,8 +238,72 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     res.send(Buffer.from(row.diagram, 'base64'));
   }));
 
+  // Hình ảnh khảo sát hiện trường (nếu có): nhiều ảnh, mỗi ảnh một chú thích, theo thứ tự; in ở trang phụ lục cuối biên bản
+  const photoMeta = (r) => ({ id: r.id, caption: r.caption || '', width: r.width, height: r.height, size: r.size, sortOrder: Number(r.sortOrder) || 0 });
+  async function loadPhotos(surveyId) {
+    const rows = await db.query('SELECT caption, image FROM dkct_survey_photos WHERE surveyId = ? ORDER BY sortOrder, createdAt, id', [surveyId]);
+    return rows.map(r => ({ caption: r.caption || '', buffer: Buffer.isBuffer(r.image) ? r.image : Buffer.from(r.image) }));
+  }
+  const cleanCaption = (v) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 300);
+
+  router.get('/surveys/:id/photos', wrap(async (req, res) => {
+    const { row } = await loadVisible(req, 'id, department, createdBy');
+    const rows = await db.query(`SELECT id, caption, width, height, size, sortOrder FROM dkct_survey_photos
+      WHERE surveyId = ? ORDER BY sortOrder, createdAt, id`, [row.id]);
+    res.json({ items: rows.map(photoMeta) });
+  }));
+
+  router.get('/surveys/:id/photos/:photoId', wrap(async (req, res) => {
+    const { row } = await loadVisible(req, 'id, department, createdBy');
+    const photo = await db.queryOne('SELECT image, imageType FROM dkct_survey_photos WHERE id = ? AND surveyId = ?', [req.params.photoId, row.id]);
+    if (!photo) return res.status(404).json({ error: 'Không tìm thấy ảnh.' });
+    res.setHeader('Content-Type', `image/${photo.imageType}`);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(Buffer.isBuffer(photo.image) ? photo.image : Buffer.from(photo.image));
+  }));
+
+  router.post('/surveys/:id/photos', requireEditor, upload.single('file'), wrap(async (req, res) => {
+    const info = req.file ? imageInfo(req.file.buffer) : null;
+    if (!info) throw Object.assign(new Error('Chọn ảnh dạng PNG hoặc JPG (tối đa 10 MB).'), { status: 400 });
+    if (!info.width || !info.height || info.width > MAX_DIAGRAM_SIDE || info.height > MAX_DIAGRAM_SIDE) {
+      throw Object.assign(new Error(`Ảnh phải nhỏ hơn ${MAX_DIAGRAM_SIDE}×${MAX_DIAGRAM_SIDE} điểm ảnh.`), { status: 400 });
+    }
+    const surveyId = req.dkctSurvey.id;
+    const stat = await db.queryOne('SELECT COUNT(*) AS n, MAX(sortOrder) AS last FROM dkct_survey_photos WHERE surveyId = ?', [surveyId]);
+    if (Number(stat?.n) >= MAX_PHOTOS) throw Object.assign(new Error(`Mỗi biên bản tối đa ${MAX_PHOTOS} ảnh.`), { status: 400 });
+    const photo = {
+      id: newId('ANH'), caption: cleanCaption(req.body?.caption), width: info.width, height: info.height, size: req.file.size,
+      sortOrder: stat?.last === null || stat?.last === undefined ? 0 : Number(stat.last) + 1
+    };
+    const actor = await policy.actorOf(req);
+    await db.execute(`INSERT INTO dkct_survey_photos (id, surveyId, sortOrder, caption, image, imageType, width, height, size, createdBy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [photo.id, surveyId, photo.sortOrder, photo.caption, req.file.buffer, info.type, info.width, info.height, req.file.size, actor.id]);
+    await db.execute('UPDATE dkct_surveys SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?', [surveyId]);
+    res.json({ photo: photoMeta(photo) });
+  }));
+
+  // sửa chú thích và thứ tự: items [{ id, caption }] theo thứ tự mới (ảnh không có trong danh sách giữ nguyên)
+  router.put('/surveys/:id/photos', wrap(async (req, res) => {
+    const { row } = await loadEditable(req, LIST_COLUMNS);
+    const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, MAX_PHOTOS) : [];
+    for (const [i, item] of items.entries()) {
+      await db.execute('UPDATE dkct_survey_photos SET caption = ?, sortOrder = ? WHERE id = ? AND surveyId = ?',
+        [cleanCaption(item?.caption), i, String(item?.id || ''), row.id]);
+    }
+    const rows = await db.query(`SELECT id, caption, width, height, size, sortOrder FROM dkct_survey_photos
+      WHERE surveyId = ? ORDER BY sortOrder, createdAt, id`, [row.id]);
+    res.json({ items: rows.map(photoMeta) });
+  }));
+
+  router.delete('/surveys/:id/photos/:photoId', wrap(async (req, res) => {
+    const { row } = await loadEditable(req, LIST_COLUMNS);
+    await db.execute('DELETE FROM dkct_survey_photos WHERE id = ? AND surveyId = ?', [req.params.photoId, row.id]);
+    res.json({ success: true });
+  }));
+
   // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu). Ảnh sơ đồ: ảnh đã lưu (?noDiagram=1 khi đang gỡ ảnh);
-  // ảnh mới chọn chỉ có sau khi lưu.
+  // ảnh mới chọn chỉ có sau khi lưu. Hình ảnh khảo sát: các ảnh đã lưu.
   router.post('/surveys/preview', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
     if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập biên bản khảo sát.');
@@ -250,13 +317,15 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     const data = await normalize(req.body, res);
     if (!data) return;
     const diagram = row.diagram && req.query.noDiagram !== '1' ? { buffer: Buffer.from(row.diagram, 'base64') } : null;
-    sendPreview(res, await templates.render('survey', (tpl) => renderSurveyDocx({ data }, diagram, tpl)));
+    const photos = await loadPhotos(row.id);
+    sendPreview(res, await templates.render('survey', (tpl) => renderSurveyDocx({ data }, diagram, tpl, photos)));
   }));
 
   router.get('/surveys/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
     const data = safeParse(row.data);
-    const buffer = await templates.render('survey', (tpl) => renderSurveyDocx({ data }, row.diagram ? { buffer: Buffer.from(row.diagram, 'base64') } : null, tpl));
+    const photos = await loadPhotos(row.id);
+    const buffer = await templates.render('survey', (tpl) => renderSurveyDocx({ data }, row.diagram ? { buffer: Buffer.from(row.diagram, 'base64') } : null, tpl, photos));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', attachment(docxFileName('survey', {
       date: data.surveyTime, bayText: [data.equipment, ...(data.scopeItems || []), data.workContent].join(' '), station: data.station?.name

@@ -7,6 +7,7 @@ import QltnLink from './QltnLink.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
 import LinkedWork from './LinkedWork.jsx';
+import SurveyPhotos, { useSurveyPhotos } from './SurveyPhotos.jsx';
 import { openDrawingPdf } from './DrawingDialog.jsx';
 import { fieldErrors } from '../lib/form.js';
 import { suggestDrawings } from '../lib/plan.js';
@@ -180,6 +181,8 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
   const [form, setForm] = useState(initial);
   const [current, setCurrent] = useState(survey);
   const [diagram, setDiagram] = useState({ status: survey?.hasDiagram ? 'saved' : 'none', hadSaved: !!survey?.hasDiagram, file: null, url: null });
+  // hình ảnh khảo sát: tải theo biên bản đã mở (biên bản mới: chỉ có ảnh mới chọn, gửi lên khi lưu)
+  const photoState = useSurveyPhotos(survey?.id);
   const [errorList, setErrorList] = useState([]);
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -240,8 +243,7 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
   }));
 
   const close = async () => {
-    const changed = dirty || diagram.status === 'new' || diagram.status === 'removed';
-    if (changed && !readOnly && !(await confirmAction({ title: 'Đóng biên bản chưa lưu?', message: 'Các thay đổi chưa lưu sẽ bị hủy.', confirmLabel: 'Đóng, không lưu' }))) return;
+    if (unsaved && !readOnly && !(await confirmAction({ title: 'Đóng biên bản chưa lưu?', message: 'Các thay đổi chưa lưu sẽ bị hủy.', confirmLabel: 'Đóng, không lưu' }))) return;
     onClose();
   };
 
@@ -276,6 +278,7 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
         saved = { ...saved, hasDiagram: false };
       }
       setDiagram(d => ({ ...d, status: saved.hasDiagram ? 'saved' : 'none', hadSaved: saved.hasDiagram, file: null }));
+      await photoState.sync(saved.id);
       notify('Đã lưu biên bản khảo sát hiện trường.', 'success');
       if (andDownload) await download(saved);
       onSaved(saved);
@@ -288,6 +291,9 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
   }
 
   const personNames = [...new Set((catalogs.personnel || []).map(p => p.fullName))];
+  // còn thay đổi chưa lưu (nội dung, ảnh sơ đồ, hình ảnh khảo sát): tải Word / xem bản đã lưu phải lưu trước
+  const unsaved = dirty || diagram.status === 'new' || diagram.status === 'removed' || photoState.changed;
+  const showSaved = readOnly || (current && !unsaved);
 
   return (
     <ModalOverlay onClose={close} className="fixed inset-0 z-50 bg-slate-900/40 flex items-stretch md:items-center justify-center md:p-4">
@@ -408,6 +414,11 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
                 stationDrawings={stationDrawings} stationName={form.station?.name} onUseStationDrawing={useStationDrawing}
                 onOpenPdf={(d) => openDrawingPdf(api, d.id).catch(e => notify(e.message, 'error'))} />
             </Section>
+
+            <Section title="Hình ảnh khảo sát hiện trường (nếu có)"
+              subtitle="In ở trang cuối biên bản (sau sơ đồ), 2 ảnh mỗi hàng, kèm chú thích. Ảnh được thu nhỏ trước khi tải lên.">
+              <SurveyPhotos state={photoState} readOnly={readOnly} />
+            </Section>
           </fieldset>
         </div>
 
@@ -416,8 +427,8 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
             <Eye className="w-4 h-4" /> Xem trước
           </button>
           {current && (
-            <button type="button" className={btnSecondary} onClick={() => download()} disabled={saving || dirty || diagram.status === 'new' || diagram.status === 'removed'}
-              title={dirty ? 'Lưu thay đổi trước khi tải' : undefined}>
+            <button type="button" className={btnSecondary} onClick={() => download()} disabled={saving || unsaved}
+              title={unsaved ? 'Lưu thay đổi trước khi tải' : undefined}>
               <FileDown className="w-4 h-4" /> Tải Word
             </button>
           )}
@@ -437,13 +448,13 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
         {previewing && (
           <DocPreview
             title={current ? `Biên bản KSHT` : 'Biên bản KSHT (chưa lưu)'}
-            note={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? 'Bản đã lưu' : `Bản dựng từ dữ liệu đang soạn — chưa lưu${current ? '' : ', số chỉ là dự kiến'}${diagram.status === 'new' ? ' · ảnh sơ đồ mới chọn chỉ có sau khi lưu' : ''}`}
-            load={() => ((readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed'))
+            note={showSaved ? 'Bản đã lưu' : `Bản dựng từ dữ liệu đang soạn — chưa lưu${current ? '' : ', số chỉ là dự kiến'}${diagram.status === 'new' ? ' · ảnh sơ đồ mới chọn chỉ có sau khi lưu' : ''}${photoState.changed ? ' · hình ảnh khảo sát theo bản đã lưu' : ''}`}
+            load={() => (showSaved
               ? api.blob(`/surveys/${current.id}/docx`)
               : api.previewDocx(current ? `/surveys/${current.id}/preview${diagram.status === 'removed' ? '?noDiagram=1' : ''}` : `/surveys/preview?docNumber=${encodeURIComponent('' || '')}`, payload()))}
-            onDownload={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
-            downloadLabel={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed')) ? 'Tải Word' : 'Lưu & tải Word'}
-            pdf={(readOnly || (current && !dirty && diagram.status !== 'new' && diagram.status !== 'removed'))}
+            onDownload={showSaved ? () => download() : () => { setPreviewing(false); save({ andDownload: true }); }}
+            downloadLabel={showSaved ? 'Tải Word' : 'Lưu & tải Word'}
+            pdf={!!showSaved}
             actions={current ? <QltnLink highlight={exported} /> : null}
             onClose={() => setPreviewing(false)} />
         )}

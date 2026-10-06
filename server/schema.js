@@ -148,6 +148,21 @@ function tables(t) {
         ON UPDATE CASCADE ON DELETE SET NULL,
       CONSTRAINT fk_dkct_surveys_work FOREIGN KEY (workId) REFERENCES dkct_works (id)
         ON UPDATE CASCADE ON DELETE SET NULL`,
+    // Hình ảnh khảo sát hiện trường kèm biên bản (PNG/JPEG, đã thu nhỏ ở trình duyệt); in ở trang phụ lục sau sơ đồ
+    dkct_survey_photos: `
+      id ${t.id} PRIMARY KEY,
+      surveyId ${t.id} NOT NULL,
+      sortOrder ${t.int} NOT NULL DEFAULT 0,
+      caption ${t.text},
+      image ${t.blob} NOT NULL,
+      imageType ${t.short} NOT NULL,
+      width ${t.int},
+      height ${t.int},
+      size ${t.int},
+      createdBy ${t.id},
+      createdAt ${t.now},
+      CONSTRAINT fk_dkct_survey_photos_survey FOREIGN KEY (surveyId) REFERENCES dkct_surveys (id)
+        ON UPDATE CASCADE ON DELETE CASCADE`,
     // Phương án thi công, biện pháp an toàn (thí nghiệm); số "<n>/PA-<tổ>.<hậu tố>" đếm riêng theo tổ, năm
     dkct_plans: `
       id ${t.id} PRIMARY KEY,
@@ -395,6 +410,7 @@ const INDEXES = [
   ['idx_dkct_reg_plan', 'dkct_registrations', 'planId'],
   ['idx_dkct_works_department', 'dkct_works', 'department'],
   ['idx_dkct_survey_work', 'dkct_surveys', 'workId'],
+  ['idx_dkct_survey_photos_survey', 'dkct_survey_photos', 'surveyId'],
   ['idx_dkct_plan_work', 'dkct_plans', 'workId'],
   ['idx_dkct_personnel_name', 'dkct_personnel', 'fullName'],
   ['idx_dkct_survey_department', 'dkct_surveys', 'department'],

@@ -15,11 +15,11 @@ const path = require('node:path');
 // Thứ tự chèn theo khóa ngoại; xóa theo thứ tự ngược lại
 const TABLES = [
   'dkct_stations', 'dkct_substations', 'dkct_drawings', 'dkct_personnel', 'dkct_duties', 'dkct_risks',
-  'dkct_outages', 'dkct_works', 'dkct_surveys', 'dkct_plans', 'dkct_registrations', 'dkct_confirmations',
+  'dkct_outages', 'dkct_works', 'dkct_surveys', 'dkct_survey_photos', 'dkct_plans', 'dkct_registrations', 'dkct_confirmations',
   'dkct_counters', 'dkct_settings'
 ];
 // bảng có từ bản sau: ChatLan chưa cập nhật module thì chưa có, coi như trống
-const OPTIONAL_TABLES = new Set(['dkct_works']);
+const OPTIONAL_TABLES = new Set(['dkct_works', 'dkct_survey_photos']);
 const RECORD_TABLES = ['dkct_outages', 'dkct_works', 'dkct_surveys', 'dkct_plans', 'dkct_registrations', 'dkct_confirmations', 'dkct_drawings'];
 const DEPARTMENT_SOURCES = ['dkct_registrations', 'dkct_plans', 'dkct_surveys', 'dkct_confirmations', 'dkct_personnel'];
 

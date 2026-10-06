@@ -902,3 +902,80 @@ test('tải lịch từ trang Công ty: đăng nhập Basic, gửi biểu mẫu 
     assert.equal((await none.call('lead', 'POST', '/outages/fetch', { from: '2024-10-05', to: '2024-10-06' })).status, 424);
   } finally { none.close(); }
 });
+
+test('BBKSHT: hình ảnh khảo sát hiện trường — thêm nhiều ảnh, chú thích, thứ tự, xóa; xuất Word có trang hình ảnh', async () => {
+  const app = await startApp();
+  const photoForm = (buffer, caption, type = 'image/png') => {
+    const f = new FormData();
+    if (caption !== undefined) f.append('caption', caption);
+    f.append('file', new Blob([buffer], { type }), 'anh.png');
+    return f;
+  };
+  try {
+    const id = (await app.call('lead', 'POST', '/surveys', SURVEY)).body.survey.id;
+    assert.deepEqual((await app.call('member', 'GET', `/surveys/${id}/photos`)).body.items, []);
+    assert.equal((await app.call('member', 'POST', `/surveys/${id}/photos`, photoForm(makePng(40, 30), 'x'))).status, 403, 'thành viên không thêm ảnh');
+    assert.equal((await app.call('lead', 'POST', `/surveys/${id}/photos`, photoForm(Buffer.from('không phải ảnh'), 'x'))).status, 400);
+
+    const a = (await app.call('lead', 'POST', `/surveys/${id}/photos`, photoForm(makePng(400, 300), 'Ngăn lộ 272\u0007 nhìn từ phía MC'))).body.photo;
+    const b = (await app.call('lead', 'POST', `/surveys/${id}/photos`, photoForm(makePng(300, 400)))).body.photo;
+    const c = (await app.call('lead', 'POST', `/surveys/${id}/photos`, photoForm(makePng(200, 200), 'Tủ điều khiển'))).body.photo;
+    assert.equal(a.caption, 'Ngăn lộ 272  nhìn từ phía MC', 'bỏ ký tự điều khiển');
+    assert.deepEqual([a.width, a.height, a.sortOrder, b.sortOrder, c.sortOrder], [400, 300, 0, 1, 2]);
+
+    const img = await app.call('member', 'GET', `/surveys/${id}/photos/${b.id}`);
+    assert.equal(img.headers.get('content-type'), 'image/png');
+    assert.equal(img.body.readUInt32BE(16), 300);
+    assert.equal((await app.call('other', 'GET', `/surveys/${id}/photos`)).status, 403, 'tổ khác không xem');
+    assert.equal((await app.call('other', 'GET', `/surveys/${id}/photos/${b.id}`)).status, 403);
+
+    // đổi thứ tự + chú thích; xóa một ảnh
+    assert.equal((await app.call('member', 'PUT', `/surveys/${id}/photos`, { items: [] })).status, 403);
+    const order = (await app.call('lead', 'PUT', `/surveys/${id}/photos`, {
+      items: [{ id: c.id, caption: 'Tủ điều khiển ngăn 272' }, { id: a.id, caption: a.caption }, { id: b.id, caption: 'Mặt bằng' }]
+    })).body.items;
+    assert.deepEqual(order.map(p => [p.id, p.caption]), [[c.id, 'Tủ điều khiển ngăn 272'], [a.id, a.caption], [b.id, 'Mặt bằng']]);
+    assert.equal((await app.call('member', 'DELETE', `/surveys/${id}/photos/${b.id}`)).status, 403);
+    assert.equal((await app.call('lead', 'DELETE', `/surveys/${id}/photos/${b.id}`)).status, 200);
+    assert.deepEqual((await app.call('lead', 'GET', `/surveys/${id}/photos`)).body.items.map(p => p.id), [c.id, a.id]);
+
+    // xuất Word: trang "HÌNH ẢNH KHẢO SÁT HIỆN TRƯỜNG" sau sơ đồ, ảnh theo thứ tự kèm chú thích
+    const zip = new PizZip((await app.call('member', 'GET', `/surveys/${id}/docx`)).body);
+    const xml = zip.file('word/document.xml').asText();
+    const text = xml.replace(/<[^>]+>/g, '');
+    assert.ok(text.indexOf('SƠ ĐỒ MỘT SỢI') < text.indexOf('HÌNH ẢNH KHẢO SÁT HIỆN TRƯỜNG'), 'trang hình ảnh sau sơ đồ');
+    assert.match(text, /Ảnh 1: Tủ điều khiển ngăn 272[\s\S]*Ảnh 2: Ngăn lộ 272 {2}nhìn từ phía MC/);
+    assert.ok(zip.file('word/media/dkct_photo_1.png') && zip.file('word/media/dkct_photo_2.png'));
+    assert.equal(zip.file('word/media/dkct_photo_3.png'), null);
+    assert.equal(zip.file('word/media/dkct_photo_1.png').asNodeBuffer().readUInt32BE(16), 200, 'ảnh 1 là ảnh c (200×200)');
+    assert.match(zip.file('word/_rels/document.xml.rels').asText(), /Id="rIdDkctPhoto2"[^>]*Target="media\/dkct_photo_2\.png"/);
+    assert.ok(xml.lastIndexOf('HÌNH ẢNH KHẢO SÁT') < xml.lastIndexOf('<w:sectPr'), 'trước phần cài đặt trang cuối');
+
+    // xem trước khi đang sửa cũng có ảnh đã lưu
+    const pv = await app.call('lead', 'POST', `/surveys/${id}/preview`, SURVEY);
+    assert.ok(new PizZip(pv.body).file('word/media/dkct_photo_2.png'));
+
+    // xóa biên bản -> xóa ảnh
+    assert.equal((await app.call('lead', 'DELETE', `/surveys/${id}`)).status, 200);
+    assert.equal((await app.db.query('SELECT id FROM dkct_survey_photos WHERE surveyId = ?', [id])).length, 0);
+  } finally { app.close(); }
+});
+
+test('BBKSHT: tối đa 30 ảnh mỗi biên bản; biên bản không có ảnh thì không có trang hình ảnh', async () => {
+  const app = await startApp();
+  try {
+    const id = (await app.call('lead', 'POST', '/surveys', SURVEY)).body.survey.id;
+    const text = new PizZip((await app.call('lead', 'GET', `/surveys/${id}/docx`)).body).file('word/document.xml').asText().replace(/<[^>]+>/g, '');
+    assert.doesNotMatch(text, /HÌNH ẢNH KHẢO SÁT/);
+    const png = makePng(20, 20);
+    for (let i = 0; i < 30; i++) {
+      await app.db.execute('INSERT INTO dkct_survey_photos (id, surveyId, sortOrder, caption, image, imageType, width, height, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [`P${i}`, id, i, '', png, 'png', 20, 20, png.length]);
+    }
+    const f = new FormData();
+    f.append('file', new Blob([png], { type: 'image/png' }), 'a.png');
+    const over = await app.call('lead', 'POST', `/surveys/${id}/photos`, f);
+    assert.equal(over.status, 400);
+    assert.match(over.body.error, /tối đa 30 ảnh/);
+  } finally { app.close(); }
+});

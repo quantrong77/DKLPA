@@ -131,17 +131,74 @@ function loadTemplate(templatePath = TEMPLATE_PATH) {
   return templateBinary;
 }
 
-/** survey: { data }; diagram: { buffer } (tùy chọn). Trả về Buffer DOCX. */
-function renderSurveyDocx(survey, diagram = null, templatePath = TEMPLATE_PATH) {
+// trang "Hình ảnh khảo sát hiện trường": bảng 2 cột không viền trên trang ngang, mỗi ô một ảnh + chú thích
+const PHOTO_COL_TW = Math.floor((16838 - 2 * 1134) / 2);
+const PHOTO_MAX_CX = (PHOTO_COL_TW - 2 * 115) * 635;
+const PHOTO_MAX_CY = 2340000; // ~6,5 cm: 2 hàng ảnh (4 ảnh) mỗi trang ngang
+const FONT = '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>';
+
+/** Đoạn chữ căn giữa (Times New Roman); opts: { bold, italic, size (nửa pt), pageBreak, after } */
+function textParagraph(text, { bold = false, italic = false, size = 26, pageBreak = false, after = 120 } = {}) {
+  return `<w:p><w:pPr>${pageBreak ? '<w:pageBreakBefore/>' : ''}<w:spacing w:before="0" w:after="${after}"/><w:jc w:val="center"/></w:pPr>`
+    + `<w:r><w:rPr>${FONT}${bold ? '<w:b/>' : ''}${italic ? '<w:i/>' : ''}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>`
+    + `<w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
+}
+
+/**
+ * Trang phụ lục hình ảnh: tiêu đề, dòng "Kèm theo…", bảng ảnh 2 cột (chú thích "Ảnh n: …" dưới mỗi ảnh).
+ * photos: [{ info, caption }] (info = imageInfo); ảnh thứ i dùng quan hệ rIdDkctPhoto<i+1>.
+ */
+function photosXml(photos, view) {
+  const cell = (p, i) => {
+    const tcPr = `<w:tcPr><w:tcW w:w="${PHOTO_COL_TW}" w:type="dxa"/></w:tcPr>`;
+    if (!p) return `<w:tc>${tcPr}<w:p/></w:tc>`;
+    const size = fitImage(p.info.width, p.info.height, PHOTO_MAX_CX, PHOTO_MAX_CY);
+    const caption = `Ảnh ${i + 1}${p.caption ? `: ${p.caption}` : ''}`;
+    return `<w:tc>${tcPr}`
+      + imageParagraphXml(size, p.info.type, { relId: `rIdDkctPhoto${i + 1}`, name: `Anh khao sat ${i + 1}`, docPrId: 9500 + i })
+      + textParagraph(caption, { italic: true, size: 22, after: 240 })
+      + '</w:tc>';
+  };
+  const rows = [];
+  for (let i = 0; i < photos.length; i += 2) {
+    rows.push(`<w:tr><w:trPr><w:cantSplit/></w:trPr>${cell(photos[i], i)}${cell(photos[i + 1], i + 1)}</w:tr>`);
+  }
+  const none = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(b => `<w:${b} w:val="nil"/>`).join('');
+  return textParagraph('HÌNH ẢNH KHẢO SÁT HIỆN TRƯỜNG', { bold: true, pageBreak: true })
+    + textParagraph(`(Kèm theo Biên bản khảo sát hiện trường do ${view.teamShortLabel || '…'} lập ngày ${view.diagramDateText || '…'})`, { size: 26, after: 240 })
+    + `<w:tbl><w:tblPr><w:tblW w:w="${PHOTO_COL_TW * 2}" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders>${none}</w:tblBorders>`
+    + '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="115" w:type="dxa"/><w:right w:w="115" w:type="dxa"/></w:tblCellMar></w:tblPr>'
+    + `<w:tblGrid><w:gridCol w:w="${PHOTO_COL_TW}"/><w:gridCol w:w="${PHOTO_COL_TW}"/></w:tblGrid>${rows.join('')}</w:tbl><w:p/>`;
+}
+
+/**
+ * survey: { data }; diagram: { buffer } (tùy chọn); photos: [{ buffer, caption }] hình ảnh khảo sát (tùy chọn).
+ * Hình ảnh in ở trang cuối, sau sơ đồ: tại thẻ {@photosXml} nếu mẫu có, không thì cuối văn bản. Trả về Buffer DOCX.
+ */
+function renderSurveyDocx(survey, diagram = null, templatePath = TEMPLATE_PATH, photos = []) {
   const zip = new PizZip(loadTemplate(templatePath));
+  const hasPhotoTag = /photosXml/.test(zip.file('word/document.xml')?.asText() || '');
   const info = diagram?.buffer ? imageInfo(diagram.buffer) : null;
+  const pics = (photos || []).map(p => ({ ...p, info: imageInfo(p.buffer) })).filter(p => p.info);
+  const view = toSurveyView(survey.data);
+  const pagesXml = pics.length ? photosXml(pics, view) : '';
   const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => '' });
   doc.render({
-    ...toSurveyView(survey.data),
-    diagramXml: info ? diagramXml(fitImage(info.width, info.height, MAX_CX, MAX_CY), info.type, survey.data.diagramMarks) : '<w:p/>'
+    ...view,
+    diagramXml: info ? diagramXml(fitImage(info.width, info.height, MAX_CX, MAX_CY), info.type, survey.data.diagramMarks) : '<w:p/>',
+    photosXml: pagesXml || '<w:p/>'
   });
   const out = doc.getZip();
   if (info) addImagePart(out, diagram.buffer, info.type);
+  if (pics.length) {
+    if (!hasPhotoTag) {
+      // mẫu không có thẻ: chèn trước phần cài đặt trang cuối của thân văn bản
+      const xml = out.file('word/document.xml').asText();
+      const at = xml.lastIndexOf('<w:sectPr');
+      out.file('word/document.xml', at > 0 ? xml.slice(0, at) + pagesXml + xml.slice(at) : xml.replace('</w:body>', `${pagesXml}</w:body>`));
+    }
+    pics.forEach((p, i) => addImagePart(out, p.buffer, p.info.type, { relId: `rIdDkctPhoto${i + 1}`, name: `dkct_photo_${i + 1}` }));
+  }
   return out.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 

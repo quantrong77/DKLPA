@@ -45,6 +45,7 @@ export const HELP_SECTIONS = [
     items: [
       ['Lập biên bản', 'Từ dòng lịch cắt điện hoặc nút "Lập biên bản". Ghi thời điểm, trạm, thành phần (đại diện đầu tiên mỗi bên ký cuối biên bản), địa điểm, nội dung, phạm vi, rủi ro và biện pháp.'],
       ['Sơ đồ', 'Tải ảnh, dán ảnh chụp màn hình, hoặc chọn bản vẽ của trạm trong danh mục; đánh dấu vùng làm việc trên sơ đồ.'],
+      ['Hình ảnh khảo sát (nếu có)', 'Chọn nhiều ảnh, kéo thả hoặc dán (Ctrl+V); ghi chú thích, đổi thứ tự bằng mũi tên, xóa ảnh. Ảnh được thu nhỏ trước khi tải lên và in ở trang cuối biên bản (sau sơ đồ), 2 ảnh mỗi hàng, tối đa 30 ảnh.'],
       ['Xuất văn bản', '"Xem trước" xem bản Word ngay bên cạnh (tải PDF trong khung xem trước); "Lưu & tải Word"; sau khi tải bấm "Đăng QLTN" để mở trang QLTN và đăng biên bản.'],
       ['Bước tiếp theo', 'Từ biên bản lập phương án hoặc giấy ĐKCT: căn cứ, nội dung, địa điểm, rủi ro được chép sang.']
     ]
