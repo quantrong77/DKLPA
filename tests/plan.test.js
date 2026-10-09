@@ -177,3 +177,51 @@ test('Đầu phía TI (bảng theo quy ước XAk): chọn hoặc gõ cặp đ�
   assert.deepEqual([v.cores[2].b1, v.cores[2].b2], ['3S1', '3S3']);
   assert.deepEqual([ctBlockView(old).cores[0].b1, ctBlockView(old).cores[0].b2], ['1S1', '1S4']);
 });
+
+test('bảng thiết bị cần thí nghiệm: chuẩn hóa (bỏ dòng trống, cắt độ dài), giới hạn 100 dòng', () => {
+  const { data } = normalizePlan({ ...PLAN, testEquipment: [
+    { name: ' Máy cắt ', position: 'MC 272', note: 'Định kỳ 3 năm' }, { name: '', position: '', note: '' }, { name: 'x'.repeat(300), position: '', note: '' }
+  ] }, ctx);
+  assert.deepEqual(data.testEquipment[0], { name: 'Máy cắt', position: 'MC 272', note: 'Định kỳ 3 năm' });
+  assert.equal(data.testEquipment.length, 2);
+  assert.equal(data.testEquipment[1].name.length, 200);
+  assert.deepEqual(normalizePlan({ ...PLAN }, ctx).data.testEquipment, [], 'phương án cũ chưa có bảng');
+  const over = normalizePlan({ ...PLAN, testEquipment: Array.from({ length: 101 }, () => ({ name: 'a' })) }, ctx);
+  assert.equal(over.errors[0].field, 'testEquipment');
+});
+
+test('renderPlanDocx: bảng thiết bị cần thí nghiệm chèn ngay sau dòng "Kiểm tra:" của mục 3; trống thì không in', () => {
+  const rows = [{ name: 'Máy cắt', position: 'MC 272', note: 'Định kỳ 3 năm' }, { name: 'Biến dòng điện', position: 'TI 272 & 3 pha', note: 'Đo tỷ số\nĐo cách điện' }];
+  const xml = docXml(renderPlanDocx({ docNumber: '12/PA-TNLĐ', data: { ...PLAN, testEquipment: rows } }, []));
+  const text = plain(xml);
+  const check = text.indexOf('Kiểm tra:');
+  const table = text.indexOf('STTTên thiết bịKý hiệu / vị tríHạng mục / Ghi chú');
+  assert.ok(check > text.indexOf('Phương án thực hiện') && table > check, 'bảng sau "Kiểm tra:"');
+  assert.ok(table < text.indexOf('Thực hiện:'), 'trước phần "Thực hiện:"');
+  assert.ok(text.indexOf('1Máy cắtMC 272Định kỳ 3 năm') > table);
+  assert.ok(text.includes('2Biến dòng điệnTI 272 &amp; 3 phaĐo tỷ sốĐo cách điện'));
+  assert.match(xml, /TI 272 &amp; 3 pha/, 'thoát ký tự XML');
+  assert.match(xml, /Đo tỷ số<\/w:t><w:br\/><w:t xml:space="preserve">Đo cách điện/, 'xuống dòng trong ô');
+  assert.match(xml, /<w:tblHeader\/>/, 'lặp dòng tiêu đề khi sang trang');
+  const none = plain(docXml(renderPlanDocx({ docNumber: '12/PA-TNLĐ', data: { ...PLAN, testEquipment: [] } }, [])));
+  assert.ok(!none.includes('Ký hiệu / vị trí'));
+});
+
+test('insertAfterCheckLine / thẻ {@testEquipmentXml}: mẫu có thẻ thì in tại thẻ; không thấy dòng "Kiểm tra:" thì giữ nguyên', () => {
+  const { insertAfterCheckLine, testEquipmentXml } = require('../server/services/planRender');
+  const p = (t) => `<w:p><w:r><w:t>${t}</w:t></w:r></w:p>`;
+  const table = testEquipmentXml([{ name: 'A', position: 'B', note: 'C' }]);
+  const doc = p('Kiểm tra: đầu văn bản') + p('3. Phương án thực hiện:') + p('Trình tự…') + `<w:p><w:r><w:t>- Kiểm </w:t></w:r><w:r><w:t>tra: </w:t></w:r></w:p>` + p('bước 1');
+  const out = insertAfterCheckLine(doc, table);
+  assert.ok(out.indexOf('<w:tbl>') > out.indexOf('tra: ') && out.indexOf('<w:tbl>') < out.indexOf('bước 1'), 'chữ "Kiểm tra:" tách nhiều run');
+  assert.equal(insertAfterCheckLine(p('Không có mục'), table), p('Không có mục'));
+  assert.equal(testEquipmentXml([]), '');
+  // mẫu có thẻ riêng: in tại thẻ, không chèn lần hai
+  const tpl = new PizZip(require('node:fs').readFileSync(require('../server/services/planRender').TEMPLATE_PATH));
+  const body = tpl.file('word/document.xml').asText();
+  tpl.file('word/document.xml', body.replace('<w:body>', '<w:body><w:p><w:r><w:t>{@testEquipmentXml}</w:t></w:r></w:p>'));
+  const buf = tpl.generate({ type: 'nodebuffer' });
+  const xml = docXml(renderPlanDocx({ docNumber: '1', data: { ...PLAN, testEquipment: [{ name: 'Máy cắt', position: '', note: '' }] } }, [], buf));
+  assert.equal((xml.match(/Ký hiệu \/ vị trí/g) || []).length, 1);
+  assert.ok(xml.indexOf('Ký hiệu / vị trí') < xml.indexOf('Phương án thực hiện'), 'in tại thẻ ở đầu văn bản');
+});

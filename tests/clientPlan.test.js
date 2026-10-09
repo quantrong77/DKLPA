@@ -113,3 +113,24 @@ test('registrationFromPlan: giấy ĐKCT lấy căn cứ, nội dung, địa đi
   assert.equal('time' in r2, false);
   assert.equal(r2.recipient, undefined);
 });
+
+test('sentenceCase / equipmentFromGroups: điền sẵn bảng thiết bị cần thí nghiệm từ Phụ lục I', async () => {
+  const { sentenceCase, equipmentFromGroups } = await load();
+  assert.deepEqual(['MÁY CẮT SF6', 'MBA TỰ DÙNG', 'BIẾN DÒNG ĐIỆN (kiểu hở, có ống thở)', 'DAO CÁCH LY, DAO TIẾP ĐỊA', 'Máy cắt'].map(sentenceCase),
+    ['Máy cắt SF6', 'MBA tự dùng', 'Biến dòng điện (kiểu hở, có ống thở)', 'Dao cách ly, dao tiếp địa', 'Máy cắt']);
+  const rows = equipmentFromGroups([
+    { deviceKey: 'MC_SF6', cycle: 'y3', label: 'MÁY CẮT 530, 532', items: [{ name: 'a' }, { name: 'b', checked: false }, { name: 'c' }] },
+    { deviceKey: 'MBA', cycle: 'y6', label: 'MBA AT2', items: [{ name: 'a' }] },
+    { deviceKey: 'DCL', cycle: 'annual', label: 'DAO CÁCH LY', items: [] },
+    { deviceKey: '', cycle: null, label: 'Tủ RMU 471', items: [{ name: 'a' }] },
+    { deviceKey: 'TI_SF6', cycle: 'y3', label: 'BIẾN DÒNG ĐIỆN TI 272', items: [] }
+  ], DEVICES);
+  assert.deepEqual(rows, [
+    { name: 'Máy cắt SF6', position: '530, 532', note: 'Định kỳ 3 năm: 2 hạng mục theo Phụ lục I' },
+    { name: 'MBA', position: 'MBA AT2', note: 'Định kỳ 6 năm: 1 hạng mục theo Phụ lục I' },
+    { name: 'Dao cách ly, dao tiếp địa', position: '', note: 'Định kỳ 1 năm' },
+    { name: 'Tủ RMU', position: '471', note: '1 hạng mục theo Phụ lục I' },
+    { name: 'Biến dòng điện (cách điện khí SF6)', position: 'TI 272', note: 'Định kỳ 3 năm' }
+  ]);
+  assert.deepEqual(equipmentFromGroups([], DEVICES), []);
+});

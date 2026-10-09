@@ -54,6 +54,8 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
     (cạnh dài ≤ 1600 điểm ảnh, JPEG), tối đa 30 ảnh (bảng `dkct_survey_photos`). In ở trang "HÌNH ẢNH KHẢO SÁT HIỆN TRƯỜNG"
     sau sơ đồ, 2 ảnh mỗi hàng (4 ảnh mỗi trang ngang), chú thích "Ảnh n: …"; mẫu Word có thẻ `{@photosXml}` thì in tại đó.
 - Lập **Phương án thi công, biện pháp an toàn** (thí nghiệm), tự ghi hoặc từ lịch cắt điện / biên bản khảo sát:
+  - Mục 3 "- Kiểm tra:": **bảng chi tiết thiết bị cần thí nghiệm** (STT, tên thiết bị, ký hiệu / vị trí, hạng mục / ghi chú),
+    người lập nhập hoặc "Điền từ Phụ lục I" rồi sửa; chèn ngay sau dòng "Kiểm tra:" (mẫu có thẻ `{@testEquipmentXml}` thì in tại đó).
   - Số `<n>/PA-<tổ>.<hậu tố>` (vd `12/PA-TNLĐ.Nhatthu`) đếm riêng theo tổ, năm; đặt được số khởi đầu.
   - Bảng 1 "Hạng mục thí nghiệm" tự lập khi chọn loại thiết bị + chu kỳ, theo bảng khối lượng của **QĐ 1901/QĐ-EVNNPT**
     (`server/seeds/tests1901.json`, trích từ PDF gốc bằng `scripts/extract_1901.py`, giữ đúng cột chu kỳ);

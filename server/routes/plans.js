@@ -136,6 +136,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
       legalBases: lastData.legalBases?.length ? lastData.legalBases : DEFAULT_LEGAL_BASES,
       workloads: [],
       isolationSteps: [],
+      testEquipment: [],
       ctIsolation: '',
       liveDisconnectors: '',
       risks: [],

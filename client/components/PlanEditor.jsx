@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink, Eye } from 'lucide-react';
+import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Minus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink, Eye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { Field, Section, TabButton, SourceBadge, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
@@ -15,11 +15,11 @@ import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
 import { stationFromCatalog } from '../lib/survey.js';
-import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope } from '../lib/plan.js';
+import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups } from '../lib/plan.js';
 
 const STEPS = [
   { id: 'general', label: '1. Chung & pháp lý', owns: /^(header|workType|year|equipmentText|bays|station|drawingIds|time|approvalRef|legalBases)/ },
-  { id: 'work', label: '2. Thi công & an toàn', owns: /^(workloads|isolationSteps|ctIsolation|liveDisconnectors|risks|reserve)/ },
+  { id: 'work', label: '2. Thi công & an toàn', owns: /^(workloads|testEquipment|isolationSteps|ctIsolation|liveDisconnectors|risks|reserve)/ },
   { id: 'appendix1', label: '3. Phụ lục I', owns: /^(isolationDevices|testGroups|instruments)/ },
   { id: 'appendix23', label: '4. Phụ lục II, III, ký', owns: /^(ctBlocks|people|teamLeader|recipients)/ }
 ];
@@ -186,7 +186,55 @@ function GeneralStep({ form, setField, errors, catalogs, departments, outage }) 
   );
 }
 
-function WorkStep({ form, setField, update, catalogs, onPickSurvey, surveys }) {
+/** Mục 3 "- Kiểm tra:": bảng chi tiết thiết bị cần thí nghiệm — nhập tay hoặc điền sẵn từ Phụ lục I rồi sửa. */
+function TestEquipment({ form, setField, devices }) {
+  const { confirmAction } = useDkct();
+  const rows = form.testEquipment || [];
+  const set = (i, patch) => setField('testEquipment', l => (l || []).map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const fill = async () => {
+    const next = equipmentFromGroups(form.testGroups, devices);
+    if (rows.length && !(await confirmAction({ title: 'Thay bảng thiết bị?', message: `Bảng hiện có ${rows.length} dòng sẽ được thay bằng ${next.length} dòng lấy từ Phụ lục I.`, confirmLabel: 'Thay' }))) return;
+    setField('testEquipment', next);
+  };
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kiểm tra: bảng chi tiết thiết bị cần thí nghiệm</legend>
+      <p className="text-xs text-slate-500 dark:text-slate-400">In ngay dưới dòng "- Kiểm tra:" của mục 3. Để trống: không in bảng.</p>
+      {rows.length > 0 && (
+        <div className="hidden sm:grid grid-cols-[2rem_1fr_1fr_1.3fr_4.5rem] gap-1.5 text-[11px] font-semibold text-slate-500">
+          <span>STT</span><span>Tên thiết bị</span><span>Ký hiệu / vị trí</span><span>Hạng mục / Ghi chú</span><span />
+        </div>
+      )}
+      {rows.map((r, i) => (
+        <div key={i} className="grid grid-cols-[2rem_1fr_auto] sm:grid-cols-[2rem_1fr_1fr_1.3fr_4.5rem] gap-1.5 items-start">
+          <span className="pt-1.5 text-xs font-semibold text-slate-500 text-center">{i + 1}</span>
+          <input aria-label={`Tên thiết bị cần thí nghiệm ${i + 1}`} className={`${inputCls} ${inputBorder()}`} value={r.name} placeholder="Máy cắt"
+            onChange={e => set(i, { name: e.target.value })} />
+          <span className="flex sm:order-last">
+            <button type="button" className={btnGhost} aria-label={`Lên dòng thiết bị ${i + 1}`} disabled={i === 0} onClick={() => setField('testEquipment', l => move(l, i, -1))}><ArrowUp className="w-4 h-4" /></button>
+            <button type="button" className={btnGhost} aria-label={`Xóa dòng thiết bị ${i + 1}`} onClick={() => setField('testEquipment', l => l.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" /></button>
+          </span>
+          <input aria-label={`Ký hiệu / vị trí ${i + 1}`} className={`${inputCls} ${inputBorder()} col-start-2 sm:col-start-auto`} value={r.position} placeholder="MC 272"
+            onChange={e => set(i, { position: e.target.value })} />
+          <textarea aria-label={`Hạng mục / ghi chú ${i + 1}`}
+            rows={Math.min(4, Math.max(1, Math.ceil(String(r.note || '').length / 34) + (String(r.note || '').match(/\n/g) || []).length))} className={`${inputCls} ${inputBorder()} col-start-2 sm:col-start-auto`} value={r.note} placeholder="Hạng mục / ghi chú"
+            onChange={e => set(i, { note: e.target.value })} />
+        </div>
+      ))}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={btnSecondary} aria-label="Thêm dòng thiết bị cần thí nghiệm" onClick={() => setField('testEquipment', l => [...(l || []), { name: '', position: '', note: '' }])}>
+          <Plus className="w-4 h-4" /> Thêm dòng
+        </button>
+        <button type="button" className={btnSecondary} onClick={fill} disabled={!form.testGroups?.length}
+          title={form.testGroups?.length ? 'Mỗi nhóm thiết bị của Phụ lục I thành một dòng; sửa tiếp được' : 'Phụ lục I chưa có nhóm thiết bị nào (bước 3)'}>
+          <Wand2 className="w-4 h-4" /> Điền từ Phụ lục I
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+function WorkStep({ form, setField, update, catalogs, devices, onPickSurvey, surveys }) {
   return (
     <>
       <Section title="E.2 Khối lượng thi công">
@@ -194,6 +242,7 @@ function WorkStep({ form, setField, update, catalogs, onPickSurvey, surveys }) {
           actions={<button type="button" className={btnSecondary} onClick={() => setField('workloads', l => [...l, defaultWorkload(form)])}><Wand2 className="w-4 h-4" /> Theo ngăn lộ</button>} />
       </Section>
       <Section title="E.3 Phương án thực hiện">
+        <TestEquipment form={form} setField={setField} devices={devices} />
         <LinesEditor label="Kiểm tra: trình tự cắt điện cô lập" lines={form.isolationSteps} rows={2} onChange={fn => setField('isolationSteps', fn)}
           placeholder="Cắt điện cô lập ngăn MC 530, 532: mở MC 530, MC 532, mở các DCL …; đóng các DTĐ …" />
         <Field label="Cô lập mạch dòng (để trống nếu không)" htmlFor="pa-ct" hint='In: "Cô lập mạch dòng … (thực hiện theo phụ lục II)."'>
@@ -353,6 +402,8 @@ function LibraryCtBlock({ block, index, set, remove }) {
             </select>
             / {total}
           </label>
+          <button type="button" className={btnSecondary} disabled={block.coresShown <= 1} title="Bỏ core cuối khỏi bảng in (không xóa trong thư viện)"
+            onClick={() => set({ ...block, coresShown: block.coresShown - 1 })}><Minus className="w-4 h-4" /> Bớt core</button>
           <button type="button" className={btnSecondary} disabled={block.coresShown >= total} onClick={() => set({ ...block, coresShown: block.coresShown + 1 })}><Plus className="w-4 h-4" /> Thêm core</button>
           <button type="button" className={btnSecondary} onClick={refresh} title="So với thư viện hiện tại"><RefreshCw className="w-4 h-4" /> Đối chiếu thư viện</button>
           <button type="button" className={btnGhost} aria-label={`Xóa bảng mạch dòng ${index + 1}`} onClick={remove}><Trash2 className="w-4 h-4" /></button>
@@ -562,7 +613,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
   }
 
   const stepErrors = (s) => errorList.filter(e => s.owns.test(e.field)).length;
-  const shared = { form, setField, update, errors, catalogs, departments, outage };
+  const shared = { form, setField, update, errors, catalogs, departments, outage, devices };
   // gắn dòng lịch: điền ngăn lộ từ phạm vi cắt điện nếu đang trống hoặc vẫn theo lịch cũ
   const linkOutage = (id, o) => update(f => ({
     ...f, outageId: id,

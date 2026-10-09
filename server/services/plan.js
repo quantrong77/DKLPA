@@ -9,7 +9,7 @@ const { normalizeRegion, normalizeSide, MAX_CORES } = require('./ctLibrary');
 
 const LIMITS = {
   legalBases: 20, workloads: 30, isolationSteps: 50, risks: 100, people: 100, recipients: 20,
-  isolationDevices: 300, testGroups: 60, instruments: 100, ctBlocks: 30
+  isolationDevices: 300, testGroups: 60, instruments: 100, ctBlocks: 30, testEquipment: 100
 };
 const MAX_GROUP_ITEMS = 100;
 const CYCLES = ['install', 'year1', 'annual', 'y3', 'y6'];
@@ -142,6 +142,10 @@ function normalizePlan(input = {}, { personnel, substations }) {
     legalBases: lines(input.legalBases),
     workloads: lines(input.workloads),
     isolationSteps: lines(input.isolationSteps),
+    // mục 3 "- Kiểm tra:": bảng chi tiết thiết bị cần thí nghiệm (người lập nhập / điền sẵn từ Phụ lục I)
+    testEquipment: list(input.testEquipment)
+      .map(r => ({ name: text(r?.name).slice(0, 200), position: text(r?.position).slice(0, 200), note: text(r?.note).slice(0, 500) }))
+      .filter(r => r.name || r.position || r.note),
     ctIsolation: text(input.ctIsolation),
     liveDisconnectors: text(input.liveDisconnectors),
     risks: list(input.risks)

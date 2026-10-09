@@ -51,6 +51,41 @@ export function testGroupFor(device, cycle, label = '') {
   return { deviceKey: device.key, cycle, label: label || device.name, items: itemsFor(device, cycle) };
 }
 
+// chữ viết tắt giữ nguyên khi đổi tên nhóm QĐ 1901 (viết hoa) sang chữ thường
+const ACRONYMS = new Set(['MBA', 'TI', 'TU', 'MC', 'DCL', 'DTĐ', 'CSV', 'SF6', 'TBA', 'KV']);
+
+/** "MÁY CẮT SF6" -> "Máy cắt SF6"; "MBA TỰ DÙNG" -> "MBA tự dùng" (giữ chữ viết tắt, phần trong ngoặc). */
+export function sentenceCase(name) {
+  const s = String(name || '').trim();
+  if (!s) return s;
+  // chỉ đổi từ viết hoa toàn bộ (không phải chữ viết tắt, không có số); từ đã viết thường giữ nguyên
+  const upper = (w) => /\p{L}/u.test(w) && w === w.toLocaleUpperCase('vi') && w !== w.toLocaleLowerCase('vi');
+  const out = s.split(/(\s+|,|\(|\))/).map(w => (upper(w) && !ACRONYMS.has(w) && !/\d/.test(w) ? w.toLocaleLowerCase('vi') : w)).join('');
+  return out.charAt(0).toLocaleUpperCase('vi') + out.slice(1);
+}
+
+/**
+ * Dòng bảng "chi tiết thiết bị cần thí nghiệm" (mục 3, "- Kiểm tra:") từ các nhóm của Phụ lục I:
+ * tên loại thiết bị (QĐ 1901), ký hiệu lấy phần có số trong tên nhóm ("MÁY CẮT 530, 532" -> "530, 532"),
+ * ghi chú: chu kỳ + số hạng mục. Người lập sửa tiếp.
+ */
+export function equipmentFromGroups(groups, devices = []) {
+  return (groups || []).map(g => {
+    const dev = devices.find(d => d.key === g.deviceKey);
+    const label = String(g.label || '').trim();
+    const words = label.split(/\s+/);
+    // ký hiệu từ từ đầu tiên có số; giữ chữ viết tắt đứng ngay trước ("BIẾN DÒNG ĐIỆN TI 272" -> "TI 272")
+    let at = words.findIndex(w => /\d/.test(w));
+    if (at > 0 && ACRONYMS.has(words[at - 1])) at -= 1;
+    const position = at >= 0 ? words.slice(at).join(' ') : '';
+    // tên QĐ 1901 viết hoa -> chữ thường; tên nhóm tự ghi giữ nguyên
+    const name = dev ? sentenceCase(dev.name) : (at > 0 ? words.slice(0, at).join(' ') : label);
+    const count = (g.items || []).filter(it => it.checked !== false).length;
+    const note = [CYCLE_LABELS[g.cycle], count ? `${count} hạng mục theo Phụ lục I` : ''].filter(Boolean).join(': ');
+    return { name, position, note };
+  }).filter(r => r.name || r.position);
+}
+
 /** Thiết bị trong trình tự cô lập ("mở MC 530, MC 532; đóng các DTĐ 530-65") -> ["MC530", "MC532", "530-65"]. */
 export function devicesFromSteps(steps) {
   const found = [];
