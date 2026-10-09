@@ -225,3 +225,31 @@ test('insertAfterCheckLine / thẻ {@testEquipmentXml}: mẫu có thẻ thì in 
   assert.equal((xml.match(/Ký hiệu \/ vị trí/g) || []).length, 1);
   assert.ok(xml.indexOf('Ký hiệu / vị trí') < xml.indexOf('Phương án thực hiện'), 'in tại thẻ ở đầu văn bản');
 });
+
+test('Phụ lục I.1 trạng thái cô lập: mặc định máy cắt / DCL "Mở", dao tiếp địa "Đóng"; phương án cũ (chuỗi) đọc được; giữ lựa chọn', () => {
+  const { data } = normalizePlan({ ...PLAN, isolationDevices: [
+    'MC530', '530-6', '530-65', '532-38', 'DTĐ C51', { name: '565-85', receive: 'open', handover: 'closed' }, { name: 'MC571', receive: 'sai' }, ''
+  ] }, ctx);
+  assert.deepEqual(data.isolationDevices.map(d => [d.name, d.receive, d.handover]), [
+    ['MC530', 'open', 'open'], ['530-6', 'open', 'open'], ['530-65', 'closed', 'closed'], ['532-38', 'closed', 'closed'],
+    ['DTĐ C51', 'closed', 'closed'], ['565-85', 'open', 'closed'], ['MC571', 'open', 'open']
+  ]);
+});
+
+test('renderPlanDocx: bảng trạng thái cô lập đánh dấu "√" đúng cột Mở / Đóng khi tiếp nhận và giao trả', () => {
+  const xml = docXml(renderPlanDocx({ docNumber: '1', data: { ...PLAN, isolationDevices: [
+    'MC530', '530-65', { name: '565-85', receive: 'open', handover: 'closed' }
+  ] } }, []));
+  const at = xml.indexOf('Khi tiếp nhận hiện trường');
+  const table = xml.slice(xml.lastIndexOf('<w:tbl>', at), xml.indexOf('</w:tbl>', at));
+  const rows = [...table.matchAll(/<w:tr[ >][\s\S]*?<\/w:tr>/g)].map(r => [...r[0].matchAll(/<w:tc>[\s\S]*?<\/w:tc>/g)].map(c => plain(c[0]).trim()));
+  const data = rows.filter(r => ['MC530', '530-65', '565-85'].includes(r[1]));
+  assert.deepEqual(data, [
+    ['', 'MC530', '√', '', '√', ''],
+    ['', '530-65', '', '√', '', '√'],
+    ['', '565-85', '√', '', '', '√']
+  ]);
+  // không có thiết bị: bảng giữ nguyên, không lỗi
+  const { markIsolationTable } = require('../server/services/planRender');
+  assert.equal(markIsolationTable('<w:p/>', [{ receive: 'open' }]), '<w:p/>');
+});

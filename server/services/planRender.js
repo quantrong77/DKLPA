@@ -9,6 +9,7 @@ const Docxtemplater = require('docxtemplater');
 const { toPlanView } = require('./planView');
 const { imageInfo, fitImage, imageParagraphXml, addImagePart } = require('./surveyRender');
 const { DEFAULT_DRAWING_LABEL } = require('../schema');
+const { isolationDevices } = require('./plan');
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'templates', 'template_pa.docx');
 // vùng in khổ A4 dọc của mẫu (lề trái 1701, phải 851 twip); cao ~ 2/3 trang để còn tiêu đề phụ lục
@@ -79,6 +80,45 @@ function insertAfterCheckLine(xml, tableXml) {
   return xml;
 }
 
+/** Thêm dấu "√" (căn giữa, như tiêu đề cột "Mở (√)" của mẫu) vào đoạn đầu của một ô bảng. */
+function markCell(cell) {
+  let out = cell;
+  if (/<w:pPr>/.test(out)) {
+    if (!/<w:jc /.test(out)) out = out.replace('</w:pPr>', '<w:jc w:val="center"/></w:pPr>');
+  } else {
+    out = out.replace(/<w:p(\s[^>]*)?>/, (m) => `${m}<w:pPr><w:jc w:val="center"/></w:pPr>`);
+  }
+  return out.replace('</w:p>', `<w:r><w:rPr>${TNR}<w:b/></w:rPr><w:t>√</w:t></w:r></w:p>`);
+}
+
+/**
+ * Phụ lục I.1 — bảng trạng thái cô lập (STT | Thiết bị | Tiếp nhận: Mở, Đóng | Giao trả: Mở, Đóng):
+ * đánh dấu "√" theo trạng thái từng thiết bị (devices: [{ receive, handover }] theo thứ tự dòng).
+ * Nhận bảng theo tiêu đề "Khi tiếp nhận hiện trường"; không thấy thì giữ nguyên.
+ */
+function markIsolationTable(xml, devices) {
+  const at = xml.indexOf('Khi tiếp nhận hiện trường');
+  if (at < 0 || !devices?.length) return xml;
+  const start = xml.lastIndexOf('<w:tbl>', at);
+  const end = xml.indexOf('</w:tbl>', at);
+  if (start < 0 || end < 0) return xml;
+  const rows = [...xml.slice(start, end).matchAll(/<w:tr[ >][\s\S]*?<\/w:tr>/g)];
+  // dòng dữ liệu: sau dòng tiêu đề có "Đóng" (tiêu đề 2 tầng)
+  const head = rows.findIndex(r => /Đóng/.test(paragraphText(r[0])));
+  if (head < 0) return xml;
+  let table = xml.slice(start, end);
+  // thay từ dòng cuối lên để vị trí các dòng trước không đổi
+  for (let i = rows.length - 1; i > head; i--) {
+    const d = devices[i - head - 1];
+    if (!d) continue;
+    const want = [null, null, d.receive === 'open', d.receive === 'closed', d.handover === 'open', d.handover === 'closed'];
+    let c = -1;
+    const row = rows[i][0].replace(/<w:tc>[\s\S]*?<\/w:tc>/g, (cell) => { c += 1; return want[c] ? markCell(cell) : cell; });
+    table = table.slice(0, rows[i].index) + row + table.slice(rows[i].index + rows[i][0].length);
+  }
+  return xml.slice(0, start) + table + xml.slice(end);
+}
+
 /**
  * plan: { docNumber, data }; drawings: [{ label, buffer }] ảnh các sơ đồ trạm đã chọn (có thể rỗng).
  * Mỗi sơ đồ một trang, có tên sơ đồ phía trên (trừ tên mặc định "Sơ đồ trạm").
@@ -97,9 +137,12 @@ function renderPlanDocx(plan, drawings = [], templatePath = TEMPLATE_PATH) {
   const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => '' });
   doc.render({ ...toPlanView(plan), drawingXml: drawingXml || NO_DRAWING, testEquipmentXml: equipXml || '<w:p/>' });
   const out = doc.getZip();
-  if (equipXml && !hasEquipTag) out.file('word/document.xml', insertAfterCheckLine(out.file('word/document.xml').asText(), equipXml));
+  let xml = out.file('word/document.xml').asText();
+  if (equipXml && !hasEquipTag) xml = insertAfterCheckLine(xml, equipXml);
+  xml = markIsolationTable(xml, isolationDevices(plan?.data?.isolationDevices));
+  out.file('word/document.xml', xml);
   for (const d of images) addImagePart(out, d.buffer, d.info.type, d.part);
   return out.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
-module.exports = { renderPlanDocx, testEquipmentXml, insertAfterCheckLine, TEMPLATE_PATH };
+module.exports = { renderPlanDocx, testEquipmentXml, insertAfterCheckLine, markIsolationTable, TEMPLATE_PATH };

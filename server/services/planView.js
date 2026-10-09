@@ -159,7 +159,8 @@ function toPlanView({ docNumber, data }) {
     preparedBy: data.preparedBy || '',
     teamLeader: data.teamLeader || '',
     recipients: data.recipients || [],
-    isolationDevices: data.isolationDevices || [],
+    // tên thiết bị cho vòng {#isolationDevices}{.}; dấu Mở/Đóng điền sau khi dựng (planRender.markIsolationTable)
+    isolationDevices: (data.isolationDevices || []).map(d => (typeof d === 'string' ? d : d.name)),
     testRows: testRows(data.testGroups),
     instrumentRows: instrumentRows(data.instruments),
     ctBlocks: (data.ctBlocks || []).map(ctBlockView),

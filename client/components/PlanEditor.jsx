@@ -15,7 +15,7 @@ import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
 import { stationFromCatalog } from '../lib/survey.js';
-import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups } from '../lib/plan.js';
+import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups, isolationRows, addIsolationDevices, defaultIsolationState } from '../lib/plan.js';
 
 const STEPS = [
   { id: 'general', label: '1. Chung & pháp lý', owns: /^(header|workType|year|equipmentText|bays|station|drawingIds|time|approvalRef|legalBases)/ },
@@ -348,6 +348,62 @@ function TestGroups({ form, setField, devices }) {
   );
 }
 
+const STATE_LABELS = { open: 'Mở', closed: 'Đóng' };
+
+/**
+ * Phụ lục I.1 — trạng thái cô lập khi tiếp nhận / giao trả hiện trường. Mặc định: máy cắt, dao cách ly "Mở";
+ * dao tiếp địa (565-65, 565-85…) "Đóng"; sửa bằng ô chọn. Đổi tên thiết bị mà chưa sửa trạng thái thì theo mặc định của tên mới.
+ */
+function IsolationDevices({ form, setField }) {
+  const rows = isolationRows(form.isolationDevices);
+  const setRows = (fn) => setField('isolationDevices', l => fn(isolationRows(l)));
+  const rename = (i, name) => setRows(l => l.map((r, j) => {
+    if (j !== i) return r;
+    const old = defaultIsolationState(r.name);
+    const def = defaultIsolationState(name);
+    return { name, receive: r.receive === old ? def : r.receive, handover: r.handover === old ? def : r.handover };
+  }));
+  const set = (i, patch) => setRows(l => l.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const select = (i, key, label) => (
+    <select aria-label={`${label} ${rows[i].name || i + 1}`} value={rows[i][key]} onChange={e => set(i, { [key]: e.target.value })}
+      className={`${inputCls} ${inputBorder()} !w-24 ${rows[i][key] === 'closed' ? 'font-semibold text-red-700 dark:text-red-400' : ''}`}>
+      {Object.entries(STATE_LABELS).map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+    </select>
+  );
+  return (
+    <Section title="Phụ lục I.1 — Trạng thái cô lập (thiết bị)"
+      subtitle='Mặc định: máy cắt, dao cách ly "Mở"; dao tiếp địa (vd 565-65, 565-85) "Đóng" khi tiếp nhận và giao trả hiện trường. Bảng Word đánh dấu "√" vào cột tương ứng.'
+      actions={(
+        <button type="button" className={btnSecondary} onClick={() => setField('isolationDevices', l => addIsolationDevices(l, devicesFromSteps(form.isolationSteps)))}>
+          <Wand2 className="w-4 h-4" /> Lấy từ trình tự cô lập
+        </button>
+      )}>
+      {rows.length > 0 && (
+        <div className="hidden sm:grid grid-cols-[2rem_1fr_6rem_6rem_2.5rem] gap-1.5 text-[11px] font-semibold text-slate-500">
+          <span>STT</span><span>Thiết bị</span><span>Khi tiếp nhận</span><span>Khi giao trả</span><span />
+        </div>
+      )}
+      {rows.map((r, i) => (
+        <div key={i} className="grid grid-cols-[2rem_1fr_2.5rem] sm:grid-cols-[2rem_1fr_6rem_6rem_2.5rem] gap-1.5 items-center">
+          <span className="text-xs font-semibold text-slate-500 text-center">{i + 1}</span>
+          <input aria-label={`Thiết bị cô lập ${i + 1}`} className={`${inputCls} ${inputBorder()}`} value={r.name} placeholder="MC530"
+            onChange={e => rename(i, e.target.value)} />
+          <button type="button" className={`${btnGhost} sm:order-last`} aria-label={`Xóa thiết bị cô lập ${i + 1}`}
+            onClick={() => setRows(l => l.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" /></button>
+          <span className="col-start-2 sm:col-start-auto flex items-center gap-1.5 sm:contents">
+            <span className="sm:hidden text-[11px] text-slate-500">Tiếp nhận</span>{select(i, 'receive', 'Khi tiếp nhận')}
+            <span className="sm:hidden text-[11px] text-slate-500 ml-2">Giao trả</span>{select(i, 'handover', 'Khi giao trả')}
+          </span>
+        </div>
+      ))}
+      <button type="button" className={btnSecondary} aria-label="Thêm thiết bị cô lập"
+        onClick={() => setRows(l => [...l, { name: '', receive: 'open', handover: 'open' }])}>
+        <Plus className="w-4 h-4" /> Thêm thiết bị
+      </button>
+    </Section>
+  );
+}
+
 function Instruments({ form, setField }) {
   const set = (i, patch) => setField('instruments', l => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   return (
@@ -655,14 +711,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
             {step === 'work' && <WorkStep {...shared} onPickSurvey={pickSurvey} surveys={surveys} />}
             {step === 'appendix1' && (
               <>
-                <Section title="Phụ lục I.1 — Trạng thái cô lập (thiết bị)">
-                  <LinesEditor label="Thiết bị" lines={form.isolationDevices} onChange={fn => setField('isolationDevices', fn)} placeholder="MC530"
-                    actions={(
-                      <button type="button" className={btnSecondary} onClick={() => setField('isolationDevices', l => [...new Set([...l, ...devicesFromSteps(form.isolationSteps)])])}>
-                        <Wand2 className="w-4 h-4" /> Lấy từ trình tự cô lập
-                      </button>
-                    )} />
-                </Section>
+                <IsolationDevices form={form} setField={setField} />
                 <TestGroups form={form} setField={setField} devices={devices} />
                 <Instruments form={form} setField={setField} />
               </>

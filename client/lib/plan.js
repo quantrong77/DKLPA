@@ -86,6 +86,30 @@ export function equipmentFromGroups(groups, devices = []) {
   }).filter(r => r.name || r.position);
 }
 
+/** Trạng thái mặc định khi tiếp nhận / giao trả: dao tiếp địa (565-65, 532-38, "DTĐ …") đóng; máy cắt, dao cách ly mở. */
+export const isEarthSwitch = (name) => /DTĐ|tiếp địa/i.test(name) || /\d{3}-\d{2}(?!\d)/.test(name);
+export const defaultIsolationState = (name) => (isEarthSwitch(String(name || '')) ? 'closed' : 'open');
+
+/** Một dòng Phụ lục I.1 với trạng thái mặc định theo tên thiết bị. */
+export const isolationDevice = (name) => {
+  const state = defaultIsolationState(name);
+  return { name, receive: state, handover: state };
+};
+
+/**
+ * Danh sách Phụ lục I.1 dạng { name, receive, handover }; phương án cũ lưu chuỗi tên -> gán mặc định.
+ */
+export const isolationRows = (list) => (list || []).map(d => (typeof d === 'string'
+  ? isolationDevice(d)
+  : { name: d?.name || '', receive: d?.receive || defaultIsolationState(d?.name), handover: d?.handover || defaultIsolationState(d?.name) }));
+
+/** Thêm thiết bị (từ trình tự cô lập) chưa có trong danh sách, với trạng thái mặc định. */
+export function addIsolationDevices(list, names) {
+  const rows = isolationRows(list);
+  const have = new Set(rows.map(r => r.name));
+  return [...rows, ...names.filter(n => !have.has(n)).map(isolationDevice)];
+}
+
 /** Thiết bị trong trình tự cô lập ("mở MC 530, MC 532; đóng các DTĐ 530-65") -> ["MC530", "MC532", "530-65"]. */
 export function devicesFromSteps(steps) {
   const found = [];

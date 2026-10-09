@@ -134,3 +134,15 @@ test('sentenceCase / equipmentFromGroups: điền sẵn bảng thiết bị cầ
   ]);
   assert.deepEqual(equipmentFromGroups([], DEVICES), []);
 });
+
+test('isolationRows / addIsolationDevices: mặc định Mở cho MC, DCL; Đóng cho dao tiếp địa; không thêm trùng', async () => {
+  const { isolationRows, addIsolationDevices, defaultIsolationState } = await load();
+  assert.deepEqual(['MC565', '565-1', '565-7', '565-65', '565-85', '232-38', 'DTĐ 571'].map(defaultIsolationState),
+    ['open', 'open', 'open', 'closed', 'closed', 'closed', 'closed']);
+  assert.deepEqual(isolationRows(['MC530', { name: '530-65', receive: 'open', handover: 'closed' }]), [
+    { name: 'MC530', receive: 'open', handover: 'open' },
+    { name: '530-65', receive: 'open', handover: 'closed' }
+  ]);
+  const next = addIsolationDevices(['MC530'], ['MC530', '530-65']);
+  assert.deepEqual(next.map(r => [r.name, r.receive, r.handover]), [['MC530', 'open', 'open'], ['530-65', 'closed', 'closed']]);
+});

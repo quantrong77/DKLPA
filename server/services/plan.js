@@ -101,6 +101,25 @@ function legacyBlock(b) {
   };
 }
 
+const STATES = ['open', 'closed'];
+
+/** Trạng thái mặc định khi tiếp nhận / giao trả: dao tiếp địa (565-65, 532-38, "DTĐ …") đóng; máy cắt, dao cách ly mở. */
+const isEarthSwitch = (name) => /DTĐ|tiếp địa/i.test(name) || /\d{3}-\d{2}(?!\d)/.test(name);
+const defaultIsolationState = (name) => (isEarthSwitch(name) ? 'closed' : 'open');
+
+/**
+ * Phụ lục I.1 — trạng thái cô lập: [{ name, receive, handover }] (receive/handover: 'open' | 'closed').
+ * Phương án cũ lưu chuỗi tên thiết bị: nhận vào và gán trạng thái mặc định.
+ */
+function isolationDevices(value) {
+  return list(value).map(d => {
+    const name = text(typeof d === 'string' ? d : d?.name).slice(0, 100);
+    const def = defaultIsolationState(name);
+    const state = (v) => (STATES.includes(v) ? v : def);
+    return { name, receive: state(d?.receive), handover: state(d?.handover) };
+  }).filter(d => d.name);
+}
+
 function normalizePlan(input = {}, { personnel, substations }) {
   const limitError = checkLimits(input || {});
   if (limitError) return { data: null, errors: [limitError] };
@@ -155,7 +174,7 @@ function normalizePlan(input = {}, { personnel, substations }) {
     reserve: text(input.reserve),
     teamLeader: checkLength(text(input.teamLeader), 'teamLeader', 'Tổ trưởng/Tổ phó', errors),
     recipients: lines(input.recipients),
-    isolationDevices: lines(input.isolationDevices).map(s => s.slice(0, 100)),
+    isolationDevices: isolationDevices(input.isolationDevices),
     testGroups: list(input.testGroups).map(g => ({
       deviceKey: text(g?.deviceKey).slice(0, 32),
       cycle: CYCLES.includes(g?.cycle) ? g.cycle : null,
@@ -178,4 +197,4 @@ function normalizePlan(input = {}, { personnel, substations }) {
   return { data, errors };
 }
 
-module.exports = { normalizePlan, baysFromScope, LIMITS, CYCLES };
+module.exports = { normalizePlan, baysFromScope, isolationDevices, defaultIsolationState, LIMITS, CYCLES };
