@@ -56,8 +56,9 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
 - Lập **Phương án thi công, biện pháp an toàn** (thí nghiệm), tự ghi hoặc từ lịch cắt điện / biên bản khảo sát:
   - Phụ lục I.1 **trạng thái cô lập** khi tiếp nhận / giao trả hiện trường: mỗi thiết bị chọn Mở / Đóng (mặc định máy cắt, DCL
     "Mở"; dao tiếp địa — số hiệu 2 chữ số sau gạch như 565-65, 532-38, hoặc ghi "DTĐ" — "Đóng"); Word đánh dấu "√" vào bảng của mẫu.
-  - Mục 3 "- Kiểm tra:": **bảng chi tiết thiết bị cần thí nghiệm** (STT, tên thiết bị, ký hiệu / vị trí, hạng mục / ghi chú),
-    người lập nhập hoặc "Điền từ Phụ lục I" rồi sửa; chèn ngay sau dòng "Kiểm tra:" (mẫu có thẻ `{@testEquipmentXml}` thì in tại đó).
+  - Mục 3, phần "Thực hiện:": **bảng thiết bị cần thí nghiệm** (STT, tên thiết bị, ký hiệu / vị trí, hạng mục / ghi chú),
+    người lập nhập hoặc "Điền từ Phụ lục I" (vd Máy cắt | MC 572 | 6 năm) rồi sửa; chèn sau đoạn "Kiểm tra thí nghiệm các hạng
+    mục…" kèm đoạn dẫn "Thiết bị cần thí nghiệm:" cùng kiểu đầu dòng (mẫu có thẻ `{@testEquipmentXml}` thì in tại đó).
   - Số `<n>/PA-<tổ>.<hậu tố>` (vd `12/PA-TNLĐ.Nhatthu`) đếm riêng theo tổ, năm; đặt được số khởi đầu.
   - Bảng 1 "Hạng mục thí nghiệm" tự lập khi chọn loại thiết bị + chu kỳ, theo bảng khối lượng của **QĐ 1901/QĐ-EVNNPT**
     (`server/seeds/tests1901.json`, trích từ PDF gốc bằng `scripts/extract_1901.py`, giữ đúng cột chu kỳ);

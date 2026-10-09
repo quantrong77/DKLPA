@@ -64,25 +64,43 @@ export function sentenceCase(name) {
   return out.charAt(0).toLocaleUpperCase('vi') + out.slice(1);
 }
 
+// tên gọn và ký hiệu viết tắt theo loại thiết bị QĐ 1901 (bảng "Thiết bị cần thí nghiệm")
+const EQUIPMENT_KINDS = [
+  [/^MBA_TD/, 'Máy biến áp tự dùng', 'MBA'],
+  [/^MBA/, 'Máy biến áp', 'MBA'],
+  [/^KH$/, 'Kháng điện', 'KH'],
+  [/^KK$/, 'Kháng khô', 'KK'],
+  [/^TI/, 'Biến dòng điện', 'TI'],
+  [/^TU/, 'Biến điện áp', 'TU'],
+  [/^MC/, 'Máy cắt', 'MC'],
+  [/^DCL/, 'Dao cách ly (Dao tiếp địa)', 'DCL'],
+  [/^CSV/, 'Chống sét van', 'CS'],
+  [/^ND$/, 'Hệ thống nối đất', '']
+];
+// chu kỳ ghi gọn trong cột "Hạng mục / Ghi chú"
+const CYCLE_SHORT = { install: 'Sau lắp đặt', year1: 'Sau 1 năm', annual: '1 năm', y3: '3 năm', y6: '6 năm' };
+
 /**
- * Dòng bảng "chi tiết thiết bị cần thí nghiệm" (mục 3, "- Kiểm tra:") từ các nhóm của Phụ lục I:
- * tên loại thiết bị (QĐ 1901), ký hiệu lấy phần có số trong tên nhóm ("MÁY CẮT 530, 532" -> "530, 532"),
- * ghi chú: chu kỳ + số hạng mục. Người lập sửa tiếp.
+ * Dòng bảng "Thiết bị cần thí nghiệm" (mục 3, phần "Thực hiện:") từ các nhóm của Phụ lục I, vd
+ * nhóm MC SF6 "MÁY CẮT 572" chu kỳ 6 năm -> { name: 'Máy cắt', position: 'MC 572', note: '6 năm' }.
+ * Ký hiệu lấy phần có số trong tên nhóm, thêm chữ viết tắt (MC, TU, TI, CS, DCL…) nếu chưa có. Người lập sửa tiếp.
  */
 export function equipmentFromGroups(groups, devices = []) {
   return (groups || []).map(g => {
     const dev = devices.find(d => d.key === g.deviceKey);
+    const kind = EQUIPMENT_KINDS.find(([re]) => re.test(String(g.deviceKey || '')));
     const label = String(g.label || '').trim();
     const words = label.split(/\s+/);
     // ký hiệu từ từ đầu tiên có số; giữ chữ viết tắt đứng ngay trước ("BIẾN DÒNG ĐIỆN TI 272" -> "TI 272")
     let at = words.findIndex(w => /\d/.test(w));
-    if (at > 0 && ACRONYMS.has(words[at - 1])) at -= 1;
-    const position = at >= 0 ? words.slice(at).join(' ') : '';
-    // tên QĐ 1901 viết hoa -> chữ thường; tên nhóm tự ghi giữ nguyên
-    const name = dev ? sentenceCase(dev.name) : (at > 0 ? words.slice(0, at).join(' ') : label);
-    const count = (g.items || []).filter(it => it.checked !== false).length;
-    const note = [CYCLE_LABELS[g.cycle], count ? `${count} hạng mục theo Phụ lục I` : ''].filter(Boolean).join(': ');
-    return { name, position, note };
+    if (at > 0 && (ACRONYMS.has(words[at - 1]) || words[at - 1] === kind?.[2])) at -= 1;
+    let position = at >= 0 ? words.slice(at).join(' ') : '';
+    if (/^\d/.test(position) && kind?.[2]) position = `${kind[2]} ${position}`;
+    // tên gọn theo loại thiết bị; loại khác: tên QĐ 1901 (bỏ phần trong ngoặc); nhóm tự lập: tên nhóm
+    const name = kind ? kind[1]
+      : dev ? sentenceCase(dev.name.replace(/\s*\(.*\)\s*$/, ''))
+        : (at > 0 ? words.slice(0, at).join(' ') : label);
+    return { name, position, note: CYCLE_SHORT[g.cycle] || '' };
   }).filter(r => r.name || r.position);
 }
 

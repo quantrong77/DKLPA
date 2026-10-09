@@ -56,7 +56,7 @@ export const HELP_SECTIONS = [
       ['4 bước soạn', '1. Chung & pháp lý · 2. Thi công & an toàn · 3. Phụ lục I (hạng mục thí nghiệm theo QĐ 1901, thiết bị thí nghiệm) · 4. Phụ lục II, III, ký.'],
       ['Ngăn lộ cắt điện', 'Tự lấy từ "Phạm vi / điều kiện cắt điện" của dòng lịch; sửa được.'],
       ['Trạng thái cô lập (Phụ lục I.1)', '"Lấy từ trình tự cô lập" lập danh sách thiết bị; mặc định máy cắt, dao cách ly "Mở", dao tiếp địa (vd 565-65, 565-85) "Đóng" khi tiếp nhận và giao trả hiện trường; đổi bằng ô chọn Mở / Đóng. File Word đánh dấu "√" vào cột tương ứng.'],
-      ['Bảng thiết bị cần thí nghiệm', 'Bước 2, mục E.3: bảng STT / Tên thiết bị / Ký hiệu, vị trí / Hạng mục, ghi chú, in ngay dưới dòng "- Kiểm tra:" của mục 3. "Điền từ Phụ lục I" lập sẵn mỗi nhóm thiết bị một dòng (tên theo QĐ 1901, ký hiệu theo tên nhóm), rồi sửa, thêm, xóa tùy ý; để trống thì không in bảng.'],
+      ['Bảng thiết bị cần thí nghiệm', 'Bước 2, mục E.3: bảng STT / Tên thiết bị / Ký hiệu, vị trí / Hạng mục, ghi chú, in ở phần "Thực hiện:" của mục 3 (dòng "Thiết bị cần thí nghiệm:" sau "Kiểm tra thí nghiệm các hạng mục…"). "Điền từ Phụ lục I" lập sẵn mỗi nhóm thiết bị một dòng (vd Máy cắt | MC 572 | 6 năm), rồi sửa, thêm, xóa tùy ý; để trống thì không in bảng.'],
       ['Cô lập mạch dòng (Phụ lục II)', 'Chọn TI từ thư viện mạch dòng, hoặc nạp trang bản vẽ mạch dòng PDF: phần mềm tự đọc kẹp, đầu dây — ô tự điền tô vàng, phải kiểm tra rồi bấm xác nhận. Đầu phía TI chọn kS1-kS2 … kS1-kS5 hoặc "Khác…".'],
       ['Số và ký', 'Số phương án cấp khi lưu lần đầu, không đổi khi sửa. Các nhãn ((…)) trong mẫu là vị trí ký số, giữ nguyên.'],
       ['Xuất văn bản', 'Xem trước, Tải Word / PDF, "Đăng QLTN" sau khi tải.']

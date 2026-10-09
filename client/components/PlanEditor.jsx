@@ -186,7 +186,7 @@ function GeneralStep({ form, setField, errors, catalogs, departments, outage }) 
   );
 }
 
-/** Mục 3 "- Kiểm tra:": bảng chi tiết thiết bị cần thí nghiệm — nhập tay hoặc điền sẵn từ Phụ lục I rồi sửa. */
+/** Mục 3, phần "Thực hiện:": bảng "Thiết bị cần thí nghiệm" — nhập tay hoặc điền sẵn từ Phụ lục I rồi sửa. */
 function TestEquipment({ form, setField, devices }) {
   const { confirmAction } = useDkct();
   const rows = form.testEquipment || [];
@@ -198,8 +198,8 @@ function TestEquipment({ form, setField, devices }) {
   };
   return (
     <fieldset className="space-y-2">
-      <legend className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kiểm tra: bảng chi tiết thiết bị cần thí nghiệm</legend>
-      <p className="text-xs text-slate-500 dark:text-slate-400">In ngay dưới dòng "- Kiểm tra:" của mục 3. Để trống: không in bảng.</p>
+      <legend className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Thực hiện: bảng thiết bị cần thí nghiệm</legend>
+      <p className="text-xs text-slate-500 dark:text-slate-400">In ở phần "Thực hiện:" của mục 3, sau dòng "Kiểm tra thí nghiệm các hạng mục…" (thêm dòng "Thiết bị cần thí nghiệm:"). Để trống: không in bảng.</p>
       {rows.length > 0 && (
         <div className="hidden sm:grid grid-cols-[2rem_1fr_1fr_1.3fr_4.5rem] gap-1.5 text-[11px] font-semibold text-slate-500">
           <span>STT</span><span>Tên thiết bị</span><span>Ký hiệu / vị trí</span><span>Hạng mục / Ghi chú</span><span />

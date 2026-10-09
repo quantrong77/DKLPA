@@ -190,14 +190,23 @@ test('bảng thiết bị cần thí nghiệm: chuẩn hóa (bỏ dòng trống,
   assert.equal(over.errors[0].field, 'testEquipment');
 });
 
-test('renderPlanDocx: bảng thiết bị cần thí nghiệm chèn ngay sau dòng "Kiểm tra:" của mục 3; trống thì không in', () => {
+test('renderPlanDocx: bảng thiết bị cần thí nghiệm ở phần "Thực hiện:", sau "Kiểm tra thí nghiệm các hạng mục…" kèm dòng dẫn; trống thì không in', () => {
   const rows = [{ name: 'Máy cắt', position: 'MC 272', note: 'Định kỳ 3 năm' }, { name: 'Biến dòng điện', position: 'TI 272 & 3 pha', note: 'Đo tỷ số\nĐo cách điện' }];
   const xml = docXml(renderPlanDocx({ docNumber: '12/PA-TNLĐ', data: { ...PLAN, testEquipment: rows } }, []));
   const text = plain(xml);
-  const check = text.indexOf('Kiểm tra:');
+  const doing = text.indexOf('Thực hiện:');
+  const testLine = text.indexOf('Kiểm tra thí nghiệm các hạng mục', doing);
+  const intro = text.indexOf('Thiết bị cần thí nghiệm:');
   const table = text.indexOf('STTTên thiết bịKý hiệu / vị tríHạng mục / Ghi chú');
-  assert.ok(check > text.indexOf('Phương án thực hiện') && table > check, 'bảng sau "Kiểm tra:"');
-  assert.ok(table < text.indexOf('Thực hiện:'), 'trước phần "Thực hiện:"');
+  assert.ok(doing > text.indexOf('Phương án thực hiện') && testLine > doing && intro > testLine && table > intro, 'Thực hiện → Kiểm tra thí nghiệm… → dòng dẫn → bảng');
+  assert.ok(table < text.indexOf('Lưu ý'), 'trước "Lưu ý"');
+  // dòng dẫn cùng kiểu đầu dòng với đoạn "Kiểm tra thí nghiệm…", giữ liền với bảng
+  const paras = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
+  const testPara = paras.find(p => plain(p).startsWith('Kiểm tra thí nghiệm các hạng mục'));
+  const introPara = paras.find(p => plain(p) === 'Thiết bị cần thí nghiệm:');
+  const numPr = (p) => (p.match(/<w:numPr>[\s\S]*?<\/w:numPr>/) || [''])[0];
+  assert.equal(numPr(introPara), numPr(testPara));
+  assert.match(introPara, /<w:keepNext\/>/);
   assert.ok(text.indexOf('1Máy cắtMC 272Định kỳ 3 năm') > table);
   assert.ok(text.includes('2Biến dòng điệnTI 272 &amp; 3 phaĐo tỷ sốĐo cách điện'));
   assert.match(xml, /TI 272 &amp; 3 pha/, 'thoát ký tự XML');

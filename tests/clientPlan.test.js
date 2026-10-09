@@ -126,11 +126,19 @@ test('sentenceCase / equipmentFromGroups: điền sẵn bảng thiết bị cầ
     { deviceKey: 'TI_SF6', cycle: 'y3', label: 'BIẾN DÒNG ĐIỆN TI 272', items: [] }
   ], DEVICES);
   assert.deepEqual(rows, [
-    { name: 'Máy cắt SF6', position: '530, 532', note: 'Định kỳ 3 năm: 2 hạng mục theo Phụ lục I' },
-    { name: 'MBA', position: 'MBA AT2', note: 'Định kỳ 6 năm: 1 hạng mục theo Phụ lục I' },
-    { name: 'Dao cách ly, dao tiếp địa', position: '', note: 'Định kỳ 1 năm' },
-    { name: 'Tủ RMU', position: '471', note: '1 hạng mục theo Phụ lục I' },
-    { name: 'Biến dòng điện (cách điện khí SF6)', position: 'TI 272', note: 'Định kỳ 3 năm' }
+    { name: 'Máy cắt', position: 'MC 530, 532', note: '3 năm' },
+    { name: 'Máy biến áp', position: 'MBA AT2', note: '6 năm' },
+    { name: 'Dao cách ly (Dao tiếp địa)', position: '', note: '1 năm' },
+    { name: 'Tủ RMU', position: '471', note: '' },
+    { name: 'Biến dòng điện', position: 'TI 272', note: '3 năm' }
+  ]);
+  // như mẫu phương án: Máy cắt | MC 572 | 6 năm; Chống sét van | CS 572; DCL giữ dao tiếp địa trong ngoặc
+  assert.deepEqual(equipmentFromGroups([
+    { deviceKey: 'MC_SF6', cycle: 'y6', label: 'MÁY CẮT 572' }, { deviceKey: 'TU_TU', cycle: 'y3', label: 'BIẾN ĐIỆN ÁP 572' },
+    { deviceKey: 'CSV', cycle: 'y3', label: 'CHỐNG SÉT VAN 572' }, { deviceKey: 'DCL', cycle: 'y3', label: 'DAO CÁCH LY 572-7 (572-74, 572-76)' }
+  ], DEVICES).map(r => [r.name, r.position, r.note]), [
+    ['Máy cắt', 'MC 572', '6 năm'], ['Biến điện áp', 'TU 572', '3 năm'], ['Chống sét van', 'CS 572', '3 năm'],
+    ['Dao cách ly (Dao tiếp địa)', 'DCL 572-7 (572-74, 572-76)', '3 năm']
   ]);
   assert.deepEqual(equipmentFromGroups([], DEVICES), []);
 });
