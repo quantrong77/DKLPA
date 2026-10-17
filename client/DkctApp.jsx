@@ -1,20 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardCheck, BookUser, Archive, Plus, RefreshCw, Loader2, Zap, Briefcase } from 'lucide-react';
+import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { ClipboardCheck, BookUser, Archive, Plus, RefreshCw, Loader2, Zap, Briefcase, Settings } from 'lucide-react';
 import { useDkct } from './context.jsx';
 import { TabButton, btnPrimary, btnGhost } from './components/ui.jsx';
 import RegistrationList from './components/RegistrationList.jsx';
-import RegistrationEditor from './components/RegistrationEditor.jsx';
 import OutagePanel from './components/OutagePanel.jsx';
-import CatalogPanel from './components/CatalogPanel.jsx';
-import LegacyPanel from './components/LegacyPanel.jsx';
 import SurveyList from './components/SurveyList.jsx';
-import SurveyEditor from './components/SurveyEditor.jsx';
 import PlanList from './components/PlanList.jsx';
-import PlanEditor from './components/PlanEditor.jsx';
 import ConfirmationList from './components/ConfirmationList.jsx';
-import ConfirmationEditor from './components/ConfirmationEditor.jsx';
 import WorkList from './components/WorkList.jsx';
-import WorkEditor from './components/WorkEditor.jsx';
 import WorkflowBar, { WorkflowMini } from './components/WorkflowBar.jsx';
 import { APP_NAME, linkedIds } from './lib/workflow.js';
 import { defaultWorkload, planFromSurvey, registrationFromPlan } from './lib/plan.js';
@@ -24,8 +17,21 @@ import { loadTheme, saveTheme, themeClass } from './lib/theme.js';
 import ThemePicker from './components/ThemePicker.jsx';
 import HelpAboutButtons from './components/HelpAbout.jsx';
 import { reloadHint, refreshedLabel } from './lib/help.js';
+import { usePersistentState } from './lib/persist.js';
 import './dkct-theme.css';
 import { emptyRep, qlvhRoleFor, registrationFromSurvey, withQlvhFor } from './lib/survey.js';
+
+// tải khi cần: biểu mẫu soạn thảo và các trang ít dùng (trang đầu mở nhanh hơn)
+const RegistrationEditor = lazy(() => import('./components/RegistrationEditor.jsx'));
+const CatalogPanel = lazy(() => import('./components/CatalogPanel.jsx'));
+const SettingsPanel = lazy(() => import('./components/SettingsPanel.jsx'));
+const LegacyPanel = lazy(() => import('./components/LegacyPanel.jsx'));
+const SurveyEditor = lazy(() => import('./components/SurveyEditor.jsx'));
+const PlanEditor = lazy(() => import('./components/PlanEditor.jsx'));
+const ConfirmationEditor = lazy(() => import('./components/ConfirmationEditor.jsx'));
+const WorkEditor = lazy(() => import('./components/WorkEditor.jsx'));
+
+const TABS = ['outages', 'surveys', 'plans', 'registrations', 'confirmations', 'catalogs', 'settings', 'legacy'];
 
 const EMPTY_WORK = {
   recipient: {},
@@ -36,9 +42,14 @@ const EMPTY_WORK = {
   leader: null
 };
 
+const PageLoading = () => (
+  <div className="flex items-center gap-2 p-4 text-sm text-slate-500" role="status"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Đang tải…</div>
+);
+
 export default function DkctApp() {
   const { api, notify } = useDkct();
-  const [tab, setTab] = useState('outages');
+  // tab đang mở, gốc luồng (Lịch / Công việc) nhớ theo trình duyệt: tải lại trang vẫn ở chỗ cũ
+  const [tab, setTab] = usePersistentState('dkct.tab', 'outages', TABS);
   // giao diện: Mặc định (ChatLan) | Chuyên nghiệp — nhớ theo trình duyệt
   const [theme, setTheme] = useState(() => loadTheme(typeof localStorage === 'undefined' ? null : localStorage));
   const chooseTheme = (id) => { setTheme(id); saveTheme(typeof localStorage === 'undefined' ? null : localStorage, id); };
@@ -51,7 +62,7 @@ export default function DkctApp() {
   const [selection, setSelection] = useState(null);
   const [chain, setChain] = useState(null);
   // bước 1: danh sách lịch cắt điện hoặc công việc không có lịch cắt điện
-  const [firstView, setFirstView] = useState('outages');
+  const [firstView, setFirstView] = usePersistentState('dkct.firstView', 'outages', ['outages', 'works']);
   const track = (type, item) => setSelection(s => (s?.type === type && s.id === item.id ? null : { type, id: item.id }));
   const follow = (type, item) => {
     if (!item?.id) return;
@@ -222,6 +233,17 @@ export default function DkctApp() {
   });
 
   const permissions = meta?.permissions || {};
+  // trang Cài đặt chỉ admin; quyền đổi (đăng nhập tài khoản khác) thì quay về Lịch cắt điện
+  useEffect(() => { if (meta && tab === 'settings' && !permissions.isAdmin) setTab('outages'); }, [meta, tab, permissions.isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  // nút chính đầu trang theo tab; Danh mục, Cài đặt, Giấy cũ không có
+  const PRIMARY = {
+    outages: firstView === 'works' ? { label: 'Thêm công việc', onClick: openNewWork } : { label: 'Lập giấy mới', onClick: openNew },
+    surveys: { label: 'Lập biên bản', onClick: openNewSurvey },
+    plans: { label: 'Lập phương án', onClick: () => openNewPlan() },
+    registrations: { label: 'Lập giấy mới', onClick: openNew },
+    confirmations: { label: 'Lập giấy xác nhận', onClick: openNewConfirmation }
+  };
+  const primary = permissions.canCreate ? PRIMARY[tab] : null;
   const linked = linkedIds(chain);
   const pick = (type) => ({ selectedId: selection?.type === type ? selection.id : null, linked, onTrack: (item) => track(type, item) });
   return (
@@ -243,17 +265,9 @@ export default function DkctApp() {
                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /><span className="hidden sm:inline">Đang mở…</span>
               </span>
             )}
-            {permissions.canCreate && (tab === 'outages' && firstView === 'works' ? (
-              <button type="button" className={btnPrimary} onClick={openNewWork} disabled={!meta}><Plus className="w-4 h-4" /> Thêm công việc</button>
-            ) : tab === 'surveys' ? (
-              <button type="button" className={btnPrimary} onClick={openNewSurvey} disabled={!meta}><Plus className="w-4 h-4" /> Lập biên bản</button>
-            ) : tab === 'plans' ? (
-              <button type="button" className={btnPrimary} onClick={() => openNewPlan()} disabled={!meta}><Plus className="w-4 h-4" /> Lập phương án</button>
-            ) : tab === 'confirmations' ? (
-              <button type="button" className={btnPrimary} onClick={openNewConfirmation} disabled={!meta}><Plus className="w-4 h-4" /> Lập giấy xác nhận</button>
-            ) : (
-              <button type="button" className={btnPrimary} onClick={openNew} disabled={!meta}><Plus className="w-4 h-4" /> Lập giấy mới</button>
-            ))}
+            {primary && (
+              <button type="button" className={btnPrimary} onClick={primary.onClick} disabled={!meta}><Plus className="w-4 h-4" /> {primary.label}</button>
+            )}
             <HelpAboutButtons tab={tab} />
             <ThemePicker value={theme} onChange={chooseTheme} />
             <button type="button" className={`${btnGhost} inline-flex items-center gap-1.5 disabled:opacity-70`} onClick={refresh} disabled={refreshing}
@@ -270,6 +284,7 @@ export default function DkctApp() {
         <WorkflowBar tab={tab} onTab={setTab} chain={chain} selection={selection} onClearSelection={() => setSelection(null)}
           extraTabs={<>
             <TabButton icon={BookUser} active={tab === 'catalogs'} onClick={() => setTab('catalogs')}>Danh mục</TabButton>
+            {permissions.isAdmin && <TabButton icon={Settings} active={tab === 'settings'} onClick={() => setTab('settings')}>Cài đặt</TabButton>}
             <TabButton icon={Archive} active={tab === 'legacy'} onClick={() => setTab('legacy')}>Giấy cũ</TabButton>
           </>} />
       </div>
@@ -299,10 +314,14 @@ export default function DkctApp() {
           <WorkList {...pick('work')} reloadKey={reloadKey} canCreate={permissions.canCreate} onOpen={openWork}
             onCreateSurvey={openSurveyFromWork} onCreatePlan={openPlanFromWork} onCreateRegistration={openRegistrationFromWork} />
         )}
+        <Suspense fallback={<PageLoading />}>
         {tab === 'catalogs' && <CatalogPanel catalogs={catalogs} canManage={permissions.canManageCatalog} isAdmin={permissions.isAdmin} onChanged={loadCatalog} />}
+        {tab === 'settings' && permissions.isAdmin && <SettingsPanel />}
         {tab === 'legacy' && <LegacyPanel />}
+        </Suspense>
       </div>
 
+      <Suspense fallback={null}>
       {editor && (
         <RegistrationEditor
           {...editor}
@@ -348,6 +367,7 @@ export default function DkctApp() {
           onSaved={(saved) => { follow('plan', saved); setPlanEditor(null); setTab('plans'); setReloadKey(k => k + 1); }}
         />
       )}
+      </Suspense>
     </div>
   );
 }

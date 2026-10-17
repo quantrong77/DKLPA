@@ -1,7 +1,7 @@
 /**
  * Tự tải lịch cắt điện từ trang Công ty theo giờ hẹn (giờ Việt Nam) rồi nạp, so sánh, báo thay đổi.
  *
- * Cấu hình: admin đặt ở Danh mục → Tải lịch tự động (services/outageSettings); mặc định lấy biến môi trường
+ * Cấu hình: admin đặt ở Cài đặt → Tải lịch tự động (services/outageSettings); mặc định lấy biến môi trường
  *   OUTAGE_AUTO_FETCH   giờ tải trong ngày, vd "07:00,15:00" (bỏ trống = tắt)
  *   OUTAGE_AUTO_DAYS    số ngày tới cần tải, tính từ hôm nay (mặc định 14)
  * Cần tài khoản trang lịch (admin đặt hoặc OUTAGE_SOURCE_USER/PASSWORD) và máy chủ vào được mạng nội bộ.
@@ -18,6 +18,9 @@ const MAX_DAYS = 62;
 const TICK_MS = 30 * 1000;
 // lỡ giờ hẹn (máy chủ đang ngủ / khởi động lại, vd Render gói miễn phí) thì tải bù khi thức dậy, trong vòng 2 giờ
 const CATCH_UP_MIN = 120;
+// tải tự động lỗi: thử lại sau 10 phút, tối đa 3 lần mỗi giờ hẹn (vẫn trong khoảng tải bù)
+const RETRY_MS = 10 * 60 * 1000;
+const MAX_ATTEMPTS = 3;
 const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
 /** Giờ hẹn cần tải lúc `hhmm`: giờ hẹn gần nhất đã tới, chưa quá CATCH_UP_MIN phút (không có -> null). */
@@ -80,7 +83,7 @@ async function finishRun(db, id, { ok, result, error, now = new Date() }) {
  * Tải + nạp một khoảng ngày, ghi nhật ký. `slot` khác nhau cho mỗi lần (tự động: theo giờ hẹn; bấm tay: id ngẫu nhiên).
  * -> kết quả nạp (importParsed) | null nếu slot đã được tải.
  */
-async function fetchAndImport({ db, importer, outageSource, from, to, mode, slot, actorId, label, now = new Date() }) {
+async function fetchAndImport({ db, importer, outageSource, from, to, mode, slot, actorId, label, now = new Date(), releaseOnFail = false }) {
   const runId = await claimSlot(db, { slot, mode, from, to, actorId, now });
   if (!runId) return null;
   try {
@@ -91,6 +94,8 @@ async function fetchAndImport({ db, importer, outageSource, from, to, mode, slot
     return result;
   } catch (err) {
     await finishRun(db, runId, { ok: false, error: err.message });
+    // tải tự động lỗi (mạng chập chờn, trang Công ty bận): trả slot để lần kiểm tra sau thử lại; nhật ký vẫn giữ lần lỗi
+    if (releaseOnFail) await db.execute('UPDATE dkct_outage_fetches SET slot = ? WHERE id = ?', [`${slot}#lỗi:${runId}`.slice(0, 191), runId]);
     throw err;
   }
 }
@@ -104,7 +109,8 @@ async function fetchAndImport({ db, importer, outageSource, from, to, mode, slot
 function createAutoFetch({ db, importer, settings, log = console }) {
   let timer = null;
   let running = false;
-  const tried = new Set(); // slot đã thử trong tiến trình này: không hỏi CSDL lại mỗi 30 giây
+  // slot đã thử trong tiến trình này { attempts, retryAt, done }: không hỏi CSDL lại mỗi 30 giây; lỗi thì thử lại sau RETRY_MS
+  const tried = new Map();
 
   const config = () => settings.autoOptions();
   async function enabled() {
@@ -122,14 +128,17 @@ function createAutoFetch({ db, importer, settings, log = console }) {
       if (!due) return null;
       const from = vnToday(now);
       const slot = `auto:${from} ${due}`;
-      if (tried.has(slot)) return null;
+      const seen = tried.get(slot);
+      if (seen && (seen.done || seen.attempts >= MAX_ATTEMPTS || now.getTime() < seen.retryAt)) return null;
       const outageSource = await settings.sourceOptions();
       if (!configured(sourceConfig(outageSource))) return null;
       if (tried.size > 50) tried.clear();
-      tried.add(slot);
+      const attempt = { attempts: (seen?.attempts || 0) + 1, retryAt: now.getTime() + RETRY_MS, done: false };
+      tried.set(slot, attempt);
       const to = addDays(from, cfg.days - 1);
       const label = `Tự tải ${due} ${from.split('-').reverse().join('/')}${due === hhmm ? '' : ` (tải bù lúc ${hhmm})`}`;
-      const result = await fetchAndImport({ db, importer, outageSource, from, to, mode: 'AUTO', slot, label, now });
+      const result = await fetchAndImport({ db, importer, outageSource, from, to, mode: 'AUTO', slot, label, now, releaseOnFail: true });
+      attempt.done = true; // đã tải (hoặc tiến trình khác đã giữ slot)
       if (result) log.info?.(`[dkct] ${label}: ${result.rows} dòng, ${result.logged} thay đổi, báo ${result.notified} người.`);
       return result;
     } catch (err) {
@@ -160,4 +169,4 @@ function createAutoFetch({ db, importer, settings, log = console }) {
   };
 }
 
-module.exports = { createAutoFetch, fetchAndImport, parseTimes, autoConfig, addDays, dueTime, MAX_DAYS, CATCH_UP_MIN };
+module.exports = { createAutoFetch, fetchAndImport, parseTimes, autoConfig, addDays, dueTime, MAX_DAYS, CATCH_UP_MIN, RETRY_MS, MAX_ATTEMPTS };

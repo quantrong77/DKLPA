@@ -19,12 +19,12 @@ const COLUMNS = 'w.id, w.department, w.content, w.stationName, w.substationId, w
 function workRouter({ db, policy, wrap, buildDraftDefaults }) {
   const router = express.Router();
 
-  const present = async (row, actor) => ({
+  const present = async (row, actor, canEdit = policy.canEdit) => ({
     ...row,
     surveyCount: Number(row.surveyCount) || 0,
     planCount: Number(row.planCount) || 0,
     registrationCount: Number(row.registrationCount) || 0,
-    canEdit: await policy.canEdit(actor, row)
+    canEdit: await canEdit(actor, row)
   });
   const loadRow = (id) => db.queryOne(`SELECT ${COLUMNS}, ${COUNTS} FROM dkct_works w WHERE w.id = ?`, [id]);
 
@@ -71,7 +71,8 @@ function workRouter({ db, policy, wrap, buildDraftDefaults }) {
     const rows = await db.query(`SELECT ${COLUMNS}, ${COUNTS} FROM dkct_works w ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY w.startTime DESC, w.createdAt DESC LIMIT 500`, params);
     const items = [];
-    for (const row of rows) items.push(await present(row, actor));
+    const canEdit = policy.editChecker();
+    for (const row of rows) items.push(await present(row, actor, canEdit));
     res.json({ items });
   }));
 

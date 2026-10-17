@@ -20,10 +20,10 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
   const numbering = createNumbering(db, undefined, { table: 'dkct_confirmations', prefix: 'GXN:' });
   const notFound = (message) => Object.assign(new Error(message), { status: 404 });
 
-  const present = async (row, actor) => ({
+  const present = async (row, actor, canEdit = policy.canEdit) => ({
     ...row,
     data: row.data === undefined ? undefined : safeParse(row.data),
-    canEdit: await policy.canEdit(actor, row)
+    canEdit: await canEdit(actor, row)
   });
 
   async function loadVisible(req, columns = '*') {
@@ -157,7 +157,8 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
     const rows = await db.query(`SELECT ${LIST_COLUMNS} FROM dkct_confirmations ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY docYear DESC, docSeq DESC LIMIT 500`, params);
     const items = [];
-    for (const row of rows) items.push(await present(row, actor));
+    const canEdit = policy.editChecker();
+    for (const row of rows) items.push(await present(row, actor, canEdit));
     res.json({ items });
   }));
 

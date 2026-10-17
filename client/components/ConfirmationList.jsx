@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BadgeCheck, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { btnGhost, btnSecondary, inputCls, inputBorder } from './ui.jsx';
+import { useLatestRequest } from '../lib/latest.js';
+import { btnGhost, btnSecondary, inputCls, inputBorder, ListError, NoMatch } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 
@@ -12,6 +13,8 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(null);
+  const latest = useLatestRequest();
   const [previewItem, setPreviewItem] = useState(null);
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -19,17 +22,22 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
   const [startDraft, setStartDraft] = useState(null);
 
   const load = useCallback(async () => {
+    const isLatest = latest(); // chỉ nhận kết quả của lần tải mới nhất
     setLoading(true);
     try {
       const [list, num] = await Promise.all([api.get(`/confirmations?${new URLSearchParams({ search, year })}`), api.get('/confirmation-numbering')]);
+      if (!isLatest()) return;
+      setFailed(null);
       setItems(list.items);
       setNumbering(num.numbering);
     } catch (err) {
+      if (!isLatest()) return;
+      setFailed(err.message);
       notify(err.message, 'error');
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [api, notify, search, year]);
+  }, [api, notify, search, year, latest]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -87,7 +95,9 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
         )}
       </div>
 
-      {!loading && items.length === 0 ? (
+      {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
+        : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
+        : !loading && items.length === 0 ? (
         <EmptyState icon={BadgeCheck} title="Chưa có giấy xác nhận"
           description={canCreate ? 'Bấm "Lập giấy xác nhận", hoặc lập từ một giấy ĐKCT (tab Giấy ĐKCT).' : 'Giấy xác nhận do trưởng/phó tổ lập sẽ hiện ở đây.'} />
       ) : (

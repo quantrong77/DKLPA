@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FileText, Search, FileDown, Trash2, Eye, Hash, Pencil, BadgeCheck, ScanEye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import { useLatestRequest } from '../lib/latest.js';
+import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime, ListError, NoMatch } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 import { OutageChangeTag } from './OutageAlert.jsx';
@@ -11,21 +12,29 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(null);
+  const latest = useLatestRequest();
   const [previewItem, setPreviewItem] = useState(null);
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
 
   const load = useCallback(async () => {
+    const isLatest = latest(); // chỉ nhận kết quả của lần tải mới nhất
     setLoading(true);
     try {
       const q = new URLSearchParams({ search, year });
-      setItems((await api.get(`/registrations?${q}`)).items);
+      const { items: rows } = await api.get(`/registrations?${q}`);
+      if (!isLatest()) return;
+      setItems(rows);
+      setFailed(null);
     } catch (err) {
+      if (!isLatest()) return;
+      setFailed(err.message);
       notify(err.message, 'error');
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [api, notify, search, year]);
+  }, [api, notify, search, year, latest]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -88,7 +97,9 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
         )}
       </div>
 
-      {!loading && items.length === 0 ? (
+      {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
+        : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
+        : !loading && items.length === 0 ? (
         <EmptyState icon={FileText} title="Chưa có giấy đăng ký công tác"
           description={canCreate ? 'Tạo giấy từ tab "Lịch cắt điện" hoặc bấm "Lập giấy mới".' : 'Giấy do trưởng/phó tổ lập sẽ hiện ở đây.'} />
       ) : (

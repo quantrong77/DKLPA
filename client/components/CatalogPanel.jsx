@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp, Cable, MapPinned, FileText, CloudDownload } from 'lucide-react';
+import { Plus, Pencil, EyeOff, Save, X, Users, Building2, ClipboardList, ShieldAlert, Zap, FileImage, FileUp, Cable, Search } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import DrawingDialog from './DrawingDialog.jsx';
 import CtLibraryPanel from './CtLibraryPanel.jsx';
-import TeamAreasPanel from './TeamAreasPanel.jsx';
-import TemplatesPanel from './TemplatesPanel.jsx';
-import OutageSettingsPanel from './OutageSettingsPanel.jsx';
 import { TabButton, btnGhost, btnPrimary, btnSecondary, inputCls, inputBorder } from './ui.jsx';
+import { usePersistentState } from '../lib/persist.js';
 
 const CATALOGS = {
   personnel: {
@@ -86,15 +84,21 @@ function RowEditor({ cfg, value, onChange, catalogs }) {
   });
 }
 
-/** Quản lý các danh mục; thành viên thường chỉ xem. Thư viện mạch dòng: tạm thời chỉ admin sửa. */
+/** Quản lý các danh mục; thành viên thường chỉ xem. Thư viện mạch dòng: tạm thời chỉ admin sửa.
+ * Cài đặt hệ thống (khu vực của tổ, tải lịch tự động, mẫu văn bản) ở tab "Cài đặt" của admin. */
 export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }) {
   const { api, notify, confirmAction } = useDkct();
-  const [tab, setTab] = useState('personnel');
+  const [tab, setTab] = usePersistentState('dkct.catalogTab', 'personnel', [...Object.keys(CATALOGS), 'ctLibrary']);
+  const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState(null); // { id?, ...values }
   const [drawingOf, setDrawingOf] = useState(null); // trạm đang mở bản vẽ
   const drawingsOf = (substationId) => (catalogs.drawings || []).filter(d => d.substationId === substationId);
   const cfg = CATALOGS[tab];
-  const rows = (cfg && catalogs[tab]) || [];
+  const all = (cfg && catalogs[tab]) || [];
+  // lọc nhanh trên mọi cột hiển thị (không phân biệt hoa thường, dấu)
+  const fold = (v) => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+  const needle = fold(filter.trim());
+  const rows = needle ? all.filter(row => cfg.columns.some(c => fold(c.display ? c.display(row, catalogs) : row[c.key]).includes(needle))) : all;
 
   const save = async () => {
     try {
@@ -116,24 +120,28 @@ export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }
     <div className="space-y-3">
       <div className="flex gap-2 overflow-x-auto">
         {Object.entries(CATALOGS).map(([key, c]) => (
-          <TabButton key={key} icon={c.icon} active={tab === key} onClick={() => { setTab(key); setEditing(null); }}>
+          <TabButton key={key} icon={c.icon} active={tab === key} onClick={() => { setTab(key); setEditing(null); setFilter(''); }}>
             {c.label} ({(catalogs[key] || []).length})
           </TabButton>
         ))}
         <TabButton icon={Cable} active={tab === 'ctLibrary'} onClick={() => { setTab('ctLibrary'); setEditing(null); }}>Mạch dòng TI</TabButton>
-        <TabButton icon={MapPinned} active={tab === 'teamAreas'} onClick={() => { setTab('teamAreas'); setEditing(null); }}>Khu vực của tổ</TabButton>
-        <TabButton icon={FileText} active={tab === 'templates'} onClick={() => { setTab('templates'); setEditing(null); }}>Mẫu văn bản</TabButton>
-        {isAdmin && <TabButton icon={CloudDownload} active={tab === 'outageSettings'} onClick={() => { setTab('outageSettings'); setEditing(null); }}>Tải lịch tự động</TabButton>}
       </div>
-      {tab === 'templates' && <TemplatesPanel canManage={!!isAdmin} />}
-      {tab === 'outageSettings' && isAdmin && <OutageSettingsPanel />}
       {tab === 'ctLibrary' && <CtLibraryPanel catalogs={catalogs} canManage={!!isAdmin} />}
-      {tab === 'teamAreas' && <TeamAreasPanel canManage={!!isAdmin} />}
       {cfg && <>
       {cfg.hint && <p className="text-xs text-slate-500 dark:text-slate-400">{cfg.hint}</p>}
-      {canManage && !editing && (
-        <button type="button" className={btnSecondary} onClick={() => setEditing({})}><Plus className="w-4 h-4" /> Thêm</button>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {canManage && !editing && (
+          <button type="button" className={btnSecondary} onClick={() => setEditing({})}><Plus className="w-4 h-4" /> Thêm</button>
+        )}
+        {all.length > 8 && (
+          <label className="relative flex-1 min-w-[12rem] max-w-sm">
+            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <input type="search" value={filter} onChange={e => setFilter(e.target.value)} placeholder={`Tìm trong ${cfg.label.toLowerCase()}…`}
+              aria-label={`Tìm trong ${cfg.label}`} className={`${inputCls} ${inputBorder()} pl-8`} />
+          </label>
+        )}
+        {needle && <span className="text-xs text-slate-500">{rows.length}/{all.length} dòng</span>}
+      </div>
       {editing && (
         <div className="bg-white dark:bg-slate-900 border border-chatlan-200 dark:border-chatlan-900 rounded-xl p-3 space-y-2">
           <div className={`grid gap-2 ${cfg.columns.some(c => c.multiline) ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-4'}`}>
@@ -155,6 +163,11 @@ export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }
             </tr>
           </thead>
           <tbody>
+            {!rows.length && (
+              <tr><td colSpan={cfg.columns.length + 2} className="p-4 text-center text-sm text-slate-500">
+                {needle ? `Không có dòng nào khớp "${filter.trim()}".` : 'Chưa có dữ liệu.'}
+              </td></tr>
+            )}
             {rows.map(row => (
               <tr key={row.id} className="border-t border-slate-100 dark:border-slate-800 align-top text-slate-700 dark:text-slate-200">
                 {cfg.columns.map(c => <td key={c.key} className="p-2 whitespace-pre-line">{c.display ? c.display(row, catalogs) : row[c.key]}</td>)}
@@ -171,8 +184,8 @@ export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }
                 )}
                 {canManage && (
                   <td className="p-1 whitespace-nowrap">
-                    <button type="button" className={btnGhost} aria-label="Sửa" onClick={() => setEditing({ ...row })}><Pencil className="w-4 h-4" /></button>
-                    <button type="button" className={btnGhost} aria-label="Ẩn" onClick={() => remove(row)}><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" className={btnGhost} aria-label="Sửa" title="Sửa" onClick={() => setEditing({ ...row })}><Pencil className="w-4 h-4" /></button>
+                    <button type="button" className={btnGhost} aria-label="Ẩn" title="Ẩn khỏi danh sách chọn (giấy đã lập giữ nguyên)" onClick={() => remove(row)}><EyeOff className="w-4 h-4" /></button>
                   </td>
                 )}
               </tr>

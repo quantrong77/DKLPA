@@ -197,7 +197,7 @@ function ImportBox({ onDone, onLocate }) {
           </>
         ) : (
           <a href={OUTAGE_SOURCE_URL} target="_blank" rel="noopener noreferrer" className={btnSecondary}
-            title="Mở trang lịch cắt điện của Công ty (mạng nội bộ) để tải file Excel. Khi admin đã đặt tài khoản (Danh mục → Tải lịch tự động) thì nút này tự tải và cập nhật.">
+            title="Mở trang lịch cắt điện của Công ty (mạng nội bộ) để tải file Excel. Khi admin đã đặt tài khoản (Cài đặt → Tải lịch tự động) thì nút này tự tải và cập nhật.">
             <CloudDownload className="w-4 h-4 text-chatlan-600" /> Tải lịch cắt điện
           </a>
         )}

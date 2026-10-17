@@ -4,26 +4,26 @@ const { PGlite } = require('@electric-sql/pglite');
 const { createPgDb } = require('../../server/pgDb');
 const { createApp, APP_TABLE_TEXT } = require('../server/app');
 
-// Token giả thay cho Supabase: "tok-<id>" -> người dùng <id>
+// Token giả thay cho Supabase: "h.tok-<id>.s" (dạng JWT) -> người dùng <id>
 const IDENTITIES = {
   boss: { id: 'a0', email: 'Boss@Example.com', fullName: 'Quản trị' },
   lan: { id: 'a1', email: 'lan@example.com', fullName: 'Nguyễn Thị Lan' },
   minh: { id: 'a2', email: 'minh@example.com', fullName: 'Trần Minh' }
 };
 
-async function startApp() {
+async function startApp({ verifyToken } = {}) {
   const pg = new PGlite({ parsers: { 1114: (v) => v, 20: Number } });
   const { app, migrate } = createApp({
     db: createPgDb(pg, { names: [APP_TABLE_TEXT] }),
-    verifyToken: async (token) => Object.values(IDENTITIES).find(u => `tok-${u.id}` === token) || null,
+    verifyToken: verifyToken || (async (token) => Object.values(IDENTITIES).find(u => `h.tok-${u.id}.s` === token) || null),
     adminEmails: ['boss@example.com'],
     publicConfig: { supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'anon' }
   });
   await migrate();
   const server = await new Promise(resolve => { const s = app.listen(0, () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
-  const call = async (who, method, url, body) => {
-    const headers = who ? { authorization: `Bearer tok-${IDENTITIES[who].id}` } : {};
+  const call = async (who, method, url, body, extraHeaders = {}) => {
+    const headers = { ...(who ? { authorization: `Bearer h.tok-${IDENTITIES[who].id}.s` } : {}), ...extraHeaders };
     if (body !== undefined) headers['content-type'] = 'application/json';
     const res = await fetch(base + url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     return { status: res.status, body: await res.json().catch(() => null) };
@@ -47,10 +47,29 @@ test('lần đầu đăng nhập tạo hồ sơ; email trong ADMIN_EMAILS là ad
     assert.deepEqual([boss.role, boss.email, boss.fullName], ['admin', 'boss@example.com', 'Quản trị']);
     const lan = (await app.call('lan', 'GET', '/api/app/me')).body.user;
     assert.deepEqual([lan.role, lan.department], ['member', null]);
-    // chưa thuộc tổ: không lập được giấy, không xem được hồ sơ tổ nào
-    const meta = (await app.call('lan', 'GET', '/api/dkct/meta')).body;
-    assert.equal(meta.permissions.canCreate, false);
+    // chưa thuộc tổ: chưa xem được dữ liệu nào của module (lịch, bản vẽ, nhân sự…), chờ admin xếp tổ
+    for (const url of ['/api/dkct/meta', '/api/dkct/personnel', '/api/dkct/outages', '/api/dkct/substation-drawings']) {
+      const r = await app.call('lan', 'GET', url);
+      assert.equal(r.status, 403, url);
+      assert.match(r.body.error, /chưa được xếp tổ/);
+    }
+    assert.equal((await app.call('boss', 'GET', '/api/dkct/meta')).status, 200, 'admin chưa có tổ vẫn vào được');
     assert.equal((await app.call('lan', 'GET', '/api/app/users')).status, 403);
+  } finally { await app.close(); }
+});
+
+test('token không có dạng JWT bị từ chối không gọi Supabase; ADMIN_EMAILS chưa xác nhận email thì không là admin', async () => {
+  let calls = 0;
+  const app = await startApp({
+    verifyToken: async (token) => { calls += 1; return token === 'h.x.s' ? { id: 'u9', email: 'boss@example.com', fullName: '', emailConfirmed: false } : null; }
+  });
+  try {
+    assert.equal((await app.call(null, 'GET', '/api/app/me', undefined, { authorization: 'Bearer khong-phai-jwt' })).status, 401);
+    assert.equal(calls, 0);
+    for (let i = 0; i < 3; i++) assert.equal((await app.call(null, 'GET', '/api/app/me', undefined, { authorization: 'Bearer a.b.c' })).status, 401);
+    assert.equal(calls, 1, 'token sai được nhớ, không hỏi lại Supabase');
+    const me = (await app.call(null, 'GET', '/api/app/me', undefined, { authorization: 'Bearer h.x.s' })).body.user;
+    assert.equal(me.role, 'member');
   } finally { await app.close(); }
 });
 

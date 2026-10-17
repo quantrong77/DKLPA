@@ -48,10 +48,10 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
   const numbering = createNumbering(db, undefined, { table: 'dkct_plans', prefix: 'PA:' });
   const places = createPlaces(db);
 
-  const present = async (row, actor) => ({
+  const present = async (row, actor, canEdit = policy.canEdit) => ({
     ...row,
     data: row.data === undefined ? undefined : safeParse(row.data),
-    canEdit: await policy.canEdit(actor, row)
+    canEdit: await canEdit(actor, row)
   });
 
   async function loadVisible(req, columns = '*') {
@@ -87,10 +87,16 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
   /** Ảnh các sơ đồ trạm in ở Phụ lục IV, cấp điện áp cao trước (drawingIds null: mọi sơ đồ của trạm). */
   async function drawingsFor(data) {
     if (!data.station?.substationId) return [];
-    const rows = await db.query('SELECT id, label, image FROM dkct_drawings WHERE substationId = ? ORDER BY sortOrder, label',
+    // chọn trước (không kèm ảnh), rồi chỉ nạp ảnh các sơ đồ được in: mỗi ảnh có thể tới vài MB
+    const rows = await db.query('SELECT id FROM dkct_drawings WHERE substationId = ? ORDER BY sortOrder, label',
       [data.station.substationId]);
     const picked = Array.isArray(data.drawingIds) ? rows.filter(r => data.drawingIds.includes(r.id)) : rows;
-    return picked.map(r => ({ label: r.label, buffer: Buffer.from(r.image) }));
+    const out = [];
+    for (const { id } of picked) {
+      const r = await db.queryOne('SELECT label, image FROM dkct_drawings WHERE id = ?', [id]);
+      if (r) out.push({ label: r.label, buffer: Buffer.from(r.image) });
+    }
+    return out;
   }
 
   const summary = (data, workTitle) => [workTitle.slice(0, 2000), data.station.name.slice(0, 255), data.time.start,
@@ -233,7 +239,8 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     const rows = await db.query(`SELECT ${LIST_COLUMNS} FROM dkct_plans ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY docYear DESC, docSeq DESC LIMIT 500`, params);
     const items = [];
-    for (const row of rows) items.push(await present(row, actor));
+    const canEdit = policy.editChecker();
+    for (const row of rows) items.push(await present(row, actor, canEdit));
     res.json({ items: await attachOutageChanges(db, items) }); // cảnh báo lịch cắt điện đã hoãn / dời / sửa
   }));
 

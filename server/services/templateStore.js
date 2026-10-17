@@ -141,7 +141,7 @@ function createTemplateStore({ db, renderers, sampleOf }) {
       return await fn(tpl.content);
     } catch (err) {
       throw fail(409, `Mẫu Word "${tpl.name}" đang dùng cho ${KINDS[kind].label.toLowerCase()} bị lỗi khi điền: ${explain(err)[0]}. `
-        + 'Admin vào Danh mục → Mẫu văn bản để sửa hoặc chọn lại mẫu gốc.');
+        + 'Admin vào Cài đặt → Mẫu văn bản để sửa hoặc chọn lại mẫu gốc.');
     }
   }
 

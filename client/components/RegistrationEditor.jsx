@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Save, FileDown, Loader2, AlertTriangle, Eye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
+import { useEditorKeys } from '../lib/editorKeys.js';
 import EditorWork from './EditorWork.jsx';
 import EditorPeople from './EditorPeople.jsx';
 import EditorAppendix from './EditorAppendix.jsx';
-import { TabButton, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import { TabButton, btnPrimary, btnSecondary, btnGhost, UnsavedBadge } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
 import LinkedWork from './LinkedWork.jsx';
 import { fieldErrors, pruneAfterChange } from '../lib/form.js';
@@ -90,6 +91,9 @@ export default function RegistrationEditor({ initial, registration, outage, cata
   const stepErrors = (s) => errorList.filter(e => s.owns.test(e.field)).length;
   const shared = { form, setForm: update, errors, personnel: catalogs.personnel, stations: catalogs.stations, departments, duties: catalogs.duties, riskLibrary: catalogs.risks, outage, docNumberPreview, isNew: !registration };
 
+  // Ctrl+S lưu; còn thay đổi chưa lưu thì trình duyệt hỏi lại khi đóng / tải lại tab
+  useEditorKeys({ onSave: () => save(), dirty: !readOnly && dirty, disabled: saving || !!readOnly });
+
   return (
     <ModalOverlay onClose={close} className="fixed inset-0 z-50 bg-slate-900/40 flex items-stretch md:items-center justify-center md:p-4">
       <div className="bg-slate-50 dark:bg-slate-950 w-full md:max-w-5xl md:rounded-2xl shadow-xl flex flex-col max-h-full md:max-h-[92vh]">
@@ -103,7 +107,10 @@ export default function RegistrationEditor({ initial, registration, outage, cata
               <p className="text-xs text-chatlan-700 dark:text-chatlan-300">Đang hiệu chỉnh — số giấy giữ nguyên; bấm "Lưu thay đổi" để cập nhật, rồi tải lại file Word.</p>
             )}
           </div>
-          <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <UnsavedBadge show={!readOnly && dirty} />
+            <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          </div>
         </header>
 
         <nav className="flex gap-2 px-4 py-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto bg-white dark:bg-slate-900" aria-label="Các phần của giấy">

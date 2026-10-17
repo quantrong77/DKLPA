@@ -23,8 +23,10 @@ export const HELP_SECTIONS = [
       ['Theo dõi một hồ sơ', 'Bấm biểu tượng luồng ở đầu một dòng (hoặc mở hồ sơ): thanh luồng tô màu bước đã có (xanh lá ✓), bước đang chọn (xanh dương), bước nên làm tiếp (vàng); các hồ sơ cùng luồng được viền xanh trong danh sách.'],
       ['Cảnh báo lịch', 'Hồ sơ gắn dòng lịch đã hoãn / dời / sửa có nhãn "Lịch: …" trong danh sách và dải cảnh báo khi mở — kiểm tra lại trước khi in, nộp.'],
       ['Tải lại', 'Nút vòng xoay ở góc phải đầu trang lấy dữ liệu mới nhất từ máy chủ: danh sách của tab đang mở, danh mục, quyền và luồng hồ sơ đang theo dõi (không mất hồ sơ đang soạn). Vòng xoay quay khi đang tải; dòng "Cập nhật hh:mm" bên cạnh cho biết lần tải gần nhất. Dùng khi người khác vừa lập, sửa hồ sơ hoặc danh mục.'],
+      ['Phím tắt', 'Trong biểu mẫu: Ctrl+S lưu, Esc đóng (hỏi lại nếu chưa lưu); ảnh khảo sát, sơ đồ: Ctrl+V dán ảnh. Nhãn "● Chưa lưu" ở đầu biểu mẫu nhắc còn thay đổi chưa lưu; đóng tab trình duyệt khi chưa lưu thì trình duyệt hỏi lại.'],
+      ['Nhớ chỗ đang xem', 'Tải lại trang vẫn mở đúng tab, đúng mục danh mục / cài đặt đang xem.'],
       ['Giao diện', 'Nút bảng màu ở đầu trang: chọn "Mặc định" hoặc "Chuyên nghiệp"; trình duyệt ghi nhớ lựa chọn.'],
-      ['Quyền', 'Trưởng/phó tổ, trưởng phòng, admin lập và sửa hồ sơ của tổ; thành viên xem. Một số chức năng (dọn lịch, thư viện mạch dòng, khu vực của tổ, mẫu văn bản, tải lịch tự động) chỉ admin.']
+      ['Quyền', 'Trưởng/phó tổ, trưởng phòng, admin lập và sửa hồ sơ của tổ; thành viên xem. Dọn lịch, sửa thư viện mạch dòng và tab "Cài đặt" (khu vực, trạm của tổ, tải lịch tự động, mẫu văn bản) chỉ admin.']
     ]
   },
   {
@@ -33,7 +35,7 @@ export const HELP_SECTIONS = [
       ['Công việc không có lịch cắt điện', 'Ở bước 1 chọn "Công việc không có lịch cắt điện" → "Thêm công việc": ghi nội dung, trạm, địa điểm/thiết bị, thời gian, điều kiện (mặc định "Không cắt điện."). Trên dòng công việc bấm Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — các mục tự điền và hồ sơ nối vào luồng như khi lập từ lịch. Công việc đã có hồ sơ thì không xóa được.'],
       ['Nạp lịch', '"Tải lịch cắt điện": máy chủ tự đăng nhập trang lịch Công ty, tải theo khoảng ngày rồi nạp luôn (cần cấu hình tài khoản). Hoặc "Chọn file lịch cắt điện (Excel)" → xem trước → "Cập nhật lịch".'],
       ['So sánh khi nạp lại', 'Chọn khoảng so sánh: dòng Hoãn (đỏ), Dời lịch (xanh), Sửa nội dung (tím), Phát sinh (vàng); không đổi để nguyên. Bấm một mục trong kết quả để tới dòng đó. Dời/sửa cập nhật tại chỗ nên hồ sơ đã gắn vẫn trỏ đúng.'],
-      ['Tự tải và báo', 'Admin đặt tài khoản và giờ tải bằng nút "Cài đặt tải lịch" ở dòng trên cùng (hoặc Danh mục → Tải lịch tự động); dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi.'],
+      ['Tự tải và báo', 'Admin đặt tài khoản và giờ tải bằng nút "Cài đặt tải lịch" ở dòng trên cùng (hoặc Cài đặt → Tải lịch tự động); dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi.'],
       ['Lọc, tìm', 'Chọn khoảng ngày, gõ từ khóa (trạm, thiết bị, đơn vị); bấm thẻ thống kê để lọc; "Chỉ tổ của tôi" giữ dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ.'],
       ['Ẩn/hiện khung', 'Nút con mắt "Tải lịch" và "Thống kê" ở hàng lọc ẩn/hiện khung tải lịch và các thẻ thống kê cho gọn màn hình; trình duyệt ghi nhớ lựa chọn.'],
       ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — nội dung, phạm vi, thời gian tự điền. "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
@@ -85,9 +87,15 @@ export const HELP_SECTIONS = [
     items: [
       ['Danh mục chung', 'Nhân sự ATĐ, Đơn vị QLVH (nơi nhận), Trạm biến áp (kèm bản vẽ sơ đồ trạm), Nhiệm vụ, Thư viện rủi ro — dùng để chọn khi lập hồ sơ.'],
       ['Mạch dòng TI (admin)', 'Thư viện cô lập mạch dòng theo trạm / TI, dùng cho Phụ lục II của phương án.'],
-      ['Khu vực của tổ (admin)', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng. Bấm sửa một tổ để tích đúng các trạm tổ phụ trách (gom theo khu vực, tích cả khu vực một lần): đã tích trạm thì "Chỉ tổ của tôi" chỉ hiện lịch các trạm đó.'],
-      ['Tải lịch tự động (admin)', 'Tên đăng nhập, mật khẩu trang lịch cắt điện của Công ty (mật khẩu lưu mã hóa, không hiện lại), giờ tự tải hằng ngày (vd 07:00, 15:00; để trống = tắt) và số ngày tới. "Thử kết nối" kiểm tra đăng nhập. Lưu là có hiệu lực ngay; ô để trống dùng giá trị trong .env của máy chủ.'],
-      ['Mẫu văn bản (admin)', 'Tải mẫu Word về sửa (giữ thẻ {…} và nhãn ((…))), tải lên: phần mềm kiểm tra, thử điền, cho xem thử; "Lưu & dùng ngay" hoặc quay về mẫu gốc bất cứ lúc nào.']
+      ['Tìm nhanh', 'Danh mục dài có ô tìm (không cần gõ dấu); nút con mắt gạch chéo "Ẩn" bỏ dòng khỏi danh sách chọn, giấy đã lập giữ nguyên.']
+    ]
+  },
+  {
+    id: 'settings', title: 'Cài đặt (admin)',
+    items: [
+      ['Khu vực, trạm của tổ', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng. Bấm sửa một tổ để tích đúng các trạm tổ phụ trách (gom theo khu vực, tích cả khu vực một lần): đã tích trạm thì "Chỉ tổ của tôi" chỉ hiện lịch các trạm đó.'],
+      ['Tải lịch tự động', 'Tên đăng nhập, mật khẩu trang lịch cắt điện của Công ty (mật khẩu lưu mã hóa, không hiện lại), giờ tự tải hằng ngày (vd 07:00, 15:00; để trống = tắt) và số ngày tới. "Thử kết nối" kiểm tra đăng nhập. Lưu là có hiệu lực ngay; ô để trống dùng giá trị trong .env của máy chủ.'],
+      ['Mẫu văn bản', 'Tải mẫu Word về sửa (giữ thẻ {…} và nhãn ((…))), tải lên: phần mềm kiểm tra, thử điền, cho xem thử; "Lưu & dùng ngay" hoặc quay về mẫu gốc bất cứ lúc nào.']
     ]
   },
   {
@@ -104,7 +112,7 @@ export const helpFor = (tab) => HELP_SECTIONS.find(s => s.id === tab) || HELP_SE
 // danh sách của từng tab (hint nút Tải lại); tab Lịch có hai danh sách: lịch cắt điện / công việc
 const LIST_NAMES = {
   outages: 'lịch cắt điện', works: 'công việc không có lịch cắt điện', surveys: 'biên bản khảo sát', plans: 'phương án',
-  registrations: 'giấy đăng ký công tác', confirmations: 'giấy xác nhận', catalogs: 'danh mục', legacy: 'giấy cũ'
+  registrations: 'giấy đăng ký công tác', confirmations: 'giấy xác nhận', catalogs: 'danh mục', settings: 'cài đặt', legacy: 'giấy cũ'
 };
 const clock = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 

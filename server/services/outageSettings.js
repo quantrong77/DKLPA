@@ -1,5 +1,5 @@
 /**
- * Cấu hình tải lịch cắt điện do admin đặt trên giao diện (Danh mục → Tải lịch tự động), lưu trong dkct_settings.
+ * Cấu hình tải lịch cắt điện do admin đặt trên giao diện (Cài đặt → Tải lịch tự động), lưu trong dkct_settings.
  *
  * Ưu tiên: cấu hình admin đã lưu > tham số ChatLan truyền vào (deps.outageSource / deps.outageAuto) > biến môi trường
  * (OUTAGE_SOURCE_USER, OUTAGE_SOURCE_PASSWORD, OUTAGE_AUTO_FETCH, OUTAGE_AUTO_DAYS). Ô bỏ trống = dùng .env.

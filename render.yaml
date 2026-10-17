@@ -12,6 +12,9 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      # Express không trả chi tiết lỗi (stack trace) ra ngoài
+      - key: NODE_ENV
+        value: production
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL

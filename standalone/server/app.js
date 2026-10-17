@@ -41,18 +41,53 @@ const text = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').
 const bad = (message, status = 400) => Object.assign(new Error(message), { status });
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-/** Token đã xác minh được nhớ 60 giây để không gọi Supabase ở mọi request. */
-function cachedVerifier(verifyToken, ttlMs = 60_000) {
+/**
+ * Token đã xác minh được nhớ 60 giây để không gọi Supabase ở mọi request; token sai nhớ 30 giây.
+ * Chuỗi không có dạng JWT (ba phần base64url) bị từ chối ngay, không gọi Supabase (tránh tốn hạn mức khi bị dò).
+ */
+const JWT_SHAPE = /^[\w-]+\.[\w-]+\.[\w-]+$/;
+function cachedVerifier(verifyToken, ttlMs = 60_000, failTtlMs = 30_000) {
   const cache = new Map();
   return async (token) => {
+    if (!JWT_SHAPE.test(token) || token.length > 4096) return null;
     const hit = cache.get(token);
     if (hit && hit.until > Date.now()) return hit.user;
     const user = await verifyToken(token);
-    if (cache.size > 500) cache.clear();
-    if (user) cache.set(token, { user, until: Date.now() + ttlMs });
+    if (cache.size > 500) {
+      const now = Date.now();
+      for (const [k, v] of cache) if (v.until <= now) cache.delete(k);
+      if (cache.size > 500) cache.clear();
+    }
+    cache.set(token, { user: user || null, until: Date.now() + (user ? ttlMs : failTtlMs) });
     return user;
   };
 }
+
+/**
+ * Giới hạn số request mỗi IP trong một phút (bộ nhớ trong tiến trình, đủ cho một máy chủ):
+ * chống dò mật khẩu / token và chống gọi dồn các chức năng nặng (xem trước, xuất Word).
+ */
+function rateLimit({ max, windowMs = 60_000, message = 'Thao tác quá nhanh, vui lòng thử lại sau ít phút.' }) {
+  const hits = new Map();
+  let sweepAt = Date.now() + windowMs;
+  return (req, res, next) => {
+    const now = Date.now();
+    if (now > sweepAt) {
+      for (const [k, v] of hits) if (v.reset <= now) hits.delete(k);
+      sweepAt = now + windowMs;
+    }
+    const key = req.ip || 'unknown';
+    let h = hits.get(key);
+    if (!h || h.reset <= now) { h = { n: 0, reset: now + windowMs }; hits.set(key, h); }
+    h.n += 1;
+    if (h.n > max) {
+      res.setHeader('Retry-After', String(Math.ceil((h.reset - now) / 1000)));
+      return res.status(429).json({ error: message });
+    }
+    return next();
+  };
+}
+const HEAVY_PATH = /\/(preview|docx|pdf)(\/|$)/;
 
 function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig = {} }) {
   const admins = new Set(adminEmails.map(e => e.trim().toLowerCase()).filter(Boolean));
@@ -60,15 +95,17 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
 
   const getUser = (id) => db.queryOne(`SELECT ${USER_COLUMNS} FROM dkct_app_users WHERE id = ?`, [id]);
 
-  /** Lần đầu đăng nhập thì tạo hồ sơ; email trong ADMIN_EMAILS luôn là admin. */
+  /** Lần đầu đăng nhập thì tạo hồ sơ; email trong ADMIN_EMAILS (đã xác nhận email) luôn là admin. */
   async function ensureUser(identity) {
     const email = text(identity.email, 255).toLowerCase();
+    // chưa xác nhận email thì chưa chắc là chủ hộp thư: không cấp admin theo ADMIN_EMAILS
+    const admin = admins.has(email) && identity.emailConfirmed !== false;
     let user = await getUser(identity.id);
     if (!user) {
       await db.execute('INSERT IGNORE INTO dkct_app_users (id, email, fullName, role) VALUES (?, ?, ?, ?)',
-        [identity.id, email, text(identity.fullName, 255) || null, admins.has(email) ? 'admin' : 'member']);
+        [identity.id, email, text(identity.fullName, 255) || null, admin ? 'admin' : 'member']);
       user = await getUser(identity.id);
-    } else if (admins.has(email) && user.role !== 'admin') {
+    } else if (admin && user.role !== 'admin') {
       await db.execute("UPDATE dkct_app_users SET role = 'admin' WHERE id = ?", [user.id]);
       user = { ...user, role: 'admin' };
     }
@@ -83,6 +120,9 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     req.userId = req.user.id;
     next();
   });
+  // chưa được admin xếp tổ thì chưa xem được dữ liệu nào (lịch, bản vẽ trạm, mạch dòng, nhân sự…)
+  const requireMember = (req, res, next) => (req.user?.role === 'admin' || req.user?.department ? next()
+    : res.status(403).json({ error: 'Tài khoản chưa được xếp tổ. Liên hệ quản trị viên.' }));
   const requireAdmin = (req, res, next) => (req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Chỉ quản trị viên được làm việc này.' }));
 
   const listDepartments = () => db.query('SELECT name, shortName FROM dkct_app_departments ORDER BY sortOrder, name');
@@ -112,6 +152,7 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     await dkct.migrate();
   }
 
+  const heavyLimit = rateLimit({ max: 40, message: 'Đang xuất / xem trước quá nhiều văn bản, vui lòng thử lại sau ít phút.' });
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // Render đứng sau proxy
@@ -119,8 +160,12 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
   });
+  app.use('/api', rateLimit({ max: 600 }));
+  app.use('/api', (req, res, next) => (HEAVY_PATH.test(req.path) ? heavyLimit(req, res, next) : next()));
 
   app.get('/healthz', (req, res) => res.json({ ok: true }));
   app.get('/api/app/config', (req, res) => res.json(publicConfig));
@@ -184,7 +229,7 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
   }));
 
   app.use('/api/app', api);
-  app.use('/api/dkct', requireAuth, dkct.router);
+  app.use('/api/dkct', requireAuth, requireMember, dkct.router);
   app.use('/api', (req, res) => res.status(404).json({ error: 'Không tìm thấy.' }));
 
   // eslint-disable-next-line no-unused-vars
@@ -195,12 +240,17 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
   });
 
   if (clientDir && fs.existsSync(path.join(clientDir, 'index.html'))) {
+    // file trong assets/ có mã băm trong tên: lưu đệm lâu; index.html luôn hỏi lại để thấy bản mới ngay sau khi deploy
+    app.use('/assets', express.static(path.join(clientDir, 'assets'), { index: false, maxAge: '1y', immutable: true }));
     app.use(express.static(clientDir, { index: false, maxAge: '1h' }));
-    app.get('*', (req, res) => res.sendFile(path.join(clientDir, 'index.html')));
+    app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(clientDir, 'index.html'));
+    });
   }
 
   // tự tải lịch cắt điện theo giờ hẹn (admin đặt hoặc OUTAGE_AUTO_FETCH); bản này không có chat nên chỉ ghi nhật ký, đánh dấu
-  return { app, migrate, startAutoFetch: () => dkct.startAutoFetch() };
+  return { app, migrate, startAutoFetch: () => dkct.startAutoFetch(), stopAutoFetch: () => dkct.stopAutoFetch() };
 }
 
 module.exports = { createApp, APP_TABLE_TEXT, ROLES };

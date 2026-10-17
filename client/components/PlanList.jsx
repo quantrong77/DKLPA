@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FileStack, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye, Upload, FilePlus2 } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import { useLatestRequest } from '../lib/latest.js';
+import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime, ListError, NoMatch } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
 import QltnLink, { QLTN_URL } from './QltnLink.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
@@ -12,6 +13,8 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(null);
+  const latest = useLatestRequest();
   const [previewItem, setPreviewItem] = useState(null);
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -19,17 +22,22 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
   const [startDraft, setStartDraft] = useState(null);
 
   const load = useCallback(async () => {
+    const isLatest = latest(); // chỉ nhận kết quả của lần tải mới nhất
     setLoading(true);
     try {
       const [list, num] = await Promise.all([api.get(`/plans?${new URLSearchParams({ search, year })}`), api.get('/plan-numbering')]);
+      if (!isLatest()) return;
+      setFailed(null);
       setItems(list.items);
       setNumbering(num.numbering);
     } catch (err) {
+      if (!isLatest()) return;
+      setFailed(err.message);
       notify(err.message, 'error');
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [api, notify, search, year]);
+  }, [api, notify, search, year, latest]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -87,7 +95,9 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
         )}
       </div>
 
-      {!loading && items.length === 0 ? (
+      {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
+        : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
+        : !loading && items.length === 0 ? (
         <EmptyState icon={FileStack} title="Chưa có phương án"
           description={canCreate ? 'Bấm "Lập phương án", hoặc lập từ lịch cắt điện / công việc / biên bản khảo sát.' : 'Phương án do trưởng/phó tổ lập sẽ hiện ở đây.'} />
       ) : (

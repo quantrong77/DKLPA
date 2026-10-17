@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { X, Save, Loader2, AlertTriangle } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import { useEditorKeys } from '../lib/editorKeys.js';
+import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost, UnsavedBadge } from './ui.jsx';
 import { fieldErrors } from '../lib/form.js';
 
 /**
@@ -53,6 +54,9 @@ export default function WorkEditor({ initial, work, catalogs, onClose, onSaved }
     <input id={id} className={`${inputCls} ${inputBorder(errors[key])}`} value={form[key] || ''} onChange={e => setField(key, e.target.value)} {...props} />
   );
 
+  // Ctrl+S lưu; còn thay đổi chưa lưu thì trình duyệt hỏi lại khi đóng / tải lại tab
+  useEditorKeys({ onSave: () => save(), dirty: !readOnly && dirty, disabled: saving || readOnly });
+
   return (
     <ModalOverlay onClose={close} className="fixed inset-0 z-50 bg-slate-900/40 flex items-stretch md:items-center justify-center md:p-4">
       <div className="bg-slate-50 dark:bg-slate-950 w-full md:max-w-2xl md:rounded-2xl shadow-xl flex flex-col max-h-full md:max-h-[92vh]">
@@ -65,7 +69,10 @@ export default function WorkEditor({ initial, work, catalogs, onClose, onSaved }
               {readOnly ? 'Chỉ xem.' : 'Dùng cho việc không đăng ký cắt điện (làm việc không cắt điện, kiểm tra, xử lý tồn tại…). Biên bản, phương án, giấy lập từ công việc được điền sẵn các mục dưới đây.'}
             </p>
           </div>
-          <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <UnsavedBadge show={!readOnly && dirty} />
+            <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4">
           {errorList.length > 0 && (

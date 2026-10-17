@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Save, FileDown, Loader2, AlertTriangle, Eye, Plus, Trash2, ImagePlus, ClipboardPaste, FileImage, ExternalLink, SquareDashedMousePointer } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import { useEditorKeys } from '../lib/editorKeys.js';
+import { Field, Section, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost, UnsavedBadge } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
 import QltnLink from './QltnLink.jsx';
 import { Risks } from './EditorAppendix.jsx';
@@ -295,6 +296,9 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
   const unsaved = dirty || diagram.status === 'new' || diagram.status === 'removed' || photoState.changed;
   const showSaved = readOnly || (current && !unsaved);
 
+  // Ctrl+S lưu; còn thay đổi chưa lưu thì trình duyệt hỏi lại khi đóng / tải lại tab
+  useEditorKeys({ onSave: () => save(), dirty: !readOnly && unsaved, disabled: saving || readOnly });
+
   return (
     <ModalOverlay onClose={close} className="fixed inset-0 z-50 bg-slate-900/40 flex items-stretch md:items-center justify-center md:p-4">
       <div className="bg-slate-50 dark:bg-slate-950 w-full md:max-w-5xl md:rounded-2xl shadow-xl flex flex-col max-h-full md:max-h-[92vh]">
@@ -305,7 +309,10 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
             </h2>
             {readOnly && <p className="text-xs text-slate-500">Chỉ xem — bạn không có quyền sửa biên bản này.</p>}
           </div>
-          <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <UnsavedBadge show={!readOnly && unsaved} />
+            <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          </div>
         </header>
 
         {/* ngoài vùng cuộn: luôn thấy khi cuộn nội dung bên dưới */}

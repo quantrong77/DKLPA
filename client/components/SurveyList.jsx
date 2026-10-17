@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ClipboardList, Search, FileDown, Trash2, Eye, Pencil, FilePlus2, FileStack, Image as ImageIcon, ScanEye, Upload } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { btnGhost, btnSecondary, inputCls, inputBorder } from './ui.jsx';
+import { useLatestRequest } from '../lib/latest.js';
+import { btnGhost, btnSecondary, inputCls, inputBorder, ListError, NoMatch } from './ui.jsx';
 import DocPreview from './DocPreview.jsx';
 import QltnLink, { QLTN_URL } from './QltnLink.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
@@ -13,20 +14,28 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
   const { api, notify, confirmAction, downloadAuthenticatedFile, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(null);
+  const latest = useLatestRequest();
   const [previewItem, setPreviewItem] = useState(null);
   const [search, setSearch] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
 
   const load = useCallback(async () => {
+    const isLatest = latest(); // chỉ nhận kết quả của lần tải mới nhất
     setLoading(true);
     try {
-      setItems((await api.get(`/surveys?${new URLSearchParams({ search, year })}`)).items);
+      const { items: rows } = await api.get(`/surveys?${new URLSearchParams({ search, year })}`);
+      if (!isLatest()) return;
+      setItems(rows);
+      setFailed(null);
     } catch (err) {
+      if (!isLatest()) return;
+      setFailed(err.message);
       notify(err.message, 'error');
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [api, notify, search, year]);
+  }, [api, notify, search, year, latest]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -59,7 +68,9 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
         </select>
       </div>
 
-      {!loading && items.length === 0 ? (
+      {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
+        : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
+        : !loading && items.length === 0 ? (
         <EmptyState icon={ClipboardList} title="Chưa có biên bản khảo sát hiện trường"
           description={canCreate ? 'Bấm "Lập biên bản", hoặc lập từ một dòng ở tab "Lịch cắt điện".' : 'Biên bản do trưởng/phó tổ lập sẽ hiện ở đây.'} />
       ) : (

@@ -421,7 +421,14 @@ const INDEXES = [
   ['idx_dkct_ct_substation', 'dkct_ct_transformers', 'substationId'],
   ['idx_dkct_ct_pages_ct', 'dkct_ct_pages', 'transformerId'],
   ['idx_dkct_ct_cores_ct', 'dkct_ct_cores', 'transformerId'],
-  ['idx_dkct_ct_audit_ct', 'dkct_ct_audit', 'transformerId']
+  ['idx_dkct_ct_audit_ct', 'dkct_ct_audit', 'transformerId'],
+  // tra hồ sơ gắn với dòng lịch / hồ sơ trước trong luồng (danh sách lịch cắt điện, thanh luồng)
+  ['idx_dkct_outages_end', 'dkct_outages', 'regEnd'],
+  ['idx_dkct_survey_outage', 'dkct_surveys', 'outageId'],
+  ['idx_dkct_plan_outage', 'dkct_plans', 'outageId'],
+  ['idx_dkct_plan_survey', 'dkct_plans', 'surveyId'],
+  ['idx_dkct_confirmation_registration', 'dkct_confirmations', 'registrationId'],
+  ['idx_dkct_confirmation_plan', 'dkct_confirmations', 'planId']
 ];
 
 // Cột thêm sau khi bảng đã có dữ liệu (CSDL cài từ bản trước): [bảng, cột, kiểu, khóa ngoại?]

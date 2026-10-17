@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Minus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink, Eye } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { Field, Section, TabButton, SourceBadge, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost } from './ui.jsx';
+import { useEditorKeys } from '../lib/editorKeys.js';
+import { Field, Section, TabButton, SourceBadge, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost, UnsavedBadge } from './ui.jsx';
 import { Risks } from './EditorAppendix.jsx';
 import LinkedOutage from './LinkedOutage.jsx';
 import LinkedWork from './LinkedWork.jsx';
@@ -676,6 +677,9 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
     bays: o?.scope && (!String(f.bays || '').trim() || (outage && f.bays === baysFromScope(outage.scope))) ? baysFromScope(o.scope) : f.bays
   }));
 
+  // Ctrl+S lưu; còn thay đổi chưa lưu thì trình duyệt hỏi lại khi đóng / tải lại tab
+  useEditorKeys({ onSave: () => save(), dirty: !readOnly && dirty, disabled: saving || readOnly });
+
   return (
     <ModalOverlay onClose={close} className="fixed inset-0 z-50 bg-slate-900/40 flex items-stretch md:items-center justify-center md:p-4">
       <div className="bg-slate-50 dark:bg-slate-950 w-full md:max-w-5xl md:rounded-2xl shadow-xl flex flex-col max-h-full md:max-h-[92vh]">
@@ -686,7 +690,10 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
             </h2>
             <p className="text-xs text-slate-500">{current ? 'Số phương án giữ nguyên khi hiệu chỉnh.' : `Số dự kiến: ${numberPreview || '…'} — cấp khi lưu`}{readOnly ? ' · Chỉ xem.' : ''}</p>
           </div>
-          <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <UnsavedBadge show={!readOnly && dirty} />
+            <button type="button" className={btnGhost} aria-label="Đóng" onClick={close}><X className="w-5 h-5" /></button>
+          </div>
         </header>
         <nav className="flex gap-2 px-4 py-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto bg-white dark:bg-slate-900" aria-label="Các phần của phương án">
           {STEPS.map(s => (

@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle, RefreshCw, SearchX } from 'lucide-react';
 
 // Lớp Tailwind theo hệ thiết kế của ChatLan (ba mức nút, ô nhập, thẻ).
 export const btnPrimary = 'px-3.5 py-2 bg-chatlan-600 hover:bg-chatlan-700 disabled:opacity-60 text-white font-bold rounded-lg shadow-sm text-xs inline-flex items-center gap-1.5 transition';
@@ -23,6 +24,40 @@ export function Field({ label, htmlFor, error, hint, required, children, classNa
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</p>
       ) : null}
     </div>
+  );
+}
+
+/** Danh sách không tải được (mất mạng, máy chủ lỗi): báo rõ và cho thử lại, không hiện "Chưa có…". */
+export function ListError({ message, onRetry }) {
+  return (
+    <div role="alert" className="flex flex-col items-center gap-2 text-center p-6 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30">
+      <AlertTriangle className="w-6 h-6 text-red-500" aria-hidden="true" />
+      <p className="text-sm font-semibold text-red-800 dark:text-red-200">Không tải được danh sách</p>
+      {message && <p className="text-xs text-red-700 dark:text-red-300 max-w-md">{message}</p>}
+      <button type="button" className={btnSecondary} onClick={onRetry}><RefreshCw className="w-4 h-4" aria-hidden="true" /> Thử lại</button>
+    </div>
+  );
+}
+
+/** Tìm không ra: khác với danh sách trống. */
+export function NoMatch({ search, onClear }) {
+  return (
+    <div className="flex flex-col items-center gap-2 text-center p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+      <SearchX className="w-6 h-6 text-slate-400" aria-hidden="true" />
+      <p className="text-sm text-slate-600 dark:text-slate-300">Không tìm thấy kết quả khớp “{search.trim()}”.</p>
+      <button type="button" className={btnSecondary} onClick={onClear}>Xóa từ khóa tìm</button>
+    </div>
+  );
+}
+
+/** Nhãn "Chưa lưu" ở đầu biểu mẫu; Ctrl+S để lưu. */
+export function UnsavedBadge({ show }) {
+  if (!show) return null;
+  return (
+    <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold align-middle bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+      title="Có thay đổi chưa lưu — bấm Lưu hoặc Ctrl+S">
+      <span aria-hidden="true">●</span> Chưa lưu
+    </span>
   );
 }
 

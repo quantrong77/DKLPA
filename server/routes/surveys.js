@@ -18,6 +18,9 @@ const { workAsOutage, loadVisibleWork, timeTextOf, DEFAULT_SCOPE } = require('..
 const MAX_DIAGRAM_BYTES = 10 * 1024 * 1024;
 const MAX_DIAGRAM_SIDE = 12000;
 const MAX_PHOTOS = 30;
+// ảnh khảo sát đã được trình duyệt thu nhỏ (≤ 1600 px, JPEG): giới hạn riêng để xuất Word không ngốn bộ nhớ máy chủ
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+const MAX_PHOTOS_TOTAL_BYTES = 40 * 1024 * 1024;
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_DIAGRAM_BYTES, files: 1, fields: 5 },
@@ -29,7 +32,7 @@ const LIST_COLUMNS = 'id, department, surveyTime, stationName, substationId, wor
 function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
   const router = express.Router();
 
-  const present = async (row, actor) => ({
+  const present = async (row, actor, canEdit = policy.canEdit) => ({
     id: row.id,
     department: row.department,
     surveyTime: row.surveyTime,
@@ -43,7 +46,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     data: row.data === undefined ? undefined : safeParse(row.data),
-    canEdit: await policy.canEdit(actor, row)
+    canEdit: await canEdit(actor, row)
   });
 
   async function loadVisible(req, columns = '*') {
@@ -165,7 +168,8 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     const rows = await db.query(`SELECT ${LIST_COLUMNS} FROM dkct_surveys ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY surveyTime DESC, createdAt DESC LIMIT 500`, params);
     const items = [];
-    for (const row of rows) items.push(await present(row, actor));
+    const canEdit = policy.editChecker();
+    for (const row of rows) items.push(await present(row, actor, canEdit));
     res.json({ items: await attachOutageChanges(db, items) }); // cảnh báo lịch cắt điện đã hoãn / dời / sửa
   }));
 
@@ -268,9 +272,13 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     if (!info.width || !info.height || info.width > MAX_DIAGRAM_SIDE || info.height > MAX_DIAGRAM_SIDE) {
       throw Object.assign(new Error(`Ảnh phải nhỏ hơn ${MAX_DIAGRAM_SIDE}×${MAX_DIAGRAM_SIDE} điểm ảnh.`), { status: 400 });
     }
+    if (req.file.size > MAX_PHOTO_BYTES) throw Object.assign(new Error('Ảnh khảo sát tối đa 4 MB — chọn ảnh nhỏ hơn.'), { status: 400 });
     const surveyId = req.dkctSurvey.id;
-    const stat = await db.queryOne('SELECT COUNT(*) AS n, MAX(sortOrder) AS last FROM dkct_survey_photos WHERE surveyId = ?', [surveyId]);
+    const stat = await db.queryOne('SELECT COUNT(*) AS n, MAX(sortOrder) AS last, SUM(size) AS total FROM dkct_survey_photos WHERE surveyId = ?', [surveyId]);
     if (Number(stat?.n) >= MAX_PHOTOS) throw Object.assign(new Error(`Mỗi biên bản tối đa ${MAX_PHOTOS} ảnh.`), { status: 400 });
+    if ((Number(stat?.total) || 0) + req.file.size > MAX_PHOTOS_TOTAL_BYTES) {
+      throw Object.assign(new Error('Tổng dung lượng ảnh của biên bản đã tới giới hạn 40 MB.'), { status: 400 });
+    }
     const photo = {
       id: newId('ANH'), caption: cleanCaption(req.body?.caption), width: info.width, height: info.height, size: req.file.size,
       sortOrder: stat?.last === null || stat?.last === undefined ? 0 : Number(stat.last) + 1

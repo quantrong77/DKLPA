@@ -151,11 +151,17 @@ test('tự tải theo giờ hẹn: đúng giờ VN thì tải hôm nay..+N ngày
     assert.equal(second.compare.unchanged, 1, 'lần sau so với lịch đã tải');
     deny = true;
     assert.equal(await auto.tick(at('2024-10-06T00:00:00Z')), null);
+    // lỗi: không thử lại ngay, sau 10 phút thử lại (trang đã cho đăng nhập) thì tải được cùng giờ hẹn
+    assert.equal(await auto.tick(at('2024-10-06T00:05:00Z')), null, 'chưa tới giờ thử lại');
+    deny = false;
+    const retried = await auto.tick(at('2024-10-06T00:10:30Z'));
+    assert.equal(retried.rows, 1, 'thử lại sau 10 phút');
+    assert.equal(await auto.tick(at('2024-10-06T00:21:00Z')), null, 'đã tải thì không tải nữa');
 
     const src = (await app.call('member', 'GET', '/outages/source')).body;
     assert.deepEqual(src.auto, { times: ['07:00', '15:00'], days: 3 });
-    assert.deepEqual(src.runs.map(r => [r.mode, r.ok]), [['AUTO', false], ['AUTO', true], ['AUTO', true]]);
-    assert.match(src.runs[0].error, /từ chối tài khoản/);
+    assert.deepEqual(src.runs.map(r => [r.mode, r.ok]), [['AUTO', true], ['AUTO', false], ['AUTO', true], ['AUTO', true]]);
+    assert.match(src.runs[1].error, /từ chối tài khoản/);
     const items = (await app.call('member', 'GET', '/outages?from=2024-10-01')).body.items;
     assert.match(items[0].sourceFile, /^Tự tải 07:00 05\/10\/2024/);
   } finally { console.info = info; console.warn = warn; app.close(); }

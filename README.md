@@ -8,7 +8,7 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
 - Import **lịch cắt điện** (Excel, mẫu 8 hoặc 10 cột) thành kế hoạch công tác. Có bước xem trước và chống nhập trùng.
   Nút "Tải lịch cắt điện": máy chủ có tài khoản trang lịch Công ty thì tự đăng nhập, kết xuất Excel theo khoảng ngày chọn
   (trang `https://home.ptc3.npt.evn.vn/tsvh/lcd.aspx`) và nạp luôn; chưa có tài khoản thì chỉ mở trang lịch
-  (https://home.ptc3.npt.evn.vn/lichcatdien_new2/) để tải tay. Tài khoản do admin đặt ở Danh mục → Tải lịch tự động, hoặc
+  (https://home.ptc3.npt.evn.vn/lichcatdien_new2/) để tải tay. Tài khoản do admin đặt ở Cài đặt → Tải lịch tự động, hoặc
   trong `.env` của máy chủ (không commit): `OUTAGE_SOURCE_USER`, `OUTAGE_SOURCE_PASSWORD` (tuỳ chọn `OUTAGE_SOURCE_URL`, chỉ đặt trong .env). Chỉ chạy khi máy chủ vào được mạng nội bộ.
   Nạp lại lịch: so với lịch đã nạp trong khoảng ngày chọn (mặc định theo khoảng của file) — **hoãn** (dòng không còn trong
   file mới, hoặc tình trạng "Hoãn") tô đỏ, **dời lịch** (cùng trạm, cùng việc, khác giờ) xanh, **sửa nội dung** (cùng giờ,
@@ -17,13 +17,13 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   Khoảng chưa nạp lịch nào thì không so sánh. Dấu phát sinh/dời/sửa giữ 7 ngày; dấu hoãn giữ đến khi có lại.
   Biên bản KSHT, phương án, giấy ĐKCT gắn dòng lịch đã hoãn/dời/sửa có nhãn cảnh báo ở danh sách, dải cảnh báo khi mở
   và trên thanh luồng. Mỗi dòng lịch có **lịch sử thay đổi** (chỉ ghi khi trạng thái đổi thật, nạp lặp không ghi trùng).
-  **Tự tải theo giờ hẹn**: admin đặt ở **Danh mục → Tải lịch tự động** (tài khoản, mật khẩu, giờ tải, số ngày; có hiệu lực
+  **Tự tải theo giờ hẹn**: admin đặt ở **Cài đặt → Tải lịch tự động** (tài khoản, mật khẩu, giờ tải, số ngày; có hiệu lực
   ngay, không cần khởi động lại). Mật khẩu lưu mã hóa AES-256-GCM với khóa `DKCT_SECRET_KEY` trong .env (không có thì dùng
   `JWT_SECRET`; không có khóa nào thì chỉ đặt mật khẩu được trong .env). Ô để trống dùng .env:
   `OUTAGE_AUTO_FETCH=07:00,15:00` (giờ VN, bỏ trống = tắt), `OUTAGE_AUTO_DAYS=14`; mỗi giờ hẹn
   chỉ tải một lần (kể cả nhiều tiến trình), nhật ký lần tải hiện ở đầu tab. Có thay đổi thì báo (ChatLan: tin nhắn riêng từ
   "Chuẩn bị công tác") cho người lập và tổ trưởng/tổ phó của tổ có hồ sơ gắn dòng lịch, và tổ trưởng/tổ phó của tổ phụ trách
-  khu vực. **Chỉ tổ của tôi**: dòng thuộc khu vực TTĐ tổ phụ trách (admin chọn ở Danh mục → Khu vực của tổ; khớp theo ô
+  khu vực. **Chỉ tổ của tôi**: dòng thuộc khu vực TTĐ tổ phụ trách (admin chọn ở Cài đặt → Khu vực, trạm của tổ; khớp theo ô
   đơn vị "TTĐ …" hoặc TBA trong danh mục) hoặc tổ đã lập hồ sơ. Admin còn tích đúng các trạm tổ
   phụ trách (Khu vực của tổ → sửa tổ, bảng `dkct_team_stations`; trạm nhận từ địa điểm ghi tự do "Trạm 220kV Phan Thiết,
   ĐZ …", kể cả trạm chưa có trong danh mục): tổ đã tích trạm thì lọc và báo thay đổi chỉ gồm các trạm đó; dòng lịch không
@@ -164,7 +164,7 @@ Lỗi kiểm tra dữ liệu trả mã `422 { error, errors: [{ field, message }
 
 ## Cập nhật mẫu Word
 
-**Không cần sửa mã (khuyên dùng):** Danh mục → **Mẫu văn bản**. Mỗi loại (biên bản KSHT, phương án, giấy ĐKCT, giấy
+**Không cần sửa mã (khuyên dùng):** Cài đặt → **Mẫu văn bản**. Mỗi loại (biên bản KSHT, phương án, giấy ĐKCT, giấy
 xác nhận) có mẫu gốc (file trong `templates/`, luôn còn) và các mẫu admin tải lên (bảng `dkct_doc_templates`).
 Tải mẫu về sửa trong Word (giữ thẻ `{…}` và nhãn ký số `((…))`), tải lên: phần mềm kiểm tra cú pháp thẻ (báo lỗi tiếng
 Việt), so thẻ với mẫu gốc (thẻ lạ / thẻ thiếu / thiếu nhãn ký số), thử điền bằng văn bản gần nhất, cho **Xem thử**; rồi
@@ -194,8 +194,9 @@ và nới ô chữ ký để dòng "địa danh, ngày … tháng … năm …" 
 
 Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Supabase, server Express chạy trên Render (gói miễn phí).
 
-- Người mới **tự đăng ký**, nhưng chưa thuộc tổ nào nên chưa xem được gì; admin vào **Quản trị** để tạo tổ (tên + viết tắt dùng trong số giấy), xếp người vào tổ và cấp **Trưởng/phó tổ** (được lập, sửa hồ sơ và danh mục).
-- Email trong `ADMIN_EMAILS` tự là admin.
+- Người mới **tự đăng ký**, nhưng chưa thuộc tổ nào nên chưa xem được gì (máy chủ trả 403 cho mọi `/api/dkct`); admin vào **Quản trị** để tạo tổ (tên + viết tắt dùng trong số giấy), xếp người vào tổ và cấp **Trưởng/phó tổ** (được lập, sửa hồ sơ và danh mục).
+- Email trong `ADMIN_EMAILS` tự là admin (khi email đã xác nhận). Chỉ ghi email **đã đăng ký** vào `ADMIN_EMAILS`: đang tắt
+  "Confirm email" nên ai đăng ký trước một email còn trống trong danh sách sẽ thành admin.
 - Mỗi người tự sửa hồ sơ (họ tên, chức danh, điện thoại) — dùng cho mục "người đại diện" trên giấy.
 
 **1. Supabase** (supabase.com): New project, region Singapore.
@@ -203,6 +204,24 @@ Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Su
 - Lấy: Project URL, khóa **anon public** (*Project Settings → API Keys*), chuỗi kết nối **Transaction pooler** (nút *Connect*, cổng 6543).
 
 **2. Render** (render.com): *New → Blueprint* → repo DKLPA (đọc `render.yaml`), điền `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS`. Bảng `dkct_*` được tạo khi server khởi động.
+
+**Bảo mật khi chạy thật (production):**
+- **Bắt buộc**: khóa REST của Supabase cho các bảng `dkct_*`. Supabase mở mọi bảng trong schema `public` qua
+  `https://<dự án>.supabase.co/rest/v1/...` cho khóa *anon* (khóa này công khai, trình duyệt nào cũng lấy được), nên
+  không khóa thì người ngoài đọc / sửa thẳng CSDL, bỏ qua mọi kiểm tra quyền của máy chủ. Supabase → *SQL Editor* chạy:
+  ```sql
+  DO $$ DECLARE t text; BEGIN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'dkct%' LOOP
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+      EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', t);
+    END LOOP;
+  END $$;
+  ```
+  Máy chủ kết nối bằng chủ bảng (`postgres`) nên không bị ảnh hưởng. Chạy lại khi bản mới thêm bảng; kiểm tra ở
+  *Advisors → Security Advisor* (không còn "RLS disabled in public").
+- Máy chủ: giới hạn 600 request/phút mỗi IP (xem trước, xuất Word / PDF: 40/phút), token không đúng dạng bị từ chối
+  ngay, HSTS, `assets/` lưu đệm 1 năm (tên file có mã băm), `index.html` luôn tải mới; tắt máy (SIGTERM khi deploy) thì
+  chờ request đang chạy xong; kết nối CSDL treo quá 15 giây thì báo lỗi.
 
 Gói miễn phí: Render ngủ sau 15 phút không dùng (lần mở đầu chờ ~1 phút); Supabase tạm dừng dự án sau 7 ngày không có truy cập (bấm *Restore* trên trang Supabase).
 
