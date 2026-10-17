@@ -178,7 +178,9 @@ test('Tìm người vừa nhắn bot: chưa có tin mới (408) -> danh sách tr
     const app = await startApp({ secretKey: 'khoa-thu', zalo: { token: '', fetch: fakeZalo({ updates }).fetch } });
     try {
       await app.call('admin', 'PUT', '/zalo-settings', { token: TOKEN });
-      const r = await app.call('admin', 'POST', '/zalo-settings/discover');
+      const r = updates === 'timeout'
+        ? { status: 200, body: { chats: await app.dkct.zalo.discover({ waitMs: 1500, pollSeconds: 1 }) } }
+        : await app.call('admin', 'POST', '/zalo-settings/discover');
       assert.equal(r.status, status, updates);
       if (pattern) assert.match(r.body.error, pattern);
       else assert.deepEqual(r.body.chats, []);

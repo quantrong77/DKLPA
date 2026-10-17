@@ -17,6 +17,7 @@ const STATUS = 'zalo.status';
 const MAX_TEXT = 2000; // giới hạn sendMessage
 const MAX_PARTS = 4; // mỗi người nhận tối đa 4 tin cho một lần thay đổi
 const MAX_RECIPIENTS = 50;
+const DISCOVER_WAIT_MS = 50 * 1000; // "Tìm người vừa nhắn bot" chờ tin nhắn tới bot tối đa 50 giây
 const TOKEN_RE = /^[A-Za-z0-9:_.-]{10,300}$/; // token nằm trong đường dẫn URL: không cho "/", "?", "#"
 const CHAT_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 const fail = (status, message) => Object.assign(new Error(message), { status });
@@ -196,18 +197,28 @@ function createZaloBot({ db, secret, envToken = '', fetch = globalThis.fetch, li
     return out;
   }
 
-  /** Người / nhóm vừa nhắn bot (để lấy chat_id). Bot đang đặt webhook thì Zalo không cho đọc. */
-  async function discover() {
+  /**
+   * Người / nhóm nhắn bot (để lấy chat_id). getUpdates là long polling: Zalo trả tin đến trong lúc đang chờ (tin cũ có thể
+   * không còn), nên chờ tới `waitMs` (mặc định 50 giây) — admin bấm nút rồi nhắn bot. Bot đang đặt webhook thì Zalo không cho đọc.
+   */
+  async function discover({ waitMs = DISCOVER_WAIT_MS, pollSeconds = 25 } = {}) {
     const c = await config();
     if (!c.token) throw fail(400, 'Chưa có token bot Zalo — lưu token trước.');
-    try {
-      return chatsFromUpdates(await callApi(c.token, 'getUpdates', { timeout: '3' }, { fetch, timeoutMs: 20000 }));
-    } catch (err) {
-      // 408: hết thời gian chờ mà chưa có tin nhắn mới (long polling) — không phải lỗi
-      if (err.zaloCode === 408) return [];
-      if (/webhook/i.test(err.message)) throw fail(409, 'Bot đang dùng webhook nên không đọc được tin nhắn mới; xóa Webhook URL của bot hoặc nhập chat ID bằng tay.');
-      throw err;
-    }
+    const deadline = Date.now() + waitMs;
+    do {
+      const left = Math.max(1, Math.min(pollSeconds, Math.round((deadline - Date.now()) / 1000)));
+      try {
+        const chats = chatsFromUpdates(await callApi(c.token, 'getUpdates', { timeout: String(left) }, { fetch, timeoutMs: (left + 10) * 1000 }));
+        if (chats.length) return chats;
+      } catch (err) {
+        // 408: hết thời gian chờ mà chưa có tin nhắn mới — chờ tiếp tới hạn
+        if (err.zaloCode !== 408) {
+          if (/webhook/i.test(err.message)) throw fail(409, 'Bot đang dùng webhook nên không đọc được tin nhắn mới; xóa Webhook URL của bot hoặc nhập chat ID bằng tay.');
+          throw err;
+        }
+      }
+    } while (Date.now() < deadline - 1000);
+    return [];
   }
 
   /**

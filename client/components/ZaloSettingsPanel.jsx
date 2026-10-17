@@ -44,7 +44,7 @@ export default function ZaloSettingsPanel() {
   const discover = () => run('discover', async () => {
     const { chats } = await api.post('/zalo-settings/discover', {});
     setFound(chats);
-    if (!chats.length) notify('Chưa thấy ai nhắn bot gần đây. Nhắn một tin bất kỳ cho bot rồi bấm lại.', 'info');
+    if (!chats.length) notify('Không có tin nhắn nào tới bot trong lúc chờ. Bấm lại rồi nhắn bot ngay trong lúc nút đang quay.', 'info');
   });
   const clearToken = () => run('reset', async () => {
     fill(await api.put('/zalo-settings', { clearToken: true }));
@@ -75,7 +75,7 @@ export default function ZaloSettingsPanel() {
         <ol className="list-decimal pl-5 space-y-1 mt-2">
           <li>Trên Zalo, tìm <b>Zalo Bot Creator</b> → tạo bot → nhận <b>token</b> (dạng 1234567890:AbCd…). Dán token bên dưới, Lưu.</li>
           <li>Mỗi người cần nhận báo: tìm bot trên Zalo, bấm <b>Quan tâm</b> và nhắn một tin bất kỳ (vd "đăng ký"). Nhóm Zalo: thêm bot vào nhóm rồi nhắn trong nhóm (Zalo đang thử nghiệm bot trong nhóm).</li>
-          <li>Bấm <b>Tìm người vừa nhắn bot</b> → <b>Thêm</b> từng người / nhóm → chọn tổ (chỉ nhận thay đổi của tổ đó) → Lưu → <b>Gửi thử</b>.</li>
+          <li>Bấm <b>Tìm người vừa nhắn bot</b>, rồi <b>trong lúc nút đang chờ</b> nhắn một tin cho bot (Zalo chỉ trả tin đến trong lúc chờ) → <b>Thêm</b> người / nhóm hiện ra → chọn tổ (chỉ nhận thay đổi của tổ đó) → Lưu → <b>Gửi thử</b>.</li>
         </ol>
         <a className="inline-flex items-center gap-1 mt-2 underline" href="https://bot.zapps.me/docs/" target="_blank" rel="noreferrer">
           Tài liệu Zalo Bot <ExternalLink className="w-3 h-3" aria-hidden="true" />
@@ -119,10 +119,16 @@ export default function ZaloSettingsPanel() {
             <Users className="w-4 h-4 text-chatlan-600" aria-hidden="true" /> Người nhận ({form.recipients.filter(r => r.chatId.trim()).length})
           </h3>
           <button type="button" className={btnSecondary} disabled={!!busy || !view.hasToken} onClick={discover}
-            title={view.hasToken ? 'Đọc tin nhắn gần đây gửi tới bot để lấy chat ID' : 'Lưu token trước'}>
-            {busy === 'discover' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Tìm người vừa nhắn bot
+            title={view.hasToken ? 'Bấm rồi nhắn một tin cho bot: chờ tối đa 50 giây để lấy chat ID' : 'Lưu token trước'}>
+            {busy === 'discover' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            {busy === 'discover' ? 'Đang chờ tin nhắn tới bot…' : 'Tìm người vừa nhắn bot'}
           </button>
         </div>
+        {busy === 'discover' && (
+          <p className="text-xs font-semibold text-amber-700 dark:text-amber-400" role="status">
+            Nhắn một tin bất kỳ cho bot ngay bây giờ (trên Zalo của người cần nhận báo, hoặc trong nhóm có bot) — đang chờ tối đa 50 giây.
+          </p>
+        )}
         {found && found.length > 0 && (
           <ul className="space-y-1 rounded-lg bg-chatlan-50/60 dark:bg-chatlan-900/20 p-2" aria-label="Người vừa nhắn bot">
             {found.map(c => (

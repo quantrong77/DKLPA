@@ -178,7 +178,8 @@ function createDkctModule(deps) {
     migrate: () => (migrated = migrate(db)),
     startAutoFetch: () => shared.autoFetch.start(),
     stopAutoFetch: () => shared.autoFetch.stop(),
-    autoFetch: shared.autoFetch
+    autoFetch: shared.autoFetch,
+    zalo: shared.zalo
   };
 }
 
