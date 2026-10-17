@@ -22,7 +22,10 @@ const CHAT_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const clean = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
 
-/** Gọi Bot API; lỗi mạng / Zalo báo lỗi -> Error (không chứa token). */
+/**
+ * Gọi Bot API; lỗi mạng / Zalo báo lỗi -> Error (không chứa token) mã 424: lỗi ở phía Zalo, không phải lỗi máy chủ
+ * này, nên lý do được hiện cho admin (lỗi ≥ 500 bị che thành "Lỗi máy chủ"). err.zaloCode = error_code của Zalo.
+ */
 async function callApi(token, method, body, { fetch = globalThis.fetch, timeoutMs = 15000 } = {}) {
   let res;
   try {
@@ -33,13 +36,17 @@ async function callApi(token, method, body, { fetch = globalThis.fetch, timeoutM
       signal: AbortSignal.timeout(timeoutMs)
     });
   } catch (err) {
-    throw fail(502, `Không kết nối được Zalo Bot API (${err.name === 'TimeoutError' ? 'quá thời gian chờ' : 'lỗi mạng'}).`);
+    throw fail(424, `Không kết nối được Zalo Bot API (${err.name === 'TimeoutError' ? 'quá thời gian chờ' : 'lỗi mạng'}). Máy chủ cần ra được Internet.`);
   }
   const data = await res.json().catch(() => null);
   if (!res.ok || !data?.ok) {
+    const code = Number(data?.error_code) || res.status;
     const why = clean(data?.description || data?.message || data?.error_code || `HTTP ${res.status}`, 200);
-    if (res.status === 401 || res.status === 404 || /token|unauthori[sz]ed/i.test(why)) throw fail(424, `Zalo từ chối token của bot (${why}). Kiểm tra lại token.`);
-    throw fail(502, `Zalo báo lỗi: ${why}`);
+    const err = /token|unauthori[sz]ed/i.test(why) || res.status === 401 || res.status === 404 || code === 401
+      ? fail(424, `Zalo từ chối token của bot (${why}). Kiểm tra lại token.`)
+      : fail(424, `Zalo báo lỗi: ${why}${code ? ` (mã ${code})` : ''}`);
+    err.zaloCode = code;
+    throw err;
   }
   return data.result;
 }
@@ -196,7 +203,9 @@ function createZaloBot({ db, secret, envToken = '', fetch = globalThis.fetch, li
     try {
       return chatsFromUpdates(await callApi(c.token, 'getUpdates', { timeout: '3' }, { fetch, timeoutMs: 20000 }));
     } catch (err) {
-      if (/webhook/i.test(err.message)) throw fail(409, 'Bot đang dùng webhook nên không đọc được tin nhắn mới; xóa webhook của bot hoặc nhập chat ID bằng tay.');
+      // 408: hết thời gian chờ mà chưa có tin nhắn mới (long polling) — không phải lỗi
+      if (err.zaloCode === 408) return [];
+      if (/webhook/i.test(err.message)) throw fail(409, 'Bot đang dùng webhook nên không đọc được tin nhắn mới; xóa Webhook URL của bot hoặc nhập chat ID bằng tay.');
       throw err;
     }
   }

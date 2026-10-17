@@ -20,11 +20,14 @@ const LD = USERS.lead.department;
 const TOKEN = '1234567890:AbCdEf-gh_ij';
 
 /** Bot API giả: ghi lại tin gửi; getUpdates trả tin người dùng vừa nhắn. */
-function fakeZalo({ reject = false } = {}) {
+function fakeZalo({ reject = false, updates = 'one' } = {}) {
   const sent = [];
   const fetch = async (url, init) => {
     const body = JSON.parse(init.body);
     if (reject) return new Response(JSON.stringify({ ok: false, error_code: 401, description: 'Unauthorized' }), { status: 401 });
+    if (url.endsWith('/getUpdates') && updates === 'timeout') return Response.json({ ok: false, error_code: 408, description: 'Request timeout' });
+    if (url.endsWith('/getUpdates') && updates === 'webhook') return Response.json({ ok: false, error_code: 400, description: 'Webhook is active' });
+    if (url.endsWith('/getUpdates') && updates === 'down') throw new TypeError('fetch failed');
     if (url.endsWith('/getUpdates')) {
       return Response.json({ ok: true, result: { event_name: 'message.text.received', message: {
         from: { id: 'u1', display_name: 'Nguyễn Văn A' }, chat: { id: 'chat-a', chat_type: 'PRIVATE' }, text: 'xin chào', message_id: 'm1', date: 1
@@ -164,4 +167,28 @@ test('Zalo lỗi (token sai): việc nạp lịch vẫn xong, ghi lỗi để ad
     const t = (await app.call('admin', 'POST', '/zalo-settings/test', {})).body;
     assert.equal(t.failed.length, 1);
   } finally { console.warn = warn; app.close(); }
+});
+
+test('Tìm người vừa nhắn bot: chưa có tin mới (408) -> danh sách trống; lỗi Zalo hiện đúng lý do, không phải "Lỗi máy chủ"', async () => {
+  for (const [updates, status, pattern] of [
+    ['timeout', 200, null],
+    ['webhook', 409, /webhook/],
+    ['down', 424, /Không kết nối được Zalo Bot API/]
+  ]) {
+    const app = await startApp({ secretKey: 'khoa-thu', zalo: { token: '', fetch: fakeZalo({ updates }).fetch } });
+    try {
+      await app.call('admin', 'PUT', '/zalo-settings', { token: TOKEN });
+      const r = await app.call('admin', 'POST', '/zalo-settings/discover');
+      assert.equal(r.status, status, updates);
+      if (pattern) assert.match(r.body.error, pattern);
+      else assert.deepEqual(r.body.chats, []);
+    } finally { app.close(); }
+  }
+  const bad = await startApp({ secretKey: 'khoa-thu', zalo: { token: '', fetch: fakeZalo({ reject: true }).fetch } });
+  try {
+    await bad.call('admin', 'PUT', '/zalo-settings', { token: TOKEN });
+    const r = await bad.call('admin', 'POST', '/zalo-settings/discover');
+    assert.equal(r.status, 424);
+    assert.match(r.body.error, /Zalo từ chối token/);
+  } finally { bad.close(); }
 });
