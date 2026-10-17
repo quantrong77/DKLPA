@@ -28,6 +28,13 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   phụ trách (Khu vực của tổ → sửa tổ, bảng `dkct_team_stations`; trạm nhận từ địa điểm ghi tự do "Trạm 220kV Phan Thiết,
   ĐZ …", kể cả trạm chưa có trong danh mục): tổ đã tích trạm thì lọc và báo thay đổi chỉ gồm các trạm đó; dòng lịch không
   ghi rõ trạm vẫn theo khu vực.
+  **Thông báo Zalo** (Cài đặt → Thông báo Zalo, `services/zaloBot.js`): bot của Zalo Bot Platform
+  (https://bot.zapps.me/docs, gửi bằng `bot-api.zaloplatforms.com/bot<token>/sendMessage`) báo các dòng phát sinh / hoãn /
+  dời / sửa / có lại sau mỗi lần **tự tải theo giờ hẹn** (tùy chọn cả khi bấm tải, chọn file). Token bot lưu mã hóa như mật
+  khẩu trang lịch (mặc định `ZALO_BOT_TOKEN` trong .env), không trả về trình duyệt. Người nhận: chat ID của người / nhóm đã
+  nhắn bot (nút "Tìm người vừa nhắn bot" đọc `getUpdates`; bot đang dùng webhook thì nhập tay); mỗi người nhận chọn một tổ để
+  chỉ nhận thay đổi của tổ đó (cùng cách xác định tổ như "Chỉ tổ của tôi") hoặc để trống nhận mọi thay đổi. Tin ≤ 2000 ký tự,
+  dài thì chia (tối đa 4 tin mỗi người mỗi lần); Zalo lỗi không làm hỏng việc nạp lịch, lỗi ghi ở cuối trang cài đặt.
 - **Công việc không có lịch cắt điện** (bước 1, cạnh Lịch cắt điện): việc không đăng ký cắt điện (làm việc không cắt điện,
   kiểm tra, xử lý tồn tại…) làm gốc của luồng thay cho dòng lịch.
   - Ghi nội dung, trạm (chọn danh mục TBA hoặc tự ghi), địa điểm/thiết bị, thời gian (tùy chọn), điều kiện (mặc định
@@ -239,6 +246,18 @@ Chuyển dữ liệu đang dùng trong ChatLan sang Supabase (chạy ở máy c�
 `node standalone/scripts/copy-from-chatlan.js <đường dẫn server/.env của ChatLan>` — chép mọi bảng `dkct_*` trong một giao dịch và tạo sẵn các tổ; Supabase đã có hồ sơ thì dừng (thêm `--force` để ghi đè).
 
 Chạy ở máy: chép `standalone/.env.example` thành `standalone/.env`, rồi `npm ci && cd standalone && npm ci && npm run build && npm start` (http://localhost:3000). Test: `npm test` trong `standalone/`; toàn bộ test module trên Postgres: `npm run test:pg`.
+
+## Gắn vào ChatLan-cloud, dùng chung dữ liệu với bản độc lập (`server/shared.js`)
+
+ChatLan-cloud gắn module (submodule `modules/dkct`) nhưng không dùng CSDL TiDB của mình: `createSharedDkct({ pool, emailOf,
+notifyByEmail })` nối tới **CSDL Postgres của bản độc lập** (`DKCT_DATABASE_URL`) và dùng chung tài khoản, tổ, vai trò
+(`server/accounts.js`, bảng `dkct_app_users`, `dkct_app_departments`; admin quản lý ở trang Quản trị của bản độc lập).
+- Người dùng ứng dụng chủ được nhận ra **theo email**; chưa có tài khoản / chưa xếp tổ thì `GET /link-status` cho biết và
+  mọi API trả 403 kèm `code` (`DKCT_NOT_LINKED`, `DKCT_NO_TEAM`).
+- Báo lịch thay đổi qua ứng dụng chủ: đọc `dkct_outage_changes` mỗi phút (mốc trong `dkct_settings` `notify.host.cursor`),
+  nên báo cả thay đổi do bản độc lập tải; người nhận như bản ChatLan, gửi theo email; không báo lại thay đổi quá 2 ngày.
+- `DKCT_SECRET_KEY` phải giống bản độc lập (mật khẩu trang lịch, token Zalo đã lưu); `secretKey: ''` không dùng JWT_SECRET
+  của ứng dụng chủ. Hai bên nên chạy cùng commit module. Hướng dẫn bên ChatLan-cloud: `docs/DKCT.md` của repo đó.
 
 ## Phát triển
 

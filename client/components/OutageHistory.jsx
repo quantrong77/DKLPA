@@ -76,7 +76,7 @@ export function AutoFetchStatus({ refresh, canConfigure }) {
     const changes = s ? SUMMARY_PARTS.filter(([k]) => s[k]).map(([k, label]) => `${s[k]} ${label}`).join(', ') : '';
     lastText = last.ok === false
       ? <span className="text-red-700 dark:text-red-400 inline-flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> {formatDateTime(last.startedAt)} lỗi: {last.error}</span>
-      : last.ok ? `${formatDateTime(last.startedAt)}${last.mode === 'AUTO' ? ' (tự động)' : ''} — ${last.rowsCount ?? 0} dòng${s?.compared ? `; ${changes || 'không có thay đổi'}` : ''}${s?.notified ? `; đã báo ${s.notified} người` : ''}`
+      : last.ok ? `${formatDateTime(last.startedAt)}${last.mode === 'AUTO' ? ' (tự động)' : ''} — ${last.rowsCount ?? 0} dòng${s?.compared ? `; ${changes || 'không có thay đổi'}` : ''}${s?.notified ? `; đã báo ${s.notified} người` : ''}${s?.zalo ? `; ${s.zalo} tin Zalo` : ''}`
         : `${formatDateTime(last.startedAt)} — đang tải…`;
   }
   return (

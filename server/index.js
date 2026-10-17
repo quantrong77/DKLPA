@@ -29,6 +29,7 @@ const { createPolicy } = require('./policy');
 const { createNumbering } = require('./services/numbering');
 const { catalogRouter } = require('./routes/catalogs');
 const { outageRouter } = require('./routes/outages');
+const { zaloRouter } = require('./routes/zalo');
 const { workRouter } = require('./routes/works');
 const { registrationRouter } = require('./routes/registrations');
 const { surveyRouter } = require('./routes/surveys');
@@ -47,6 +48,7 @@ const { vnToday } = require('./services/clock');
 const { createOutageImporter } = require('./services/outageImport');
 const { createAutoFetch } = require('./services/outageAutoFetch');
 const { createOutageSettings } = require('./services/outageSettings');
+const { createZaloBot } = require('./services/zaloBot');
 const { safeParse } = require('./util');
 
 const REQUIRED = ['db', 'getActor', 'getProfile', 'isAdmin', 'isDepartmentHead', 'isUnitLead', 'getUnit'];
@@ -112,12 +114,20 @@ function createDkctModule(deps) {
     defaultUnitName: deps.defaultUnitName || DEFAULT_UNIT_NAME
   };
   // tài khoản trang lịch, giờ tự tải: admin đặt trên giao diện, mặc định deps.outageSource/outageAuto rồi OUTAGE_* trong env
-  shared.outageSettings = createOutageSettings({
-    db, source: deps.outageSource, auto: deps.outageAuto,
-    secret: deps.secretKey || process.env.DKCT_SECRET_KEY || process.env.JWT_SECRET || ''
+  // khóa mã hóa mật khẩu trang lịch, token Zalo; dùng chung CSDL với ứng dụng khác thì phải cùng khóa
+  // (deps.secretKey = '' : không có khóa, không dùng JWT_SECRET của ứng dụng chủ)
+  const secretKey = deps.secretKey ?? (process.env.DKCT_SECRET_KEY || process.env.JWT_SECRET || '');
+  shared.outageSettings = createOutageSettings({ db, source: deps.outageSource, auto: deps.outageAuto, secret: secretKey });
+  // báo biến động lịch qua Zalo Bot (admin đặt token, người nhận ở Cài đặt → Thông báo Zalo; mặc định ZALO_BOT_TOKEN)
+  shared.zalo = createZaloBot({
+    db, secret: secretKey, envToken: deps.zalo?.token ?? process.env.ZALO_BOT_TOKEN ?? '',
+    fetch: deps.zalo?.fetch, listDepartments
   });
   // nạp lịch (chọn file / bấm tải / tự tải) dùng chung một quy trình; tự tải theo giờ hẹn
-  shared.importer = createOutageImporter({ db, notifyUsers: deps.notifyUsers, listTeamLeads: deps.listTeamLeads });
+  shared.importer = createOutageImporter({
+    db, notifyUsers: deps.notifyUsers, listTeamLeads: deps.listTeamLeads,
+    onChanges: (events, ctx) => shared.zalo.onChanges(events, ctx)
+  });
   shared.autoFetch = createAutoFetch({ db, importer: shared.importer, settings: shared.outageSettings });
   // mẫu Word: mẫu admin tải lên (đang dùng) hoặc mẫu gốc trong templates/; thử điền bằng văn bản gần nhất
   const SAMPLE_TABLE = {
@@ -145,6 +155,7 @@ function createDkctModule(deps) {
   router.use(express.json({ limit: '2mb' }));
   router.use(catalogRouter(shared));
   router.use(outageRouter(shared));
+  router.use(zaloRouter(shared));
   router.use(workRouter(shared));
   router.use(registrationRouter(shared));
   router.use(surveyRouter(shared));

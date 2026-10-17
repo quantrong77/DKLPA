@@ -14,29 +14,7 @@ const fs = require('node:fs');
 const express = require('express');
 const createDkctModule = require('../../server');
 
-const ROLES = ['admin', 'lead', 'member'];
-
-/** Bảng của phần ứng dụng độc lập (cùng kiểu dữ liệu cho Postgres và SQLite). */
-const APP_TABLES = {
-  dkct_app_departments: `
-      name VARCHAR(191) PRIMARY KEY,
-      shortName VARCHAR(64) NOT NULL,
-      sortOrder INTEGER NOT NULL DEFAULT 0,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
-  dkct_app_users: `
-      id VARCHAR(64) PRIMARY KEY,
-      email VARCHAR(255) NOT NULL,
-      fullName VARCHAR(255),
-      position VARCHAR(255),
-      phone VARCHAR(64),
-      department VARCHAR(191),
-      role VARCHAR(16) NOT NULL DEFAULT 'member',
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
-};
-const APP_TABLE_TEXT = Object.values(APP_TABLES).join(',');
-
-const USER_COLUMNS = 'id, email, fullName, position, phone, department, role, createdAt';
+const { createAccounts, APP_TABLE_TEXT, USER_COLUMNS, ROLES } = require('../../server/accounts');
 const text = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
 const bad = (message, status = 400) => Object.assign(new Error(message), { status });
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -93,7 +71,8 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
   const admins = new Set(adminEmails.map(e => e.trim().toLowerCase()).filter(Boolean));
   const verify = cachedVerifier(verifyToken);
 
-  const getUser = (id) => db.queryOne(`SELECT ${USER_COLUMNS} FROM dkct_app_users WHERE id = ?`, [id]);
+  const accounts = createAccounts(db);
+  const { getUser, listDepartments } = accounts;
 
   /** Lần đầu đăng nhập thì tạo hồ sơ; email trong ADMIN_EMAILS (đã xác nhận email) luôn là admin. */
   async function ensureUser(identity) {
@@ -125,30 +104,20 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     : res.status(403).json({ error: 'Tài khoản chưa được xếp tổ. Liên hệ quản trị viên.' }));
   const requireAdmin = (req, res, next) => (req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Chỉ quản trị viên được làm việc này.' }));
 
-  const listDepartments = () => db.query('SELECT name, shortName FROM dkct_app_departments ORDER BY sortOrder, name');
-
   const dkct = createDkctModule({
     db,
     getActor: getUser,
     getProfile: getUser,
-    isAdmin: (actor) => actor?.role === 'admin',
+    isAdmin: accounts.isAdmin,
     isDepartmentHead: () => false,
-    isUnitLead: async (userId, department) => {
-      const u = await getUser(userId);
-      return !!u && u.role === 'lead' && u.department === department;
-    },
-    getUnit: async (userId) => {
-      const u = await getUser(userId);
-      const dept = u?.department ? await db.queryOne('SELECT shortName FROM dkct_app_departments WHERE name = ?', [u.department]) : null;
-      return { department: u?.department || '', shortName: dept?.shortName || '' };
-    },
-    listDepartments
+    isUnitLead: accounts.isUnitLead,
+    getUnit: accounts.getUnit,
+    listDepartments,
+    listTeamLeads: accounts.listTeamLeads
   });
 
   async function migrate() {
-    for (const [name, columns] of Object.entries(APP_TABLES)) {
-      await db.execute(`CREATE TABLE IF NOT EXISTS ${name} (${columns}\n)`);
-    }
+    await accounts.migrate();
     await dkct.migrate();
   }
 

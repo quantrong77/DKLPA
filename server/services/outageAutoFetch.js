@@ -73,7 +73,7 @@ async function finishRun(db, id, { ok, result, error, now = new Date() }) {
     inserted: result.inserted, updated: result.updated,
     postponed: result.compare?.postponed.length || 0, moved: result.compare?.moved.length || 0,
     edited: result.compare?.edited.length || 0, added: result.compare?.added.length || 0,
-    restored: result.compare?.restored?.length || 0, compared: !!result.compare, notified: result.notified || 0
+    restored: result.compare?.restored?.length || 0, compared: !!result.compare, notified: result.notified || 0, zalo: result.zalo || 0
   }) : null;
   await db.execute('UPDATE dkct_outage_fetches SET finishedAt = ?, ok = ?, rowsCount = ?, summary = ?, error = ? WHERE id = ?',
     [vnNow(now), ok ? 1 : 0, result?.rows ?? null, summary, error ? String(error).slice(0, 1000) : null, id]);
@@ -89,7 +89,7 @@ async function fetchAndImport({ db, importer, outageSource, from, to, mode, slot
   try {
     const buffer = await fetchOutageWorkbook({ from, to }, outageSource);
     const result = await importer.importParsed(await importer.parseBuffer(buffer),
-      { compareFrom: from, compareTo: to, sourceFile: label, actorId: actorId || 'AUTO', now });
+      { compareFrom: from, compareTo: to, sourceFile: label, actorId: actorId || 'AUTO', trigger: mode, now });
     await finishRun(db, runId, { ok: true, result });
     return result;
   } catch (err) {
@@ -139,7 +139,7 @@ function createAutoFetch({ db, importer, settings, log = console }) {
       const label = `Tự tải ${due} ${from.split('-').reverse().join('/')}${due === hhmm ? '' : ` (tải bù lúc ${hhmm})`}`;
       const result = await fetchAndImport({ db, importer, outageSource, from, to, mode: 'AUTO', slot, label, now, releaseOnFail: true });
       attempt.done = true; // đã tải (hoặc tiến trình khác đã giữ slot)
-      if (result) log.info?.(`[dkct] ${label}: ${result.rows} dòng, ${result.logged} thay đổi, báo ${result.notified} người.`);
+      if (result) log.info?.(`[dkct] ${label}: ${result.rows} dòng, ${result.logged} thay đổi, báo ${result.notified} người, ${result.zalo || 0} tin Zalo.`);
       return result;
     } catch (err) {
       log.warn?.(`[dkct] Tự tải lịch cắt điện lỗi: ${err.message}`);

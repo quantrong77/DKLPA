@@ -35,7 +35,7 @@ export const HELP_SECTIONS = [
       ['Công việc không có lịch cắt điện', 'Ở bước 1 chọn "Công việc không có lịch cắt điện" → "Thêm công việc": ghi nội dung, trạm, địa điểm/thiết bị, thời gian, điều kiện (mặc định "Không cắt điện."). Trên dòng công việc bấm Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — các mục tự điền và hồ sơ nối vào luồng như khi lập từ lịch. Công việc đã có hồ sơ thì không xóa được.'],
       ['Nạp lịch', '"Tải lịch cắt điện": máy chủ tự đăng nhập trang lịch Công ty, tải theo khoảng ngày rồi nạp luôn (cần cấu hình tài khoản). Hoặc "Chọn file lịch cắt điện (Excel)" → xem trước → "Cập nhật lịch".'],
       ['So sánh khi nạp lại', 'Chọn khoảng so sánh: dòng Hoãn (đỏ), Dời lịch (xanh), Sửa nội dung (tím), Phát sinh (vàng); không đổi để nguyên. Bấm một mục trong kết quả để tới dòng đó. Dời/sửa cập nhật tại chỗ nên hồ sơ đã gắn vẫn trỏ đúng.'],
-      ['Tự tải và báo', 'Admin đặt tài khoản và giờ tải bằng nút "Cài đặt tải lịch" ở dòng trên cùng (hoặc Cài đặt → Tải lịch tự động); dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi.'],
+      ['Tự tải và báo', 'Admin đặt tài khoản và giờ tải bằng nút "Cài đặt tải lịch" ở dòng trên cùng (hoặc Cài đặt → Tải lịch tự động); dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi; có thể báo thêm qua Zalo (Cài đặt → Thông báo Zalo).'],
       ['Lọc, tìm', 'Chọn khoảng ngày, gõ từ khóa (trạm, thiết bị, đơn vị); bấm thẻ thống kê để lọc; "Chỉ tổ của tôi" giữ dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ.'],
       ['Ẩn/hiện khung', 'Nút con mắt "Tải lịch" và "Thống kê" ở hàng lọc ẩn/hiện khung tải lịch và các thẻ thống kê cho gọn màn hình; trình duyệt ghi nhớ lựa chọn.'],
       ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — nội dung, phạm vi, thời gian tự điền. "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
@@ -95,6 +95,7 @@ export const HELP_SECTIONS = [
     items: [
       ['Khu vực, trạm của tổ', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng. Bấm sửa một tổ để tích đúng các trạm tổ phụ trách (gom theo khu vực, tích cả khu vực một lần): đã tích trạm thì "Chỉ tổ của tôi" chỉ hiện lịch các trạm đó.'],
       ['Tải lịch tự động', 'Tên đăng nhập, mật khẩu trang lịch cắt điện của Công ty (mật khẩu lưu mã hóa, không hiện lại), giờ tự tải hằng ngày (vd 07:00, 15:00; để trống = tắt) và số ngày tới. "Thử kết nối" kiểm tra đăng nhập. Lưu là có hiệu lực ngay; ô để trống dùng giá trị trong .env của máy chủ.'],
+      ['Thông báo Zalo', 'Bot Zalo gửi tin khi lịch cắt điện phát sinh, hoãn, dời, sửa sau lần tự tải theo giờ hẹn (tùy chọn cả khi bấm tải / chọn file). Tạo bot bằng Zalo Bot Creator, dán token (lưu mã hóa); người nhận nhắn một tin cho bot → "Tìm người vừa nhắn bot" → Thêm, chọn tổ (chỉ nhận thay đổi của tổ đó) → Lưu → Gửi thử. Dòng cuối cho biết lần báo gần nhất và lỗi (nếu có).'],
       ['Mẫu văn bản', 'Tải mẫu Word về sửa (giữ thẻ {…} và nhãn ((…))), tải lên: phần mềm kiểm tra, thử điền, cho xem thử; "Lưu & dùng ngay" hoặc quay về mẫu gốc bất cứ lúc nào.']
     ]
   },

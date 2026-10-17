@@ -37,9 +37,11 @@ const short = (t) => {
  * @param deps.db
  * @param deps.notifyUsers  async ([{ userId, text }]) — gửi tin nhắn (ChatLan); không có thì không báo
  * @param deps.listTeamLeads async (department) -> [userId] — tổ trưởng/tổ phó (nhận báo thay đổi trong khu vực của tổ)
+ * @param deps.onChanges     async (events, { source, trigger, describe }) -> số tin đã gửi — báo thêm kênh khác (Zalo);
+ *                           trigger: 'AUTO' (tự tải theo giờ hẹn) | 'MANUAL' (bấm tải) | 'UPLOAD' (chọn file)
  * @param deps.log           (message, err) ghi lỗi gửi báo (mặc định console.warn)
  */
-function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => console.warn(m, e?.message || e) }) {
+function createOutageImporter({ db, notifyUsers, listTeamLeads, onChanges, log = (m, e) => console.warn(m, e?.message || e) }) {
   async function parseBuffer(buffer) {
     const parsed = await readOutageWorkbook(buffer);
     const existing = new Map();
@@ -201,8 +203,8 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => 
    *  - hoãn / dời / sửa: người lập và tổ trưởng của tổ có biên bản KSHT / phương án / giấy ĐKCT gắn dòng lịch đó;
    *  - mọi thay đổi (cả phát sinh, có lại): tổ trưởng của tổ phụ trách khu vực của dòng lịch.
    */
-  async function recipientsOf(events, source) {
-    if (!events.length) return [];
+  /** Dòng lịch, hồ sơ gắn dòng lịch và hàm "tổ phụ trách" cho các sự kiện. */
+  async function contextOf(events) {
     const ids = [...new Set(events.map(e => e.outageId))];
     const outages = new Map((await queryIn(db, `SELECT id, regStart, regEnd, location, content, registrationUnit, workUnit
       FROM dkct_outages WHERE id IN ({in})`, ids)).map(o => [o.id, o]));
@@ -214,6 +216,31 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => 
     // tổ phụ trách: trạm tổ đã tích chọn, tổ chưa tích trạm thì theo khu vực TTĐ
     const known = [...outages.values()].flatMap(o => substationsIn(o.location).strong.map(x => x.key));
     const teamsOf = teamResolver(await loadTeamAreas(db), await loadAreaSubstations(db), await loadTeamStations(db), known);
+    return { outages, docs, teamsOf };
+  }
+  const headOf = (ev, o) => `• ${KIND_LABEL[ev.kind]}: ${short(o.regStart)} ${o.location || ''} — ${String(o.content || '').replace(/\s+/g, ' ').slice(0, 90)}`;
+  const noteOf = (ev) => (ev.note && ev.kind !== 'RESTORED' ? `\n   ${ev.note}` : '');
+
+  /**
+   * Tóm tắt từng sự kiện cho kênh báo ngoài (Zalo): [{ event, line, teams: [tổ phụ trách / tổ có hồ sơ gắn] }].
+   */
+  async function describeEvents(events) {
+    if (!events.length) return [];
+    const { outages, docs, teamsOf } = await contextOf(events);
+    const out = [];
+    for (const ev of events) {
+      const o = outages.get(ev.outageId);
+      if (!o) continue;
+      const linked = docs.filter(d => d.outageId === ev.outageId);
+      const related = linked.length && ['POSTPONED', 'MOVED', 'EDITED'].includes(ev.kind) ? `\n   Hồ sơ liên quan: ${linked.map(d => d.label).join(', ')}` : '';
+      out.push({ event: ev, line: `${headOf(ev, o)}${noteOf(ev)}${related}`, teams: [...new Set([...teamsOf(o), ...linked.map(d => d.department)].filter(Boolean))] });
+    }
+    return out;
+  }
+
+  async function recipientsOf(events, source) {
+    if (!events.length) return [];
+    const { outages, docs, teamsOf } = await contextOf(events);
     const leadsCache = new Map();
     const leadsOf = async (dept) => {
       if (!listTeamLeads || !dept) return [];
@@ -231,8 +258,8 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => 
       const o = outages.get(ev.outageId);
       if (!o) continue;
       const linked = docs.filter(d => d.outageId === ev.outageId);
-      const head = `• ${KIND_LABEL[ev.kind]}: ${short(o.regStart)} ${o.location || ''} — ${String(o.content || '').replace(/\s+/g, ' ').slice(0, 90)}`;
-      const note = ev.note && ev.kind !== 'RESTORED' ? `\n   ${ev.note}` : '';
+      const head = headOf(ev, o);
+      const note = noteOf(ev);
       if (['POSTPONED', 'MOVED', 'EDITED'].includes(ev.kind)) {
         for (const d of linked) {
           const line = `${head}${note}\n   Hồ sơ liên quan: ${linked.filter(x => x.department === d.department).map(x => x.label).join(', ')}`;
@@ -262,16 +289,28 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, log = (m, e) => 
     }
   }
 
+  // kênh báo ngoài (Zalo): lỗi không làm hỏng việc nạp lịch
+  async function notifyOther(events, source, trigger) {
+    if (!onChanges || !events.length) return 0;
+    try {
+      return Number(await onChanges(events, { source, trigger, describe: describeEvents })) || 0;
+    } catch (err) {
+      log('[dkct] Không gửi được báo Zalo:', err);
+      return 0;
+    }
+  }
+
   /** Nạp một file lịch: so sánh (nếu có khoảng), ghi, đánh dấu, ghi lịch sử, báo người liên quan. */
-  async function importParsed({ parsed, existing }, { compareFrom, compareTo, sourceFile, actorId, now = new Date() }) {
+  async function importParsed({ parsed, existing }, { compareFrom, compareTo, sourceFile, actorId, trigger = 'UPLOAD', now = new Date() }) {
     const compare = await compareImport(parsed, existing, { compareFrom, compareTo }); // so với lịch trước khi ghi
     const saved = await saveRows(parsed, existing, sourceFile, actorId, replacementsOf(compare));
     const events = compare ? await markChanges(compare, { source: sourceFile, now }) : [];
     const notified = await notifyChanges(events, sourceFile);
-    return { ...saved, rows: parsed.rows.length, errors: parsed.errors, compare, logged: events.length, notified };
+    const zalo = await notifyOther(events, sourceFile, trigger);
+    return { ...saved, rows: parsed.rows.length, errors: parsed.errors, compare, logged: events.length, notified, zalo };
   }
 
-  return { parseBuffer, compareImport, saveRows, markChanges, expireMarks, recipientsOf, importParsed };
+  return { parseBuffer, compareImport, saveRows, markChanges, expireMarks, recipientsOf, describeEvents, importParsed };
 }
 
 module.exports = { createOutageImporter, MARK_DAYS, KIND_LABEL, isoDate };
