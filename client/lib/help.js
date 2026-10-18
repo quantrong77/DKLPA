@@ -38,7 +38,7 @@ export const HELP_SECTIONS = [
       ['Tự tải và báo', 'Admin đặt tài khoản và giờ tải bằng nút "Cài đặt tải lịch" ở dòng trên cùng (hoặc Cài đặt → Tải lịch tự động); dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi; có thể báo thêm qua Zalo (Cài đặt → Thông báo Zalo).'],
       ['Lọc, tìm', 'Chọn khoảng ngày, gõ từ khóa (trạm, thiết bị, đơn vị); bấm thẻ thống kê để lọc; "Chỉ tổ của tôi" giữ dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ.'],
       ['Ẩn/hiện khung', 'Nút con mắt "Tải lịch" và "Thống kê" ở hàng lọc ẩn/hiện khung tải lịch và các thẻ thống kê cho gọn màn hình; trình duyệt ghi nhớ lựa chọn.'],
-      ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — nội dung, phạm vi, thời gian tự điền. "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
+      ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT, Lập giấy xác nhận — nội dung, phạm vi, thời gian tự điền (giấy xác nhận theo giấy ĐKCT mới nhất của tổ cho dòng lịch, chưa có giấy thì theo chính dòng lịch). "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
       ['Dọn lịch cũ (admin)', 'Chọn khoảng ngày, xem số dòng sẽ xóa rồi xác nhận; dòng đã có hồ sơ gắn được giữ lại.']
     ]
   },

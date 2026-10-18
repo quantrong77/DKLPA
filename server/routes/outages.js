@@ -120,7 +120,7 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
     await importer.expireMarks();
     const where = [];
     const dept = actor.department || '';
-    const params = [dept, dept, dept];
+    const params = [dept, dept, dept, dept];
     const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
     const from = date(req.query.from);
     const to = date(req.query.to);
@@ -132,12 +132,15 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
       where.push(`(location ${LIKE} OR content ${LIKE} OR scope ${LIKE} OR workUnit ${LIKE} OR registrationUnit ${LIKE})`);
       params.push(...Array(5).fill(likePattern(search)));
     }
-    // tiến độ 3 bước (biên bản KSHT → phương án → giấy ĐKCT): chỉ đếm hồ sơ của tổ người xem (không lộ hoạt động của tổ khác)
+    // tiến độ 4 bước (biên bản KSHT → phương án → giấy ĐKCT → giấy xác nhận): chỉ đếm hồ sơ của tổ người xem (không lộ hoạt động của tổ khác)
     const items = await db.query(`
       SELECT o.*,
         (SELECT COUNT(*) FROM dkct_surveys s WHERE s.outageId = o.id AND s.department = ?) AS surveyCount,
         (SELECT COUNT(*) FROM dkct_plans p WHERE p.outageId = o.id AND p.department = ?) AS planCount,
         (SELECT COUNT(*) FROM dkct_registrations r WHERE r.outageId = o.id AND r.department = ?) AS registrationCount,
+        (SELECT COUNT(*) FROM dkct_confirmations x WHERE x.department = ?
+          AND (x.registrationId IN (SELECT r2.id FROM dkct_registrations r2 WHERE r2.outageId = o.id)
+            OR x.planId IN (SELECT p2.id FROM dkct_plans p2 WHERE p2.outageId = o.id))) AS confirmationCount,
         (SELECT COUNT(*) FROM dkct_outage_changes c WHERE c.outageId = o.id) AS changeCount
       FROM dkct_outages o ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY regStart LIMIT 1000`, params);
@@ -153,9 +156,10 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
       myAreas,
       mySubstations,
       items: items.map(o => {
-        const linked = count(o.surveyCount) + count(o.planCount) + count(o.registrationCount) > 0;
+        const linked = count(o.surveyCount) + count(o.planCount) + count(o.registrationCount) + count(o.confirmationCount) > 0;
         return {
           ...o, surveyCount: count(o.surveyCount), planCount: count(o.planCount), registrationCount: count(o.registrationCount),
+          confirmationCount: count(o.confirmationCount),
           changeCount: count(o.changeCount), mine: linked || (!!dept && teamsOf(o).has(dept))
         };
       })

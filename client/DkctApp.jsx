@@ -170,19 +170,21 @@ export default function DkctApp() {
     setPlanEditor({ initial: planForm(plan.data), plan, numberPreview: plan.docNumber });
   });
 
-  // Giấy xác nhận đủ điều kiện đóng điện: lập mới hoặc từ một giấy ĐKCT
+  // Giấy xác nhận đủ điều kiện đóng điện: lập mới, từ một giấy ĐKCT hoặc một dòng lịch cắt điện
   const [confirmationEditor, setConfirmationEditor] = useState(null); // { initial, confirmation, numberPreview }
   const openNewConfirmation = () => withOpening(async () => {
     const { draft, numbering } = await api.get('/confirmation-defaults');
     setConfirmationEditor({ initial: draft, confirmation: null, numberPreview: numbering.preview });
   });
-  const openConfirmationFromRegistration = (item) => withOpening(async () => {
-    const [{ draft }, { numbering }] = await Promise.all([api.get(`/registrations/${item.id}/confirmation-draft`), api.get('/confirmation-numbering')]);
-    // giấy ĐKCT lập từ phương án: lấy luôn hạng mục của phương án đó
+  const openConfirmationFrom = (draftUrl) => withOpening(async () => {
+    const [{ draft }, { numbering }] = await Promise.all([api.get(draftUrl), api.get('/confirmation-numbering')]);
+    // có phương án (giấy ĐKCT lập từ phương án / phương án của dòng lịch): lấy luôn hạng mục của phương án đó
     let initial = draft;
     if (draft.planId) initial = confirmationFromPlan(draft, (await api.get(`/plans/${draft.planId}`)).plan);
     setConfirmationEditor({ initial, confirmation: null, numberPreview: numbering.preview });
   });
+  const openConfirmationFromRegistration = (item) => openConfirmationFrom(`/registrations/${item.id}/confirmation-draft`);
+  const openConfirmationFromOutage = (outage) => openConfirmationFrom(`/outages/${outage.id}/confirmation-draft`);
   const openConfirmation = (item) => withOpening(async () => {
     follow('confirmation', item);
     const { confirmation } = await api.get(`/confirmations/${item.id}`);
@@ -308,7 +310,7 @@ export default function DkctApp() {
         )}
         {tab === 'outages' && firstView === 'outages' && (
           <OutagePanel {...pick('outage')} reloadKey={reloadKey} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} canConfigure={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
-            onCreatePlanFromOutage={openPlanFromOutage} />
+            onCreatePlanFromOutage={openPlanFromOutage} onCreateConfirmationFromOutage={openConfirmationFromOutage} />
         )}
         {tab === 'outages' && firstView === 'works' && (
           <WorkList {...pick('work')} reloadKey={reloadKey} canCreate={permissions.canCreate} onOpen={openWork}

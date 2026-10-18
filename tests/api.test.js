@@ -680,6 +680,34 @@ test('Giấy xác nhận: lập từ giấy ĐKCT (trạm, ngăn lộ, mục k�
   } finally { app.close(); }
 });
 
+test('giấy xác nhận từ một dòng lịch cắt điện: chưa có giấy ĐKCT thì theo dòng lịch; có thì theo giấy mới nhất của tổ; đếm trên dòng lịch', async () => {
+  const app = await startApp();
+  try {
+    await app.call('lead', 'POST', '/outages/import/commit', excelFrom([['05/10/2024 07h00', '05/10/2024 17h00', 'TBA 220kV Tháp Chàm', 'TNĐK ngăn 232', 'Cô lập MC232', '', '', '']]));
+    const [o] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    assert.equal(o.confirmationCount, 0);
+    const fromOutage = (await app.call('lead', 'GET', `/outages/${o.id}/confirmation-draft`)).body.draft;
+    assert.equal(fromOutage.registrationId, null);
+    assert.equal(fromOutage.station.name, 'TBA 220kV Tháp Chàm');
+    assert.equal(fromOutage.bays, '232');
+    assert.deepEqual(fromOutage.items, [{ text: 'Thí nghiệm định kỳ ngăn 232', result: 'đạt' }]);
+    assert.equal(fromOutage.workDate, '2024-10-05', 'ngày kết thúc theo dòng lịch');
+    assert.equal(fromOutage.team, undefined);
+    assert.equal((await app.call('lead', 'GET', '/outages/KHONG-CO/confirmation-draft')).status, 404);
+
+    const reg = (await app.call('lead', 'POST', '/registrations', { ...(await validInput(app.call)), outageId: o.id })).body.registration;
+    const fromReg = (await app.call('lead', 'GET', `/outages/${o.id}/confirmation-draft`)).body.draft;
+    assert.equal(fromReg.registrationId, reg.id, 'có giấy ĐKCT của tổ: lập theo giấy');
+    assert.equal((await app.call('other', 'GET', `/outages/${o.id}/confirmation-draft`)).body.draft.registrationId, null, 'giấy tổ khác không dùng');
+
+    assert.equal((await app.call('lead', 'POST', '/confirmations', fromReg)).status, 201);
+    const [after] = (await app.call('member', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    assert.equal(after.confirmationCount, 1);
+    const [otherView] = (await app.call('other', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    assert.equal(otherView.confirmationCount, 0, 'không lộ hồ sơ tổ khác');
+  } finally { app.close(); }
+});
+
 test('luồng chuẩn bị công tác: từ hồ sơ bất kỳ thấy đủ lịch → KSHT → phương án → giấy ĐKCT → giấy xác nhận; không lộ hồ sơ tổ khác', async () => {
   const app = await startApp();
   try {

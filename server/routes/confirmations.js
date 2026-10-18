@@ -1,13 +1,14 @@
 /**
  * Giấy xác nhận đủ điều kiện đóng điện: danh sách/xem/lập/sửa/xóa, xuất DOCX theo mẫu,
- * số "<n>/GXN-<tổ>" đếm riêng theo tổ và năm. Lập từ giấy ĐKCT: GET /registrations/:id/confirmation-draft.
+ * số "<n>/GXN-<tổ>" đếm riêng theo tổ và năm. Lập từ giấy ĐKCT: GET /registrations/:id/confirmation-draft;
+ * từ dòng lịch cắt điện: GET /outages/:id/confirmation-draft.
  * Quyền giống giấy ĐKCT.
  */
 const express = require('express');
 const { docxFileName, attachment } = require('../services/fileName');
 const { newId, sameUnitName } = require('../schema');
 const { forbidden } = require('../policy');
-const { normalizeConfirmation, confirmationFromRegistration } = require('../services/confirmation');
+const { normalizeConfirmation, confirmationFromRegistration, devicesIn } = require('../services/confirmation');
 const { renderConfirmationDocx } = require('../services/confirmationRender');
 const { createNumbering, formatConfirmationNumber } = require('../services/numbering');
 const { vnYear, vnToday } = require('../services/clock');
@@ -94,33 +95,74 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
     res.json({ draft: await buildDefaults(actor), numbering: await numberingInfo(actor) });
   }));
 
+  /** TBA trong danh mục: theo trạm đã chọn, không thì khớp tên với địa điểm (lịch cắt điện, công việc, giấy). */
+  async function matchSubstation(places, substationId) {
+    const substations = (await loadSubstations()).filter(s => s.active);
+    return substations.find(s => substationId && s.id === substationId)
+      || substations.find(s => places.some(p => sameUnitName(s.name, p)))
+      || substations.find(s => places.some(p => String(p).toLocaleLowerCase('vi').includes(String(s.name).replace(/^TBA\s+/i, '').toLocaleLowerCase('vi'))))
+      || null;
+  }
+
+  const isoDate = (v, fallback) => {
+    const d = String(v || '').slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : fallback;
+  };
+
   // Lập từ giấy ĐKCT: trạm theo lịch cắt điện (hoặc địa điểm), ngăn lộ/thiết bị/mục kết quả theo nội dung, tổ và người ký theo giấy
+  async function draftFromRegistration(actor, reg) {
+    const data = safeParse(reg.data);
+    const outage = reg.outageId ? await db.queryOne('SELECT location, regEnd FROM dkct_outages WHERE id = ?', [reg.outageId]) : null;
+    // công việc không có lịch cắt điện: trạm đã chọn trong danh mục
+    const work = reg.workId ? await db.queryOne('SELECT substationId, stationName, endTime FROM dkct_works WHERE id = ?', [reg.workId]) : null;
+    const sub = await matchSubstation([outage?.location, work?.stationName, data.workLocation].filter(Boolean), work?.substationId);
+    const draft = await buildDefaults(actor);
+    const from = confirmationFromRegistration({ id: reg.id, data }, sub);
+    return {
+      ...draft,
+      ...from,
+      planId: reg.planId || null, // giấy lập từ phương án: lấy hạng mục từ phương án đó
+      header: { ...draft.header, teamName: from.team.teamName || draft.header.teamName, unitName: from.team.unitName || draft.header.unitName },
+      // ngày thực hiện: ngày kết thúc công tác theo giấy (nếu có), không thì hôm nay
+      workDate: isoDate(data.time?.end || outage?.regEnd || work?.endTime, draft.workDate),
+      signer: from.signer || draft.signer,
+      team: undefined
+    };
+  }
+
   router.get('/registrations/:id/confirmation-draft', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
     const reg = await db.queryOne('SELECT id, department, outageId, workId, planId, data FROM dkct_registrations WHERE id = ?', [req.params.id]);
     if (!reg) throw notFound('Không tìm thấy giấy ĐKCT.');
     if (!policy.canView(actor, reg)) throw forbidden('Giấy ĐKCT này thuộc tổ khác.');
-    const data = safeParse(reg.data);
-    const outage = reg.outageId ? await db.queryOne('SELECT location, regEnd FROM dkct_outages WHERE id = ?', [reg.outageId]) : null;
-    // công việc không có lịch cắt điện: trạm đã chọn trong danh mục
-    const work = reg.workId ? await db.queryOne('SELECT substationId, stationName, endTime FROM dkct_works WHERE id = ?', [reg.workId]) : null;
-    const places = [outage?.location, work?.stationName, data.workLocation].filter(Boolean);
-    const substations = (await loadSubstations()).filter(s => s.active);
-    const sub = substations.find(s => work?.substationId && s.id === work.substationId)
-      || substations.find(s => places.some(p => sameUnitName(s.name, p)))
-      || substations.find(s => places.some(p => String(p).toLocaleLowerCase('vi').includes(String(s.name).replace(/^TBA\s+/i, '').toLocaleLowerCase('vi'))));
+    res.json({ draft: await draftFromRegistration(actor, reg) });
+  }));
+
+  // Lập từ một dòng lịch cắt điện: có giấy ĐKCT của tổ cho dòng lịch thì lập theo giấy mới nhất;
+  // chưa có thì theo chính dòng lịch (trạm theo địa điểm, ngăn lộ/mục kết quả theo nội dung) và phương án mới nhất của tổ
+  router.get('/outages/:id/confirmation-draft', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    const outage = await db.queryOne('SELECT id, location, content, scope, regEnd FROM dkct_outages WHERE id = ?', [req.params.id]);
+    if (!outage) throw notFound('Không tìm thấy dòng lịch.');
+    const dept = actor.department || '';
+    const reg = await db.queryOne(`SELECT id, department, outageId, workId, planId, data FROM dkct_registrations
+      WHERE outageId = ? AND department = ? ORDER BY createdAt DESC LIMIT 1`, [outage.id, dept]);
+    if (reg) return res.json({ draft: await draftFromRegistration(actor, reg) });
+    const plan = await db.queryOne('SELECT id FROM dkct_plans WHERE outageId = ? AND department = ? ORDER BY createdAt DESC LIMIT 1', [outage.id, dept]);
     const draft = await buildDefaults(actor);
-    const from = confirmationFromRegistration({ id: reg.id, data }, sub || null);
-    // ngày thực hiện: ngày kết thúc công tác theo giấy (nếu có), không thì hôm nay
-    const end = String(data.time?.end || outage?.regEnd || work?.endTime || '').slice(0, 10);
+    const from = confirmationFromRegistration({ id: null, data: { workContent: { text: outage.content }, workLocation: outage.location } },
+      await matchSubstation([outage.location].filter(Boolean)));
+    // nội dung không ghi thiết bị: lấy theo phạm vi cắt điện
+    const devices = from.bays || devicesIn(outage.scope).join(', ');
     res.json({
       draft: {
         ...draft,
         ...from,
-        planId: reg.planId || null, // giấy lập từ phương án: lấy hạng mục từ phương án đó
-        header: { ...draft.header, teamName: from.team.teamName || draft.header.teamName, unitName: from.team.unitName || draft.header.unitName },
-        workDate: /^\d{4}-\d{2}-\d{2}$/.test(end) ? end : draft.workDate,
-        signer: from.signer || draft.signer,
+        bays: devices,
+        workObject: from.bays ? from.workObject : devices || from.workObject,
+        equipment: from.bays ? from.equipment : devices || from.equipment,
+        planId: plan?.id || null,
+        workDate: isoDate(outage.regEnd, draft.workDate),
         team: undefined
       }
     });

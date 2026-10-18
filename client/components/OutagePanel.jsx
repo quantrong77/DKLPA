@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck, Eye, EyeOff } from 'lucide-react';
+import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck, Eye, EyeOff, BadgeCheck } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
@@ -283,11 +283,12 @@ function ImportBox({ onDone, onLocate }) {
   );
 }
 
-// 3 bước hồ sơ cho một dòng lịch, theo thứ tự lập
+// 4 bước hồ sơ cho một dòng lịch, theo thứ tự lập
 const STEPS = [
   { key: 'surveyCount', label: 'Biên bản KSHT', icon: ClipboardList },
   { key: 'planCount', label: 'Phương án', icon: FileStack },
-  { key: 'registrationCount', label: 'Giấy ĐKCT', icon: FilePlus2 }
+  { key: 'registrationCount', label: 'Giấy ĐKCT', icon: FilePlus2 },
+  { key: 'confirmationCount', label: 'Giấy xác nhận', icon: BadgeCheck }
 ];
 const doneSteps = (o) => STEPS.filter(s => o[s.key] > 0).length;
 
@@ -296,7 +297,7 @@ const FILTERS = [
   { id: 'all', label: 'Tổng dòng lịch', test: () => true, tone: 'slate' },
   { id: 'none', label: 'Chưa bắt đầu', test: o => doneSteps(o) === 0, tone: 'amber' },
   ...STEPS.map(s => ({ id: `missing:${s.key}`, label: `Chưa có ${s.label}`, test: o => !(o[s.key] > 0), tone: 'amber' })),
-  { id: 'done', label: 'Đủ 3 bước', test: o => doneSteps(o) === STEPS.length, tone: 'emerald' }
+  { id: 'done', label: `Đủ ${STEPS.length} bước`, test: o => doneSteps(o) === STEPS.length, tone: 'emerald' }
 ];
 const TONES = {
   slate: 'text-slate-900 dark:text-white',
@@ -374,7 +375,7 @@ function StepTracker({ outage }) {
 }
 
 /** Lịch cắt điện = kế hoạch công tác: import Excel, lọc, theo dõi tiến độ, lập biên bản/phương án/giấy từ một dòng. */
-export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, canConfigure, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage }) {
+export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, canConfigure, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage, onCreateConfirmationFromOutage }) {
   const { api, notify, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -529,6 +530,12 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
                     <button type="button" className={btnSecondary} onClick={() => onCreateFromOutage(o)}>
                       <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Tạo giấy ĐKCT{o.registrationCount > 0 ? ` (đã có ${o.registrationCount})` : ''}
                     </button>
+                    {onCreateConfirmationFromOutage && (
+                      <button type="button" className={btnSecondary} onClick={() => onCreateConfirmationFromOutage(o)}
+                        title="Lập giấy xác nhận đủ điều kiện đóng điện: theo giấy ĐKCT mới nhất của tổ cho dòng lịch này, chưa có giấy thì theo chính dòng lịch">
+                        <BadgeCheck className="w-4 h-4 text-chatlan-600" /> Lập giấy xác nhận{o.confirmationCount > 0 ? ` (đã có ${o.confirmationCount})` : ''}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
