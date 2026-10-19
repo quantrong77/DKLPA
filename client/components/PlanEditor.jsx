@@ -16,7 +16,7 @@ import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
 import { stationFromCatalog } from '../lib/survey.js';
-import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups, isolationRows, addIsolationDevices, defaultIsolationState } from '../lib/plan.js';
+import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups, equipmentOptions, equipmentDevices, deviceCycles, noteCycle, withCycle, isolationRows, addIsolationDevices, defaultIsolationState } from '../lib/plan.js';
 
 const STEPS = [
   { id: 'general', label: '1. Chung & pháp lý', owns: /^(header|workType|year|equipmentText|bays|station|drawingIds|time|approvalRef|legalBases)/ },
@@ -187,11 +187,17 @@ function GeneralStep({ form, setField, errors, catalogs, departments, outage }) 
   );
 }
 
-/** Mục 3, phần "Thực hiện:": bảng "Thiết bị cần thí nghiệm" — nhập tay hoặc điền sẵn từ Phụ lục I rồi sửa. */
+/**
+ * Mục 3, phần "Thực hiện:": bảng "Thiết bị cần thí nghiệm" — nhập tay hoặc điền sẵn từ Phụ lục I rồi sửa.
+ * Cột tên thiết bị chọn từ danh sách loại thiết bị QĐ 1901 (hoặc tự ghi); cột ghi chú chọn chu kỳ của thiết bị đó.
+ */
 function TestEquipment({ form, setField, devices }) {
   const { confirmAction } = useDkct();
   const rows = form.testEquipment || [];
+  const options = useMemo(() => equipmentOptions(devices), [devices]);
   const set = (i, patch) => setField('testEquipment', l => (l || []).map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  // chọn trong danh sách: nhớ loại thiết bị QĐ 1901; tự ghi tên khác: suy theo tên
+  const setName = (i, name) => set(i, { name, deviceKey: options.find(o => o.label === name)?.key || '' });
   const fill = async () => {
     const next = equipmentFromGroups(form.testGroups, devices);
     if (rows.length && !(await confirmAction({ title: 'Thay bảng thiết bị?', message: `Bảng hiện có ${rows.length} dòng sẽ được thay bằng ${next.length} dòng lấy từ Phụ lục I.`, confirmLabel: 'Thay' }))) return;
@@ -203,27 +209,44 @@ function TestEquipment({ form, setField, devices }) {
       <p className="text-xs text-slate-500 dark:text-slate-400">In ở phần "Thực hiện:" của mục 3, sau dòng "Kiểm tra thí nghiệm các hạng mục…" (thêm dòng "Thiết bị cần thí nghiệm:"). Để trống: không in bảng.</p>
       {rows.length > 0 && (
         <div className="hidden sm:grid grid-cols-[2rem_1fr_1fr_1.3fr_4.5rem] gap-1.5 text-[11px] font-semibold text-slate-500">
-          <span>STT</span><span>Tên thiết bị</span><span>Ký hiệu / vị trí</span><span>Hạng mục / Ghi chú</span><span />
+          <span>STT</span><span>Tên thiết bị (QĐ 1901 hoặc tự ghi)</span><span>Ký hiệu / vị trí</span><span>Hạng mục / Ghi chú (chu kỳ QĐ 1901)</span><span />
         </div>
       )}
-      {rows.map((r, i) => (
+      <datalist id="pa-test-equipment-1901">
+        {options.map(o => <option key={o.key} value={o.label} />)}
+      </datalist>
+      {rows.map((r, i) => {
+        const devs = equipmentDevices(r, devices);
+        const cycles = devs.length ? deviceCycles(devs) : Object.keys(CYCLE_LABELS);
+        const cycle = noteCycle(r.note);
+        return (
         <div key={i} className="grid grid-cols-[2rem_1fr_auto] sm:grid-cols-[2rem_1fr_1fr_1.3fr_4.5rem] gap-1.5 items-start">
           <span className="pt-1.5 text-xs font-semibold text-slate-500 text-center">{i + 1}</span>
-          <input aria-label={`Tên thiết bị cần thí nghiệm ${i + 1}`} className={`${inputCls} ${inputBorder()}`} value={r.name} placeholder="Máy cắt"
-            onChange={e => set(i, { name: e.target.value })} />
+          <input aria-label={`Tên thiết bị cần thí nghiệm ${i + 1}`} list="pa-test-equipment-1901" className={`${inputCls} ${inputBorder()}`} value={r.name}
+            placeholder="Chọn hoặc ghi: Máy cắt SF6…" title={devs.map(d => d.source).filter(Boolean).join('; ') || undefined}
+            onChange={e => setName(i, e.target.value)} />
           <span className="flex sm:order-last">
             <button type="button" className={btnGhost} aria-label={`Lên dòng thiết bị ${i + 1}`} disabled={i === 0} onClick={() => setField('testEquipment', l => move(l, i, -1))}><ArrowUp className="w-4 h-4" /></button>
             <button type="button" className={btnGhost} aria-label={`Xóa dòng thiết bị ${i + 1}`} onClick={() => setField('testEquipment', l => l.filter((_, j) => j !== i))}><Trash2 className="w-4 h-4" /></button>
           </span>
           <input aria-label={`Ký hiệu / vị trí ${i + 1}`} className={`${inputCls} ${inputBorder()} col-start-2 sm:col-start-auto`} value={r.position} placeholder="MC 272"
             onChange={e => set(i, { position: e.target.value })} />
-          <textarea aria-label={`Hạng mục / ghi chú ${i + 1}`}
-            rows={Math.min(4, Math.max(1, Math.ceil(String(r.note || '').length / 34) + (String(r.note || '').match(/\n/g) || []).length))} className={`${inputCls} ${inputBorder()} col-start-2 sm:col-start-auto`} value={r.note} placeholder="Hạng mục / ghi chú"
-            onChange={e => set(i, { note: e.target.value })} />
+          <div className="flex flex-col gap-1 col-start-2 sm:col-start-auto">
+            <select aria-label={`Chu kỳ thí nghiệm ${i + 1}`} className={`${inputCls} ${inputBorder()}`} value={cycles.includes(cycle) || !cycle ? cycle : ''}
+              title={devs.length ? `Chu kỳ có hạng mục theo QĐ 1901 (${devs.map(d => d.key).join(', ')})` : 'Thiết bị tự ghi: mọi chu kỳ'}
+              onChange={e => set(i, { note: withCycle(r.note, e.target.value) })}>
+              <option value="">— Chu kỳ —</option>
+              {cycles.map(c => <option key={c} value={c}>{CYCLE_LABELS[c]}</option>)}
+            </select>
+            <textarea aria-label={`Hạng mục / ghi chú ${i + 1}`}
+              rows={Math.min(4, Math.max(1, Math.ceil(String(r.note || '').length / 34) + (String(r.note || '').match(/\n/g) || []).length))} className={`${inputCls} ${inputBorder()}`} value={r.note} placeholder="Hạng mục / ghi chú"
+              onChange={e => set(i, { note: e.target.value })} />
+          </div>
         </div>
-      ))}
+        );
+      })}
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={btnSecondary} aria-label="Thêm dòng thiết bị cần thí nghiệm" onClick={() => setField('testEquipment', l => [...(l || []), { name: '', position: '', note: '' }])}>
+        <button type="button" className={btnSecondary} aria-label="Thêm dòng thiết bị cần thí nghiệm" onClick={() => setField('testEquipment', l => [...(l || []), { name: '', position: '', note: '', deviceKey: '' }])}>
           <Plus className="w-4 h-4" /> Thêm dòng
         </button>
         <button type="button" className={btnSecondary} onClick={fill} disabled={!form.testGroups?.length}

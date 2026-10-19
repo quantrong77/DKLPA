@@ -100,8 +100,52 @@ export function equipmentFromGroups(groups, devices = []) {
     const name = kind ? kind[1]
       : dev ? sentenceCase(dev.name.replace(/\s*\(.*\)\s*$/, ''))
         : (at > 0 ? words.slice(0, at).join(' ') : label);
-    return { name, position, note: CYCLE_SHORT[g.cycle] || '' };
+    return { name, position, note: CYCLE_SHORT[g.cycle] || '', deviceKey: dev?.key || '' };
   }).filter(r => r.name || r.position);
+}
+
+// tên trong danh sách chọn của bảng "Thiết bị cần thí nghiệm" khi tên nhóm QĐ 1901 viết tắt / khác cách gọi thường dùng
+const EQUIPMENT_LABELS = { MBA: 'Máy biến áp', MBA_TD: 'Máy biến áp tự dùng', KH: 'Kháng điện (kháng dầu)', DCL: 'Dao cách ly (Dao tiếp địa)' };
+const CYCLE_ORDER = ['install', 'year1', 'annual', 'y3', 'y6'];
+
+/** Danh sách chọn cột "Tên thiết bị": mỗi loại thiết bị QĐ 1901 một dòng, vd { key: 'MC_SF6', label: 'Máy cắt SF6' }. */
+export const equipmentOptions = (devices) => (devices || []).map(d => ({ key: d.key, label: EQUIPMENT_LABELS[d.key] || sentenceCase(d.name), source: d.source || '' }));
+
+/**
+ * Loại thiết bị QĐ 1901 của một dòng bảng: theo deviceKey, không có thì theo tên (trùng tên trong danh sách chọn,
+ * hoặc tên gọn "Máy cắt", "Biến dòng điện…" -> mọi loại cùng nhóm). Tên tự ghi khác: [].
+ */
+export function equipmentDevices(row, devices = []) {
+  const byKey = row?.deviceKey && devices.find(d => d.key === row.deviceKey);
+  if (byKey) return [byKey];
+  const name = String(row?.name || '').trim().toLocaleLowerCase('vi');
+  if (!name) return [];
+  const exact = equipmentOptions(devices).find(o => o.label.toLocaleLowerCase('vi') === name);
+  if (exact) return devices.filter(d => d.key === exact.key);
+  const kind = EQUIPMENT_KINDS.find(([, label]) => name.startsWith(label.toLocaleLowerCase('vi').replace(/\s*\(.*$/, '')));
+  return kind ? devices.filter(d => kind[0].test(d.key)) : [];
+}
+
+/** Chu kỳ QĐ 1901 có hạng mục của các loại thiết bị (theo thứ tự: sau lắp đặt, sau 1 năm, 1 năm, 3 năm, 6 năm). */
+export const deviceCycles = (devs) => CYCLE_ORDER.filter(c => (devs || []).some(d => (d.items || []).some(it => (it.cycles || []).includes(c))));
+
+// chu kỳ ghi ở đầu cột "Hạng mục / Ghi chú" (gọn "6 năm" hoặc đầy đủ "Định kỳ 6 năm"), dài trước để "Sau 1 năm" không khớp "1 năm"
+const CYCLE_TEXTS = Object.keys(CYCLE_SHORT).flatMap(c => [[CYCLE_LABELS[c], c], [CYCLE_SHORT[c], c]]).sort((a, b) => b[0].length - a[0].length);
+const leadingCycle = (note) => {
+  const s = String(note || '');
+  const lower = s.toLocaleLowerCase('vi');
+  const hit = CYCLE_TEXTS.find(([t]) => lower.startsWith(t.toLocaleLowerCase('vi')) && !/[\p{L}\d]/u.test(s.charAt(t.length)));
+  return hit ? { cycle: hit[1], rest: s.slice(hit[0].length).replace(/^\s*[;,.:–-]?\s*/, '') } : { cycle: '', rest: s };
+};
+
+/** Chu kỳ đang ghi ở đầu ghi chú: "6 năm; thay dầu" -> 'y6'; không có -> ''. */
+export const noteCycle = (note) => leadingCycle(note).cycle;
+
+/** Ghi chú với chu kỳ mới ở đầu (thay chu kỳ cũ nếu có, giữ phần ghi chú còn lại); cycle '' -> bỏ chu kỳ. */
+export function withCycle(note, cycle) {
+  const { rest } = leadingCycle(note);
+  const label = CYCLE_SHORT[cycle] || '';
+  return label && rest ? `${label}; ${rest}` : label || rest;
 }
 
 /** Trạng thái mặc định khi tiếp nhận / giao trả: dao tiếp địa (565-65, 532-38, "DTĐ …") đóng; máy cắt, dao cách ly mở. */

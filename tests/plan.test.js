@@ -180,11 +180,14 @@ test('Đầu phía TI (bảng theo quy ước XAk): chọn hoặc gõ cặp đ�
 
 test('bảng thiết bị cần thí nghiệm: chuẩn hóa (bỏ dòng trống, cắt độ dài), giới hạn 100 dòng', () => {
   const { data } = normalizePlan({ ...PLAN, testEquipment: [
-    { name: ' Máy cắt ', position: 'MC 272', note: 'Định kỳ 3 năm' }, { name: '', position: '', note: '' }, { name: 'x'.repeat(300), position: '', note: '' }
+    { name: ' Máy cắt ', position: 'MC 272', note: 'Định kỳ 3 năm' }, { name: '', position: '', note: '', deviceKey: 'MBA' },
+    { name: 'x'.repeat(300), position: '', note: '', deviceKey: '<b>' }, { name: 'Máy cắt SF6', position: '', note: '', deviceKey: 'MC_SF6' }
   ] }, ctx);
   assert.deepEqual(data.testEquipment[0], { name: 'Máy cắt', position: 'MC 272', note: 'Định kỳ 3 năm' });
-  assert.equal(data.testEquipment.length, 2);
+  assert.equal(data.testEquipment.length, 3);
   assert.equal(data.testEquipment[1].name.length, 200);
+  assert.equal('deviceKey' in data.testEquipment[1], false, 'loại thiết bị không hợp lệ thì bỏ');
+  assert.deepEqual(data.testEquipment[2], { name: 'Máy cắt SF6', position: '', note: '', deviceKey: 'MC_SF6' });
   assert.deepEqual(normalizePlan({ ...PLAN }, ctx).data.testEquipment, [], 'phương án cũ chưa có bảng');
   const over = normalizePlan({ ...PLAN, testEquipment: Array.from({ length: 101 }, () => ({ name: 'a' })) }, ctx);
   assert.equal(over.errors[0].field, 'testEquipment');

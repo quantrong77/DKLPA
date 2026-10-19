@@ -161,9 +161,14 @@ function normalizePlan(input = {}, { personnel, substations }) {
     legalBases: lines(input.legalBases),
     workloads: lines(input.workloads),
     isolationSteps: lines(input.isolationSteps),
-    // mục 3 "- Kiểm tra:": bảng chi tiết thiết bị cần thí nghiệm (người lập nhập / điền sẵn từ Phụ lục I)
+    // mục 3 "- Kiểm tra:": bảng chi tiết thiết bị cần thí nghiệm (người lập nhập / điền sẵn từ Phụ lục I);
+    // deviceKey: loại thiết bị QĐ 1901 đã chọn (để gợi ý chu kỳ), không in
     testEquipment: list(input.testEquipment)
-      .map(r => ({ name: text(r?.name).slice(0, 200), position: text(r?.position).slice(0, 200), note: text(r?.note).slice(0, 500) }))
+      .map(r => {
+        const row = { name: text(r?.name).slice(0, 200), position: text(r?.position).slice(0, 200), note: text(r?.note).slice(0, 500) };
+        const key = text(r?.deviceKey);
+        return /^[A-Z0-9_]{1,20}$/.test(key) ? { ...row, deviceKey: key } : row;
+      })
       .filter(r => r.name || r.position || r.note),
     ctIsolation: text(input.ctIsolation),
     liveDisconnectors: text(input.liveDisconnectors),

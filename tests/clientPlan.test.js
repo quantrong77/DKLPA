@@ -126,11 +126,11 @@ test('sentenceCase / equipmentFromGroups: điền sẵn bảng thiết bị cầ
     { deviceKey: 'TI_SF6', cycle: 'y3', label: 'BIẾN DÒNG ĐIỆN TI 272', items: [] }
   ], DEVICES);
   assert.deepEqual(rows, [
-    { name: 'Máy cắt', position: 'MC 530, 532', note: '3 năm' },
-    { name: 'Máy biến áp', position: 'MBA AT2', note: '6 năm' },
-    { name: 'Dao cách ly (Dao tiếp địa)', position: '', note: '1 năm' },
-    { name: 'Tủ RMU', position: '471', note: '' },
-    { name: 'Biến dòng điện', position: 'TI 272', note: '3 năm' }
+    { name: 'Máy cắt', position: 'MC 530, 532', note: '3 năm', deviceKey: 'MC_SF6' },
+    { name: 'Máy biến áp', position: 'MBA AT2', note: '6 năm', deviceKey: 'MBA' },
+    { name: 'Dao cách ly (Dao tiếp địa)', position: '', note: '1 năm', deviceKey: 'DCL' },
+    { name: 'Tủ RMU', position: '471', note: '', deviceKey: '' },
+    { name: 'Biến dòng điện', position: 'TI 272', note: '3 năm', deviceKey: 'TI_SF6' }
   ]);
   // như mẫu phương án: Máy cắt | MC 572 | 6 năm; Chống sét van | CS 572; DCL giữ dao tiếp địa trong ngoặc
   assert.deepEqual(equipmentFromGroups([
@@ -141,6 +141,33 @@ test('sentenceCase / equipmentFromGroups: điền sẵn bảng thiết bị cầ
     ['Dao cách ly (Dao tiếp địa)', 'DCL 572-7 (572-74, 572-76)', '3 năm']
   ]);
   assert.deepEqual(equipmentFromGroups([], DEVICES), []);
+});
+
+test('equipmentOptions / equipmentDevices / deviceCycles / withCycle: chọn thiết bị QĐ 1901 và chu kỳ của thiết bị đó', async () => {
+  const { equipmentOptions, equipmentDevices, deviceCycles, noteCycle, withCycle } = await load();
+  const opts = equipmentOptions(DEVICES);
+  assert.equal(opts.length, DEVICES.length);
+  assert.deepEqual(['MBA', 'MC_SF6', 'DCL', 'TI_HO'].map(k => opts.find(o => o.key === k).label),
+    ['Máy biến áp', 'Máy cắt SF6', 'Dao cách ly (Dao tiếp địa)', 'Biến dòng điện (kiểu hở, có ống thở)']);
+  // theo deviceKey, theo tên trong danh sách, theo tên gọn (cả nhóm), tên tự ghi
+  assert.deepEqual(equipmentDevices({ name: 'Máy cắt', deviceKey: 'MC_SF6' }, DEVICES).map(d => d.key), ['MC_SF6']);
+  assert.deepEqual(equipmentDevices({ name: 'máy cắt chân không' }, DEVICES).map(d => d.key), ['MC_CK']);
+  assert.deepEqual(equipmentDevices({ name: 'Máy cắt' }, DEVICES).map(d => d.key), ['MC_DAU', 'MC_SF6', 'MC_CK']);
+  assert.deepEqual(equipmentDevices({ name: 'Máy biến áp tự dùng T1' }, DEVICES).map(d => d.key), ['MBA_TD']);
+  assert.deepEqual(equipmentDevices({ name: 'Tủ RMU' }, DEVICES), []);
+  // chu kỳ có hạng mục: máy cắt SF6 không có hạng mục 1 năm; MBA không có 6 năm
+  const dev = (k) => DEVICES.filter(d => d.key === k);
+  assert.deepEqual(deviceCycles(dev('MC_SF6')), ['install', 'year1', 'y3', 'y6']);
+  assert.deepEqual(deviceCycles(dev('MBA')), ['install', 'year1', 'annual', 'y3']);
+  assert.deepEqual(deviceCycles(dev('ND')), ['install', 'year1', 'annual']);
+  // chu kỳ ghi ở đầu ghi chú: thay chu kỳ cũ, giữ phần còn lại
+  assert.equal(noteCycle('Sau 1 năm; đo tgδ'), 'year1');
+  assert.equal(noteCycle('Định kỳ 3 năm'), 'y3');
+  assert.equal(noteCycle('12 năm'), '');
+  assert.equal(withCycle('', 'y6'), '6 năm');
+  assert.equal(withCycle('3 năm; đo điện trở tiếp xúc', 'y6'), '6 năm; đo điện trở tiếp xúc');
+  assert.equal(withCycle('Đo điện trở tiếp xúc', 'annual'), '1 năm; Đo điện trở tiếp xúc');
+  assert.equal(withCycle('6 năm; ghi chú', ''), 'ghi chú');
 });
 
 test('isolationRows / addIsolationDevices: mặc định Mở cho MC, DCL; Đóng cho dao tiếp địa; không thêm trùng', async () => {
