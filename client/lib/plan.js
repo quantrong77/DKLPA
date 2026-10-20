@@ -229,6 +229,15 @@ export function suggestDrawings(drawings, text) {
 /** "Ngăn lộ cắt điện cô lập" lấy từ "Phạm vi / điều kiện cắt điện" của lịch: gộp các dòng (bỏ gạch đầu dòng) thành một dòng. */
 export const baysFromScope = (scope) => String(scope || '').split(/\r?\n/).map(s => s.replace(/^\s*[-–•+*]\s*/, '').trim()).filter(Boolean).join('; ');
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+/** Tên phụ lục gợi ý cho file đính kèm thứ i (0, 1, …): sau Phụ lục I–IV của mẫu -> Phụ lục V, VI, … */
+export const attachmentLabel = (i) => `Phụ lục ${ROMAN[4 + i] || 4 + i + 1}`;
+/** Dòng in ở mục E.3 sau bảng thiết bị cần thí nghiệm; không có phụ lục đính kèm -> ''. */
+export const detailText = (attachments) => {
+  const labels = (attachments || []).map((a, i) => String(a.label || '').trim() || attachmentLabel(i));
+  return labels.length ? `Chi tiết thực hiện: theo ${labels.join(', ')} đính kèm.` : '';
+};
+
 /** Khối lượng thi công mặc định từ ngăn lộ. */
 export const defaultWorkload = (form) => `Kiểm tra thí nghiệm định kỳ các thiết bị nhất thứ thuộc ngăn lộ ${form.bays || '…'}.`;
 

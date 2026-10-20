@@ -67,6 +67,13 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
     người lập nhập (tên thiết bị chọn từ danh sách loại thiết bị QĐ 1901 hoặc tự ghi; ô Chu kỳ chỉ liệt kê chu kỳ có hạng mục
     của thiết bị đó) hoặc "Điền từ Phụ lục I" (vd Máy cắt | MC 572 | 6 năm) rồi sửa; chèn sau đoạn "Kiểm tra thí nghiệm các hạng
     mục…" kèm đoạn dẫn "Thiết bị cần thí nghiệm:" cùng kiểu đầu dòng (mẫu có thẻ `{@testEquipmentXml}` thì in tại đó).
+  - **Chi tiết thực hiện — phụ lục đính kèm**: nút "Import phụ lục (.doc, .docx)" (tối đa 10 file, 15 MB/file, bảng
+    `dkct_plan_attachments`); sau bảng thiết bị in "Chi tiết thực hiện: theo Phụ lục V đính kèm." (tên phụ lục sửa được,
+    mặc định V, VI…). Khi xuất / xem trước, từng file ghép vào cuối phương án từ trang mới (`server/services/docxAppend.js`):
+    giữ khổ / hướng giấy, chép ảnh, kiểu, đánh số; phụ lục không có đầu / chân trang riêng dùng chân trang của phương án,
+    số trang đánh tiếp; bỏ chú thích cuối trang, bình luận. File `.doc` (Word 97-2003) đổi sang `.docx` bằng LibreOffice
+    nếu máy chủ có (`DKCT_SOFFICE` hoặc `soffice` trong PATH); không có thì báo người dùng lưu thành .docx. File tải lên
+    gắn vào phương án khi lưu; bỏ khỏi phương án / xóa phương án thì xóa file; file không lưu vào phương án nào xóa sau 2 ngày.
   - Số `<n>/PA-<tổ>.<hậu tố>` (vd `12/PA-TNLĐ.Nhatthu`) đếm riêng theo tổ, năm; đặt được số khởi đầu.
   - Bảng 1 "Hạng mục thí nghiệm" tự lập khi chọn loại thiết bị + chu kỳ, theo bảng khối lượng của **QĐ 1901/QĐ-EVNNPT**
     (`server/seeds/tests1901.json`, trích từ PDF gốc bằng `scripts/extract_1901.py`, giữ đúng cột chu kỳ);

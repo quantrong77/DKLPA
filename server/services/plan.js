@@ -9,7 +9,7 @@ const { normalizeRegion, normalizeSide, MAX_CORES } = require('./ctLibrary');
 
 const LIMITS = {
   legalBases: 20, workloads: 30, isolationSteps: 50, risks: 100, people: 100, recipients: 20,
-  isolationDevices: 300, testGroups: 60, instruments: 100, ctBlocks: 30, testEquipment: 100
+  isolationDevices: 300, testGroups: 60, instruments: 100, ctBlocks: 30, testEquipment: 100, attachments: 10
 };
 const MAX_GROUP_ITEMS = 100;
 const CYCLES = ['install', 'year1', 'annual', 'y3', 'y6'];
@@ -19,6 +19,18 @@ const intIn = (v, min, max, fallback) => {
   const n = Number.parseInt(v, 10);
   return Number.isInteger(n) ? Math.max(min, Math.min(max, n)) : fallback;
 };
+
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV'];
+/** Tên phụ lục gợi ý cho file đính kèm thứ i (0, 1, …): sau Phụ lục I–IV của mẫu -> Phụ lục V, VI, … */
+const attachmentLabel = (i) => `Phụ lục ${ROMAN[4 + i] || 4 + i + 1}`;
+
+/** Phụ lục đính kèm: [{ id, fileName, label }] theo thứ tự ghép, không trùng file. */
+function attachments(input) {
+  const seen = new Set();
+  return list(input)
+    .map((a, i) => ({ id: text(a?.id).slice(0, 64), fileName: text(a?.fileName).slice(0, 255), label: text(a?.label).slice(0, 100) || attachmentLabel(i) }))
+    .filter(a => a.id && !seen.has(a.id) && seen.add(a.id));
+}
 
 /** "Ngăn lộ cắt điện cô lập" lấy từ "Phạm vi / điều kiện cắt điện" của lịch: gộp các dòng (bỏ gạch đầu dòng) thành một dòng. */
 const baysFromScope = (scope) => String(scope || '').split(/\r?\n/).map(s => s.replace(/^\s*[-–•+*]\s*/, '').trim()).filter(Boolean).join('; ');
@@ -170,6 +182,8 @@ function normalizePlan(input = {}, { personnel, substations }) {
         return /^[A-Z0-9_]{1,20}$/.test(key) ? { ...row, deviceKey: key } : row;
       })
       .filter(r => r.name || r.position || r.note),
+    // "Chi tiết thực hiện: theo Phụ lục … đính kèm.": file Word người lập tải lên (dkct_plan_attachments), ghép vào cuối bản in
+    attachments: attachments(input.attachments),
     ctIsolation: text(input.ctIsolation),
     liveDisconnectors: text(input.liveDisconnectors),
     risks: list(input.risks)
@@ -202,4 +216,4 @@ function normalizePlan(input = {}, { personnel, substations }) {
   return { data, errors };
 }
 
-module.exports = { normalizePlan, baysFromScope, isolationDevices, defaultIsolationState, LIMITS, CYCLES };
+module.exports = { normalizePlan, baysFromScope, isolationDevices, defaultIsolationState, attachmentLabel, LIMITS, CYCLES };

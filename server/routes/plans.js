@@ -4,6 +4,7 @@
  * Quyền giống giấy ĐKCT.
  */
 const express = require('express');
+const multer = require('multer');
 const { attachOutageChanges } = require('../services/outageChange');
 const { docxFileName, attachment } = require('../services/fileName');
 const { newId, sameUnitName } = require('../schema');
@@ -11,6 +12,8 @@ const { forbidden } = require('../policy');
 const { normalizePlan, baysFromScope } = require('../services/plan');
 const { libraryBlockStatus } = require('./ctLibrary');
 const { renderPlanDocx } = require('../services/planRender');
+const { isDocx } = require('../services/docxAppend');
+const { convertDocToDocx, isLegacyDoc } = require('../services/docConvert');
 const { createNumbering, formatPlanNumber } = require('../services/numbering');
 const { createPlaces, DEFAULT_PLACE } = require('../services/places');
 const { vnYear, vnToday } = require('../services/clock');
@@ -18,6 +21,11 @@ const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('..
 const TESTS_1901 = require('../seeds/tests1901.json');
 const { loadVisibleWork } = require('../services/work');
 
+// phụ lục đính kèm (file Word): tối đa 15 MB mỗi file; file tải lên mà không lưu vào phương án nào thì xóa sau 2 ngày
+const MAX_ATTACHMENT = 15 * 1024 * 1024;
+const ORPHAN_DAYS = 2;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_ATTACHMENT, files: 1, fields: 4 } });
+const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const LIST_COLUMNS = 'id, docNumber, docYear, department, workTitle, stationName, startTime, substationId, surveyId, outageId, workId, createdBy, createdAt, updatedAt';
 const DEFAULT_LEGAL_BASES = [
   'Căn cứ Quy trình an toàn điện của Tổng Công ty Truyền tải điện Quốc gia ban hành theo quyết định số 726/QĐ-EVNNPT, ngày 22 tháng 5 năm 2026;',
@@ -83,6 +91,43 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     for (const b of data.ctBlocks) if (b.ctId) b.status = await libraryBlockStatus(db, b);
     return data;
   }
+
+  /**
+   * Phụ lục đính kèm: chỉ giữ file còn trong CSDL, của chính phương án này (planId) hoặc vừa tải lên chưa gắn
+   * (cùng tổ người lập; admin: mọi tổ); tên file theo CSDL.
+   */
+  async function checkAttachments(data, actor, planId = null) {
+    if (!data.attachments.length) return;
+    const rows = await db.query(`SELECT id, planId, department, fileName FROM dkct_plan_attachments
+      WHERE id IN (${data.attachments.map(() => '?').join(', ')})`, data.attachments.map(a => a.id));
+    const byId = new Map(rows.map(r => [r.id, r]));
+    data.attachments = data.attachments
+      .filter(a => {
+        const r = byId.get(a.id);
+        return r && (r.planId ? r.planId === planId : (policy.isAdmin(actor) || r.department === (actor.department || '')));
+      })
+      .map(a => ({ ...a, fileName: byId.get(a.id).fileName || a.fileName }));
+  }
+
+  /** Lưu phương án: gắn các phụ lục đính kèm vào phương án, xóa file đã bỏ khỏi phương án. */
+  async function claimAttachments(planId, data) {
+    const ids = data.attachments.map(a => a.id);
+    const marks = ids.map(() => '?').join(', ');
+    if (ids.length) await db.execute(`UPDATE dkct_plan_attachments SET planId = ? WHERE id IN (${marks})`, [planId, ...ids]);
+    await db.execute(`DELETE FROM dkct_plan_attachments WHERE planId = ?${ids.length ? ` AND id NOT IN (${marks})` : ''}`, [planId, ...ids]);
+  }
+
+  /** Nội dung các phụ lục đính kèm để ghép vào cuối bản in: [{ label, buffer }] theo thứ tự. */
+  async function appendicesFor(data) {
+    const out = [];
+    for (const a of data.attachments || []) {
+      const r = await db.queryOne('SELECT content FROM dkct_plan_attachments WHERE id = ?', [a.id]);
+      if (r) out.push({ label: a.label, buffer: Buffer.from(r.content) });
+    }
+    return out;
+  }
+  const render = (docNumber, data) => templates.render('plan',
+    async (tpl) => renderPlanDocx({ docNumber, data }, await drawingsFor(data), tpl, await appendicesFor(data)));
 
   /** Ảnh các sơ đồ trạm in ở Phụ lục IV, cấp điện áp cao trước (drawingIds null: mọi sơ đồ của trạm). */
   async function drawingsFor(data) {
@@ -260,6 +305,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
+    await checkAttachments(data, actor);
     data.preparedBy = (await getProfile(actor.id))?.fullName || '';
     await places.remember(data.header.place);
     const unit = await getUnit(actor.id);
@@ -273,6 +319,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, seq, year, unit.department, docNumber, actor.department || unit.department, ...summary(data, titleOf(data)),
       JSON.stringify(data), actor.id, actor.id]);
+    await claimAttachments(id, data);
     const row = await db.queryOne(`SELECT ${LIST_COLUMNS}, data FROM dkct_plans WHERE id = ?`, [id]);
     res.status(201).json({ plan: await present(row, actor) });
   }));
@@ -282,12 +329,14 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
+    await checkAttachments(data, actor, row.id);
     data.preparedBy = safeParse(row.data).preparedBy || '';  // người lập giữ nguyên khi hiệu chỉnh
     await places.remember(data.header.place);
     await db.execute(`
       UPDATE dkct_plans SET workTitle = ?, stationName = ?, startTime = ?, substationId = ?, surveyId = ?, outageId = ?, workId = ?,
         data = ?, updatedBy = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
     [...summary(data, titleOf(data)), JSON.stringify(data), actor.id, row.id]);
+    await claimAttachments(row.id, data);
     const updated = await db.queryOne(`SELECT ${LIST_COLUMNS}, data FROM dkct_plans WHERE id = ?`, [row.id]);
     res.json({ plan: await present(updated, actor) });
   }));
@@ -295,6 +344,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
   router.delete('/plans/:id', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req, LIST_COLUMNS);
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được xóa phương án.');
+    await db.execute('DELETE FROM dkct_plan_attachments WHERE planId = ?', [row.id]);
     await db.execute('DELETE FROM dkct_plans WHERE id = ?', [row.id]);
     res.json({ success: true });
   }));
@@ -305,8 +355,9 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
+    await checkAttachments(data, actor);
     data.preparedBy = (await getProfile(actor.id))?.fullName || '';
-    sendPreview(res, await templates.render('plan', async (tpl) => renderPlanDocx({ docNumber: previewNumber(null, req.query), data }, await drawingsFor(data), tpl)));
+    sendPreview(res, await render(previewNumber(null, req.query), data));
   }));
 
   router.post('/plans/:id/preview', wrap(async (req, res) => {
@@ -314,19 +365,65 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
+    await checkAttachments(data, actor, row.id);
     data.preparedBy = safeParse(row.data).preparedBy || '';
-    sendPreview(res, await templates.render('plan', async (tpl) => renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data), tpl)));
+    sendPreview(res, await render(row.docNumber, data));
   }));
 
   router.get('/plans/:id/docx', wrap(async (req, res) => {
     const { row } = await loadVisible(req);
     const data = safeParse(row.data);
-    const buffer = await templates.render('plan', async (tpl) => renderPlanDocx({ docNumber: row.docNumber, data }, await drawingsFor(data), tpl));
+    const buffer = await render(row.docNumber, data);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', attachment(docxFileName('plan', {
       date: data.header?.date, number: row.docNumber, bays: data.bays, bayText: data.equipmentText, station: data.station?.name
     })));
     res.send(buffer);
+  }));
+
+  // Phụ lục đính kèm: tải lên file Word (.docx; .doc đổi sang .docx nếu máy chủ có LibreOffice), chưa gắn phương án nào
+  const receiveFile = (req, res, next) => upload.single('file')(req, res, (err) => {
+    if (!err) return next();
+    const tooBig = err.code === 'LIMIT_FILE_SIZE';
+    return res.status(tooBig ? 413 : 400).json({ error: tooBig ? 'File phụ lục tối đa 15 MB.' : err.message });
+  });
+  router.post('/plan-attachments', receiveFile, wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
+    const file = req.file;
+    if (!file?.buffer?.length) return res.status(400).json({ error: 'Chọn file Word phụ lục (.doc, .docx).' });
+    // tên file gửi kèm (UTF-8); multer đọc tên trong phần file theo latin1
+    const name = String(req.body?.fileName || file.originalname || 'phuluc.docx').normalize('NFC').trim().slice(0, 255);
+    let content = file.buffer;
+    let fileName = name;
+    if (isLegacyDoc(content)) {
+      content = await convertDocToDocx(content);
+      if (!content || !isDocx(content)) {
+        return res.status(422).json({ error: 'Máy chủ chưa đọc được file .doc (Word 97-2003). Mở file bằng Word → Lưu thành (Save As) .docx rồi import lại.' });
+      }
+      fileName = `${name.replace(/\.doc$/i, '')}.docx`;
+    } else if (!isDocx(content)) {
+      return res.status(422).json({ error: 'File phụ lục phải là file Word .doc hoặc .docx.' });
+    }
+    // dọn file đã tải lên mà không lưu vào phương án nào
+    const cutoff = new Date(Date.now() - ORPHAN_DAYS * 86400000).toISOString().slice(0, 19).replace('T', ' ');
+    await db.execute('DELETE FROM dkct_plan_attachments WHERE planId IS NULL AND createdAt < ?', [cutoff]);
+    const id = newId('PL');
+    await db.execute(`INSERT INTO dkct_plan_attachments (id, planId, department, fileName, content, size, createdBy)
+      VALUES (?, NULL, ?, ?, ?, ?, ?)`, [id, actor.department || '', fileName, content, content.length, actor.id]);
+    res.status(201).json({ attachment: { id, fileName, size: content.length, converted: content !== file.buffer } });
+  }));
+
+  // Tải lại file phụ lục (bản .docx đã lưu): cùng tổ với phương án / người tải lên; admin mọi tổ
+  router.get('/plan-attachments/:id', wrap(async (req, res) => {
+    const actor = await policy.actorOf(req);
+    const row = await db.queryOne(`SELECT a.fileName, a.content, a.department, p.department AS planDepartment
+      FROM dkct_plan_attachments a LEFT JOIN dkct_plans p ON p.id = a.planId WHERE a.id = ?`, [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'Không tìm thấy file phụ lục.' });
+    if (!policy.canView(actor, { department: row.planDepartment ?? row.department })) throw forbidden('File phụ lục này thuộc tổ khác.');
+    res.setHeader('Content-Type', DOCX_TYPE);
+    res.setHeader('Content-Disposition', attachment(row.fileName || 'phuluc.docx'));
+    res.send(Buffer.from(row.content));
   }));
 
   return router;

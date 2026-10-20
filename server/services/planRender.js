@@ -1,6 +1,7 @@
 /**
  * Điền Phương án vào mẫu Word templates/template_pa.docx (sinh bằng scripts/tag_pa.py);
  * Phụ lục IV chèn ảnh các sơ đồ trạm đã chọn (danh mục Trạm biến áp), mỗi sơ đồ một trang khổ dọc.
+ * Phụ lục người lập đính kèm (file Word) ghép vào cuối, mỗi file từ trang mới; mục 3 ghi "Chi tiết thực hiện: theo … đính kèm."
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -10,6 +11,7 @@ const { toPlanView } = require('./planView');
 const { imageInfo, fitImage, imageParagraphXml, addImagePart } = require('./surveyRender');
 const { DEFAULT_DRAWING_LABEL } = require('../schema');
 const { isolationDevices } = require('./plan');
+const { appendDocx } = require('./docxAppend');
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'templates', 'template_pa.docx');
 // vùng in khổ A4 dọc của mẫu (lề trái 1701, phải 851 twip); cao ~ 2/3 trang để còn tiêu đề phụ lục
@@ -40,6 +42,9 @@ const EQUIP_COLS = [
 ];
 const TNR = '<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>';
 const EQUIP_INTRO = 'Thiết bị cần thí nghiệm:';
+/** "Chi tiết thực hiện: theo Phụ lục V đính kèm." (labels: tên các phụ lục đính kèm); không có -> ''. */
+const detailText = (labels) => (labels?.length ? `Chi tiết thực hiện: theo ${labels.join(', ')} đính kèm.` : '');
+const plainParagraph = (text) => `<w:p><w:r><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r></w:p>`;
 
 /** Một ô bảng: chữ (xuống dòng giữ nguyên), in đậm/căn giữa tùy chọn. */
 function cellXml(value, { w, center = false, bold = false }) {
@@ -68,9 +73,9 @@ const paragraphText = (p) => (p.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) || []).m
  * Đoạn dẫn "✓ Thiết bị cần thí nghiệm:" cùng kiểu với đoạn mẫu (giữ định dạng đoạn — gạch đầu dòng ✓, thụt lề —
  * và định dạng chữ của run đầu, bỏ nghiêng), giữ liền với bảng bên dưới.
  */
-function introParagraph(sample, text) {
+function introParagraph(sample, text, keepNext = true) {
   let pPr = (sample.match(/<w:pPr>[\s\S]*?<\/w:pPr>/) || ['<w:pPr></w:pPr>'])[0];
-  if (!/<w:keepNext\/>/.test(pPr)) {
+  if (keepNext && !/<w:keepNext\/>/.test(pPr)) {
     pPr = /<w:pStyle [^>]*\/>/.test(pPr)
       ? pPr.replace(/(<w:pStyle [^>]*\/>)/, '$1<w:keepNext/>')
       : pPr.replace('<w:pPr>', '<w:pPr><w:keepNext/>');
@@ -82,10 +87,11 @@ function introParagraph(sample, text) {
 
 /**
  * Mẫu không có thẻ {@testEquipmentXml}: trong phần "Thực hiện:" của mục "Phương án thực hiện", sau đoạn
- * "Kiểm tra thí nghiệm các hạng mục thiết bị nhất thứ …" thêm đoạn "✓ Thiết bị cần thí nghiệm:" và bảng.
+ * "Kiểm tra thí nghiệm các hạng mục thiết bị nhất thứ …" thêm đoạn "✓ Thiết bị cần thí nghiệm:" và bảng (nếu có),
+ * rồi đoạn "✓ Chi tiết thực hiện: theo Phụ lục … đính kèm." (detail, nếu có) cùng kiểu.
  * Không thấy đoạn đó: sau đoạn "Kiểm tra:" (cách đặt cũ); không thấy nữa thì để nguyên văn bản.
  */
-function insertAfterCheckLine(xml, tableXml) {
+function insertAfterCheckLine(xml, tableXml, detail = '') {
   const paras = [...xml.matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)].map(m => ({ m, txt: paragraphText(m[0]).replace(/\s+/g, ' ').trim() }));
   const section = paras.findIndex(p => /Phương án thực hiện/i.test(p.txt));
   if (section < 0) return xml;
@@ -94,12 +100,13 @@ function insertAfterCheckLine(xml, tableXml) {
   if (test >= 0) {
     const { m } = paras[test];
     const at = m.index + m[0].length;
-    return xml.slice(0, at) + introParagraph(m[0], EQUIP_INTRO) + tableXml + xml.slice(at);
+    return xml.slice(0, at) + (tableXml ? introParagraph(m[0], EQUIP_INTRO) + tableXml : '')
+      + (detail ? introParagraph(m[0], detail, false) : '') + xml.slice(at);
   }
   const check = paras.findIndex((p, i) => i > section && /^-?\s*Kiểm tra\s*:?$/i.test(p.txt));
   if (check < 0) return xml;
   const at = paras[check].m.index + paras[check].m[0].length;
-  return xml.slice(0, at) + tableXml + xml.slice(at);
+  return xml.slice(0, at) + tableXml + (detail ? plainParagraph(detail) : '') + xml.slice(at);
 }
 
 /** Thêm dấu "√" (căn giữa, như tiêu đề cột "Mở (√)" của mẫu) vào đoạn đầu của một ô bảng. */
@@ -145,11 +152,14 @@ function markIsolationTable(xml, devices) {
  * plan: { docNumber, data }; drawings: [{ label, buffer }] ảnh các sơ đồ trạm đã chọn (có thể rỗng).
  * Mỗi sơ đồ một trang, có tên sơ đồ phía trên (trừ tên mặc định "Sơ đồ trạm").
  * Bảng thiết bị cần thí nghiệm (data.testEquipment): tại thẻ {@testEquipmentXml} nếu mẫu có, không thì sau dòng "Kiểm tra:".
+ * appendices: [{ label, buffer }] phụ lục đính kèm (file .docx) theo thứ tự, ghép vào cuối, mỗi file từ trang mới.
  */
-function renderPlanDocx(plan, drawings = [], templatePath = TEMPLATE_PATH) {
+function renderPlanDocx(plan, drawings = [], templatePath = TEMPLATE_PATH, appendices = []) {
   const zip = new PizZip(loadTemplate(templatePath));
   const hasEquipTag = /testEquipmentXml/.test(zip.file('word/document.xml')?.asText() || '');
   const equipXml = testEquipmentXml(plan?.data?.testEquipment);
+  const files = (appendices || []).filter(a => a?.buffer);
+  const detail = detailText(files.map(a => a.label));
   const images = drawings
     .map((d, i) => ({ ...d, info: d?.buffer ? imageInfo(d.buffer) : null, part: { relId: `rIdDkctStationDrawing${i + 1}`, name: `dkct_station_drawing_${i + 1}`, docPrId: 9201 + i } }))
     .filter(d => d.info);
@@ -157,14 +167,16 @@ function renderPlanDocx(plan, drawings = [], templatePath = TEMPLATE_PATH) {
     + (d.label && d.label !== DEFAULT_DRAWING_LABEL ? caption(d.label) : '')
     + imageParagraphXml(fitImage(d.info.width, d.info.height, MAX_CX, MAX_CY), d.info.type, d.part)).join('');
   const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => '' });
-  doc.render({ ...toPlanView(plan), drawingXml: drawingXml || NO_DRAWING, testEquipmentXml: equipXml || '<w:p/>' });
+  doc.render({ ...toPlanView(plan), drawingXml: drawingXml || NO_DRAWING,
+    testEquipmentXml: (equipXml + (detail ? plainParagraph(detail) : '')) || '<w:p/>' });
   const out = doc.getZip();
   let xml = out.file('word/document.xml').asText();
-  if (equipXml && !hasEquipTag) xml = insertAfterCheckLine(xml, equipXml);
+  if ((equipXml || detail) && !hasEquipTag) xml = insertAfterCheckLine(xml, equipXml, detail);
   xml = markIsolationTable(xml, isolationDevices(plan?.data?.isolationDevices));
   out.file('word/document.xml', xml);
   for (const d of images) addImagePart(out, d.buffer, d.info.type, d.part);
+  files.forEach((a, i) => appendDocx(out, a.buffer, i + 1));
   return out.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
-module.exports = { renderPlanDocx, testEquipmentXml, insertAfterCheckLine, markIsolationTable, TEMPLATE_PATH };
+module.exports = { renderPlanDocx, testEquipmentXml, insertAfterCheckLine, markIsolationTable, detailText, TEMPLATE_PATH };

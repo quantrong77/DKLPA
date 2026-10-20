@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Minus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink, Eye } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { X, Save, FileDown, Loader2, AlertTriangle, Plus, Minus, Trash2, ArrowUp, ArrowDown, Wand2, RefreshCw, ClipboardList, ExternalLink, Eye, Paperclip, Upload } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { useEditorKeys } from '../lib/editorKeys.js';
 import { Field, Section, TabButton, SourceBadge, inputCls, inputBorder, btnPrimary, btnSecondary, btnGhost, UnsavedBadge } from './ui.jsx';
@@ -16,11 +16,11 @@ import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
 import { stationFromCatalog } from '../lib/survey.js';
-import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups, equipmentOptions, equipmentDevices, deviceCycles, noteCycle, withCycle, isolationRows, addIsolationDevices, defaultIsolationState } from '../lib/plan.js';
+import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups, equipmentOptions, equipmentDevices, deviceCycles, noteCycle, withCycle, isolationRows, addIsolationDevices, defaultIsolationState, attachmentLabel, detailText } from '../lib/plan.js';
 
 const STEPS = [
   { id: 'general', label: '1. Chung & pháp lý', owns: /^(header|workType|year|equipmentText|bays|station|drawingIds|time|approvalRef|legalBases)/ },
-  { id: 'work', label: '2. Thi công & an toàn', owns: /^(workloads|testEquipment|isolationSteps|ctIsolation|liveDisconnectors|risks|reserve)/ },
+  { id: 'work', label: '2. Thi công & an toàn', owns: /^(workloads|testEquipment|attachments|isolationSteps|ctIsolation|liveDisconnectors|risks|reserve)/ },
   { id: 'appendix1', label: '3. Phụ lục I', owns: /^(isolationDevices|testGroups|instruments)/ },
   { id: 'appendix23', label: '4. Phụ lục II, III, ký', owns: /^(ctBlocks|people|teamLeader|recipients)/ }
 ];
@@ -258,6 +258,69 @@ function TestEquipment({ form, setField, devices }) {
   );
 }
 
+/**
+ * Mục E.3, sau bảng "Thiết bị cần thí nghiệm": "Chi tiết thực hiện: theo Phụ lục V đính kèm." — import file Word phụ lục
+ * (.doc, .docx); khi xuất / xem trước, máy chủ ghép từng file vào cuối phương án, mỗi file từ trang mới.
+ */
+function DetailAppendices({ form, setField }) {
+  const { api, notify, confirmAction, downloadAuthenticatedFile } = useDkct();
+  const [busy, setBusy] = useState(false);
+  const input = useRef(null);
+  const files = form.attachments || [];
+  const set = (i, patch) => setField('attachments', l => (l || []).map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/\.docx?$/i.test(file.name)) { notify('Chọn file Word .doc hoặc .docx.', 'error'); return; }
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.append('fileName', file.name);
+      body.append('file', file);
+      const { attachment } = await api.sendForm('/plan-attachments', body, 'POST');
+      setField('attachments', l => [...(l || []), { id: attachment.id, fileName: attachment.fileName, label: attachmentLabel((l || []).length) }]);
+      notify(attachment.converted ? `Đã import ${file.name} (đổi sang .docx).` : `Đã import ${file.name}.`, 'success');
+    } catch (err) {
+      notify(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (i) => {
+    if (!(await confirmAction({ title: 'Bỏ phụ lục?', message: `Bỏ ${files[i].label} (${files[i].fileName}) khỏi phương án. File bị xóa khi lưu phương án.`, confirmLabel: 'Bỏ' }))) return;
+    setField('attachments', l => l.filter((_, j) => j !== i));
+  };
+  const text = detailText(files);
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Chi tiết thực hiện: phụ lục đính kèm</legend>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        {text ? <>In sau bảng thiết bị cần thí nghiệm: <q className="font-semibold text-slate-700 dark:text-slate-200">{text}</q> File phụ lục ghép vào cuối phương án, mỗi file từ trang mới.</>
+          : 'Import file Word phụ lục (.doc, .docx): in dòng "Chi tiết thực hiện: theo Phụ lục V đính kèm." sau bảng thiết bị cần thí nghiệm và ghép file vào cuối phương án, từ trang mới.'}
+      </p>
+      {files.map((a, i) => (
+        <div key={a.id} className="grid grid-cols-[8rem_1fr_auto] gap-1.5 items-center">
+          <input aria-label={`Tên phụ lục ${i + 1}`} className={`${inputCls} ${inputBorder()}`} value={a.label} placeholder={attachmentLabel(i)}
+            onChange={e => set(i, { label: e.target.value })} />
+          <button type="button" className="min-w-0 inline-flex items-center gap-1.5 text-left text-sm text-chatlan-700 dark:text-chatlan-300 hover:underline"
+            title="Tải file phụ lục" onClick={() => downloadAuthenticatedFile(`/api/dkct/plan-attachments/${a.id}`, a.fileName || 'phuluc.docx').catch(err => notify(err.message, 'error'))}>
+            <Paperclip className="w-4 h-4 shrink-0" /><span className="truncate">{a.fileName || 'phuluc.docx'}</span>
+          </button>
+          <span className="flex">
+            <button type="button" className={btnGhost} aria-label={`Lên phụ lục ${i + 1}`} disabled={i === 0} onClick={() => setField('attachments', l => move(l, i, -1))}><ArrowUp className="w-4 h-4" /></button>
+            <button type="button" className={btnGhost} aria-label={`Bỏ phụ lục ${i + 1}`} onClick={() => remove(i)}><Trash2 className="w-4 h-4" /></button>
+          </span>
+        </div>
+      ))}
+      <input ref={input} type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={pick} />
+      <button type="button" className={btnSecondary} onClick={() => input.current?.click()} disabled={busy || files.length >= 10}>
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Import phụ lục (.doc, .docx)
+      </button>
+    </fieldset>
+  );
+}
+
 function WorkStep({ form, setField, update, catalogs, devices, onPickSurvey, surveys }) {
   return (
     <>
@@ -267,6 +330,7 @@ function WorkStep({ form, setField, update, catalogs, devices, onPickSurvey, sur
       </Section>
       <Section title="E.3 Phương án thực hiện">
         <TestEquipment form={form} setField={setField} devices={devices} />
+        <DetailAppendices form={form} setField={setField} />
         <LinesEditor label="Kiểm tra: trình tự cắt điện cô lập" lines={form.isolationSteps} rows={2} onChange={fn => setField('isolationSteps', fn)}
           placeholder="Cắt điện cô lập ngăn MC 530, 532: mở MC 530, MC 532, mở các DCL …; đóng các DTĐ …" />
         <Field label="Cô lập mạch dòng (để trống nếu không)" htmlFor="pa-ct" hint='In: "Cô lập mạch dòng … (thực hiện theo phụ lục II)."'>

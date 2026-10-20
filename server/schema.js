@@ -192,6 +192,19 @@ function tables(t) {
         ON UPDATE CASCADE ON DELETE SET NULL,
       CONSTRAINT fk_dkct_plans_work FOREIGN KEY (workId) REFERENCES dkct_works (id)
         ON UPDATE CASCADE ON DELETE SET NULL`,
+    // Phụ lục người lập đính kèm phương án (file Word .docx; .doc đã đổi sang .docx), ghép vào cuối bản in.
+    // Tải lên khi đang soạn (planId rỗng), gắn vào phương án khi lưu; file không gắn sau 2 ngày thì xóa.
+    dkct_plan_attachments: `
+      id ${t.id} PRIMARY KEY,
+      planId ${t.id},
+      department ${t.short},
+      fileName ${t.str},
+      content ${t.blob} NOT NULL,
+      size ${t.int},
+      createdBy ${t.id},
+      createdAt ${t.now},
+      CONSTRAINT fk_dkct_plan_attachments_plan FOREIGN KEY (planId) REFERENCES dkct_plans (id)
+        ON UPDATE CASCADE ON DELETE CASCADE`,
     // Giấy ĐKCT: lập từ dòng lịch (outageId), công việc không cắt điện (workId), biên bản KSHT (surveyId) hoặc phương án (planId)
     dkct_registrations: `
       id ${t.id} PRIMARY KEY,
@@ -412,6 +425,7 @@ const INDEXES = [
   ['idx_dkct_survey_work', 'dkct_surveys', 'workId'],
   ['idx_dkct_survey_photos_survey', 'dkct_survey_photos', 'surveyId'],
   ['idx_dkct_plan_work', 'dkct_plans', 'workId'],
+  ['idx_dkct_plan_attachment_plan', 'dkct_plan_attachments', 'planId'],
   ['idx_dkct_personnel_name', 'dkct_personnel', 'fullName'],
   ['idx_dkct_survey_department', 'dkct_surveys', 'department'],
   ['idx_dkct_substation_station', 'dkct_substations', 'stationId'],

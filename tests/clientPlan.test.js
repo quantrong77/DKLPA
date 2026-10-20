@@ -181,3 +181,10 @@ test('isolationRows / addIsolationDevices: mặc định Mở cho MC, DCL; Đón
   const next = addIsolationDevices(['MC530'], ['MC530', '530-65']);
   assert.deepEqual(next.map(r => [r.name, r.receive, r.handover]), [['MC530', 'open', 'open'], ['530-65', 'closed', 'closed']]);
 });
+
+test('phụ lục đính kèm: tên gợi ý Phụ lục V, VI…; dòng "Chi tiết thực hiện" in theo tên phụ lục', async () => {
+  const { attachmentLabel, detailText } = await load();
+  assert.deepEqual([0, 1, 5].map(attachmentLabel), ['Phụ lục V', 'Phụ lục VI', 'Phụ lục X']);
+  assert.equal(detailText([]), '');
+  assert.equal(detailText([{ label: 'Phụ lục V' }, { label: '  ' }]), 'Chi tiết thực hiện: theo Phụ lục V, Phụ lục VI đính kèm.');
+});

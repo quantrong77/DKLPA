@@ -557,6 +557,69 @@ test('Phương án: số riêng "n/PA-<tổ>.Nhatthu", lập/sửa/xóa, quyền
   } finally { app.close(); }
 });
 
+test('Phương án: import phụ lục (.docx) gắn khi lưu, ghép vào cuối bản Word; .doc không đổi được / file lạ báo 422; quyền theo tổ', async () => {
+  const app = await startApp();
+  try {
+    const { makeAppendixDocx } = require('./helpers/appendixDocx');
+    const send = (user, buffer, name = 'Phụ lục chi tiết.docx') => {
+      const form = new FormData();
+      form.append('fileName', name);
+      form.append('file', new Blob([buffer]), 'file');
+      return app.call(user, 'POST', '/plan-attachments', form);
+    };
+    assert.equal((await send('member', makeAppendixDocx())).status, 403, 'thành viên không lập phương án');
+    assert.equal((await send('lead', Buffer.from('không phải Word'))).status, 422);
+    const doc = Buffer.concat([Buffer.from([0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]), Buffer.alloc(600)]);
+    const legacy = await send('lead', doc, 'cu.doc');
+    assert.equal(legacy.status, 422);
+    assert.match(legacy.body.error, /\.doc/);
+
+    const up = await send('lead', makeAppendixDocx());
+    assert.equal(up.status, 201);
+    const att = up.body.attachment;
+    assert.equal(att.fileName, 'Phụ lục chi tiết.docx', 'tên file UTF-8');
+
+    const created = await app.call('lead', 'POST', '/plans', { ...PLAN, attachments: [{ id: att.id }, { id: 'KHONG-CO' }] });
+    assert.equal(created.status, 201);
+    const plan = created.body.plan;
+    assert.deepEqual(plan.data.attachments, [{ id: att.id, fileName: 'Phụ lục chi tiết.docx', label: 'Phụ lục V' }], 'bỏ file không có; tên theo CSDL');
+    assert.equal((await app.db.queryOne('SELECT planId FROM dkct_plan_attachments WHERE id = ?', [att.id])).planId, plan.id);
+
+    const docx = await app.call('member', 'GET', `/plans/${plan.id}/docx`);
+    assert.equal(docx.status, 200);
+    const text = new PizZip(docx.body).file('word/document.xml').asText().replace(/<[^>]+>/g, '');
+    assert.ok(text.includes('Chi tiết thực hiện: theo Phụ lục V đính kèm.'));
+    assert.ok(text.lastIndexOf('PHỤ LỤC V: CHI TIẾT THỰC HIỆN') > text.indexOf('Chi tiết thực hiện'), 'file phụ lục ở cuối');
+
+    const file = await app.call('member', 'GET', `/plan-attachments/${att.id}`);
+    assert.equal(file.status, 200);
+    assert.match(file.headers.get('content-disposition'), /filename="Phu luc chi tiet\.docx"/);
+    assert.equal((await app.call('other', 'GET', `/plan-attachments/${att.id}`)).status, 403);
+
+    // phương án tổ khác không lấy được file đã gắn vào phương án này
+    const other = await app.call('admin', 'POST', '/plans', { ...PLAN, attachments: [{ id: att.id }] });
+    assert.deepEqual(other.body.plan.data.attachments, []);
+
+    // bỏ phụ lục khi sửa: file bị xóa; xóa phương án: xóa file
+    const up2 = (await send('lead', makeAppendixDocx('PHỤ LỤC VI'))).body.attachment;
+    const edited = await app.call('lead', 'PUT', `/plans/${plan.id}`, { ...plan.data, attachments: [{ id: up2.id, label: 'Phụ lục VI' }] });
+    assert.deepEqual(edited.body.plan.data.attachments.map(a => a.label), ['Phụ lục VI']);
+    assert.equal(await app.db.queryOne('SELECT id FROM dkct_plan_attachments WHERE id = ?', [att.id]), null);
+    await app.call('lead', 'DELETE', `/plans/${plan.id}`);
+    assert.equal(await app.db.queryOne('SELECT id FROM dkct_plan_attachments WHERE id = ?', [up2.id]), null);
+
+    // xem trước khi chưa lưu: ghép file vừa tải lên
+    const up3 = (await send('lead', makeAppendixDocx('PHỤ LỤC NHÁP'))).body.attachment;
+    const pv = await app.call('lead', 'POST', '/plans/preview', { ...PLAN, attachments: [{ id: up3.id }] });
+    assert.equal(pv.status, 200);
+    assert.ok(new PizZip(pv.body).file('word/document.xml').asText().includes('PHỤ LỤC NHÁP'));
+    // file tải lên quá 2 ngày không gắn phương án nào: dọn khi có lượt tải lên sau
+    await app.db.execute('UPDATE dkct_plan_attachments SET createdAt = ? WHERE id = ?', ['2020-01-01 00:00:00', up3.id]);
+    await send('lead', makeAppendixDocx());
+    assert.equal(await app.db.queryOne('SELECT id FROM dkct_plan_attachments WHERE id = ?', [up3.id]), null);
+  } finally { app.close(); }
+});
+
 test('Phương án: nháp từ lịch cắt điện; khóa ngoại tới BBKSHT/lịch (xóa thì bỏ liên kết)', async () => {
   const app = await startApp();
   try {

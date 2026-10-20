@@ -39,7 +39,7 @@ function docxFileName(type, { date, number, bays, bayText, station }) {
   return `${parts.join('_')}.docx`;
 }
 
-/** Header Content-Disposition cho file Word (tên đã là ASCII). */
-const attachment = (name) => `attachment; filename="${name}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+/** Header Content-Disposition cho file Word: filename= bỏ dấu (header chỉ nhận ASCII), filename*= giữ tên UTF-8. */
+const attachment = (name) => `attachment; filename="${ascii(name).replace(/[^\x20-\x7e]|"/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 
 module.exports = { docxFileName, attachment, TYPES };
