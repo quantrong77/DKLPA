@@ -77,8 +77,11 @@ const EQUIPMENT_KINDS = [
   [/^CSV/, 'Chống sét van', 'CS'],
   [/^ND$/, 'Hệ thống nối đất', '']
 ];
-// chu kỳ ghi gọn trong cột "Hạng mục / Ghi chú"
-const CYCLE_SHORT = { install: 'Sau lắp đặt', year1: 'Sau 1 năm', annual: '1 năm', y3: '3 năm', y6: '6 năm' };
+// chu kỳ ghi gọn trong cột "Hạng mục / Ghi chú"; bảng thiết bị cần thí nghiệm có thêm "Đột xuất", "Sửa chữa" (ngoài QĐ 1901)
+const CYCLE_SHORT = { install: 'Sau lắp đặt', year1: 'Sau 1 năm', annual: '1 năm', y3: '3 năm', y6: '6 năm', adhoc: 'Đột xuất', repair: 'Sửa chữa' };
+/** Chu kỳ trong ô chọn của bảng "Thiết bị cần thí nghiệm": chu kỳ QĐ 1901 và thêm Đột xuất, Sửa chữa (mọi thiết bị). */
+export const EQUIPMENT_CYCLE_LABELS = { ...CYCLE_LABELS, adhoc: 'Đột xuất', repair: 'Sửa chữa' };
+const EXTRA_CYCLES = ['adhoc', 'repair'];
 
 /**
  * Dòng bảng "Thiết bị cần thí nghiệm" (mục 3, phần "Thực hiện:") từ các nhóm của Phụ lục I, vd
@@ -107,9 +110,29 @@ export function equipmentFromGroups(groups, devices = []) {
 // tên trong danh sách chọn của bảng "Thiết bị cần thí nghiệm" khi tên nhóm QĐ 1901 viết tắt / khác cách gọi thường dùng
 const EQUIPMENT_LABELS = { MBA: 'Máy biến áp', MBA_TD: 'Máy biến áp tự dùng', KH: 'Kháng điện (kháng dầu)', DCL: 'Dao cách ly (Dao tiếp địa)' };
 const CYCLE_ORDER = ['install', 'year1', 'annual', 'y3', 'y6'];
+// thiết bị thêm vào danh sách chọn, không có bảng hạng mục trong QĐ 1901: chu kỳ định sẵn (vẫn tự ghi được)
+const EXTRA_EQUIPMENT = [{ key: 'TBD', label: 'Tụ bù dọc', source: '', cycles: ['annual', 'y3'] }];
 
-/** Danh sách chọn cột "Tên thiết bị": mỗi loại thiết bị QĐ 1901 một dòng, vd { key: 'MC_SF6', label: 'Máy cắt SF6' }. */
-export const equipmentOptions = (devices) => (devices || []).map(d => ({ key: d.key, label: EQUIPMENT_LABELS[d.key] || sentenceCase(d.name), source: d.source || '' }));
+/**
+ * Danh sách chọn cột "Tên thiết bị": mỗi loại thiết bị QĐ 1901 một dòng, vd { key: 'MC_SF6', label: 'Máy cắt SF6' },
+ * thêm Tụ bù dọc.
+ */
+export const equipmentOptions = (devices) => [
+  ...(devices || []).map(d => ({ key: d.key, label: EQUIPMENT_LABELS[d.key] || sentenceCase(d.name), source: d.source || '' })),
+  ...EXTRA_EQUIPMENT.map(({ key, label, source }) => ({ key, label, source }))
+];
+
+/**
+ * Chu kỳ chọn được cho một dòng bảng "Thiết bị cần thí nghiệm": thiết bị QĐ 1901 -> chu kỳ có hạng mục của thiết bị đó;
+ * Tụ bù dọc -> 1 năm, 3 năm; tên tự ghi khác -> mọi chu kỳ QĐ 1901. Mọi thiết bị thêm Đột xuất, Sửa chữa.
+ */
+export function equipmentCycles(row, devices = []) {
+  const name = String(row?.name || '').trim().toLocaleLowerCase('vi');
+  const extra = EXTRA_EQUIPMENT.find(e => e.key === row?.deviceKey || (name && e.label.toLocaleLowerCase('vi') === name));
+  if (extra) return [...extra.cycles, ...EXTRA_CYCLES];
+  const devs = equipmentDevices(row, devices);
+  return [...(devs.length ? deviceCycles(devs) : CYCLE_ORDER), ...EXTRA_CYCLES];
+}
 
 /**
  * Loại thiết bị QĐ 1901 của một dòng bảng: theo deviceKey, không có thì theo tên (trùng tên trong danh sách chọn,
@@ -130,7 +153,7 @@ export function equipmentDevices(row, devices = []) {
 export const deviceCycles = (devs) => CYCLE_ORDER.filter(c => (devs || []).some(d => (d.items || []).some(it => (it.cycles || []).includes(c))));
 
 // chu kỳ ghi ở đầu cột "Hạng mục / Ghi chú" (gọn "6 năm" hoặc đầy đủ "Định kỳ 6 năm"), dài trước để "Sau 1 năm" không khớp "1 năm"
-const CYCLE_TEXTS = Object.keys(CYCLE_SHORT).flatMap(c => [[CYCLE_LABELS[c], c], [CYCLE_SHORT[c], c]]).sort((a, b) => b[0].length - a[0].length);
+const CYCLE_TEXTS = Object.keys(CYCLE_SHORT).flatMap(c => [[EQUIPMENT_CYCLE_LABELS[c], c], [CYCLE_SHORT[c], c]]).sort((a, b) => b[0].length - a[0].length);
 const leadingCycle = (note) => {
   const s = String(note || '');
   const lower = s.toLocaleLowerCase('vi');

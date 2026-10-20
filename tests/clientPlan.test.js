@@ -146,7 +146,7 @@ test('sentenceCase / equipmentFromGroups: điền sẵn bảng thiết bị cầ
 test('equipmentOptions / equipmentDevices / deviceCycles / withCycle: chọn thiết bị QĐ 1901 và chu kỳ của thiết bị đó', async () => {
   const { equipmentOptions, equipmentDevices, deviceCycles, noteCycle, withCycle } = await load();
   const opts = equipmentOptions(DEVICES);
-  assert.equal(opts.length, DEVICES.length);
+  assert.equal(opts.length, DEVICES.length + 1, 'mọi loại QĐ 1901 và Tụ bù dọc');
   assert.deepEqual(['MBA', 'MC_SF6', 'DCL', 'TI_HO'].map(k => opts.find(o => o.key === k).label),
     ['Máy biến áp', 'Máy cắt SF6', 'Dao cách ly (Dao tiếp địa)', 'Biến dòng điện (kiểu hở, có ống thở)']);
   // theo deviceKey, theo tên trong danh sách, theo tên gọn (cả nhóm), tên tự ghi
@@ -187,4 +187,20 @@ test('phụ lục đính kèm: tên gợi ý Phụ lục V, VI…; dòng "Chi ti
   assert.deepEqual([0, 1, 5].map(attachmentLabel), ['Phụ lục V', 'Phụ lục VI', 'Phụ lục X']);
   assert.equal(detailText([]), '');
   assert.equal(detailText([{ label: 'Phụ lục V' }, { label: '  ' }]), 'Chi tiết thực hiện: theo Phụ lục V, Phụ lục VI đính kèm.');
+});
+
+test('bảng thiết bị cần thí nghiệm: Tụ bù dọc (1 năm, 3 năm); mọi thiết bị thêm chu kỳ Đột xuất, Sửa chữa', async () => {
+  const { equipmentOptions, equipmentCycles, noteCycle, withCycle, EQUIPMENT_CYCLE_LABELS, CYCLE_LABELS } = await load();
+  const tbd = equipmentOptions(DEVICES).find(o => o.label === 'Tụ bù dọc');
+  assert.equal(tbd.key, 'TBD');
+  assert.deepEqual(equipmentCycles({ name: 'Tụ bù dọc', deviceKey: 'TBD' }, DEVICES), ['annual', 'y3', 'adhoc', 'repair']);
+  assert.deepEqual(equipmentCycles({ name: 'tụ bù dọc' }, DEVICES), ['annual', 'y3', 'adhoc', 'repair'], 'theo tên');
+  assert.deepEqual(equipmentCycles({ name: 'Máy cắt SF6', deviceKey: 'MC_SF6' }, DEVICES), ['install', 'year1', 'y3', 'y6', 'adhoc', 'repair']);
+  assert.deepEqual(equipmentCycles({ name: 'Tủ điều khiển' }, DEVICES), ['install', 'year1', 'annual', 'y3', 'y6', 'adhoc', 'repair'], 'tên tự ghi');
+  assert.equal(EQUIPMENT_CYCLE_LABELS.adhoc, 'Đột xuất');
+  assert.equal(CYCLE_LABELS.adhoc, undefined, 'Phụ lục I vẫn chỉ theo chu kỳ QĐ 1901');
+  assert.equal(withCycle('đo điện dung', 'adhoc'), 'Đột xuất; đo điện dung');
+  assert.equal(noteCycle('Sửa chữa; thay sứ'), 'repair');
+  assert.equal(withCycle('Đột xuất; đo điện dung', 'y3'), '3 năm; đo điện dung');
+  assert.equal(withCycle('Sửa chữa', ''), '');
 });

@@ -16,7 +16,7 @@ import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
 import { stationFromCatalog } from '../lib/survey.js';
-import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups, equipmentOptions, equipmentDevices, deviceCycles, noteCycle, withCycle, isolationRows, addIsolationDevices, defaultIsolationState, attachmentLabel, detailText } from '../lib/plan.js';
+import { CYCLE_LABELS, testGroupFor, itemsFor, devicesFromSteps, defaultRecipients, defaultWorkload, planFromSurvey, suggestDrawings, baysFromScope, equipmentFromGroups, equipmentOptions, equipmentDevices, equipmentCycles, EQUIPMENT_CYCLE_LABELS, noteCycle, withCycle, isolationRows, addIsolationDevices, defaultIsolationState, attachmentLabel, detailText } from '../lib/plan.js';
 
 const STEPS = [
   { id: 'general', label: '1. Chung & pháp lý', owns: /^(header|workType|year|equipmentText|bays|station|drawingIds|time|approvalRef|legalBases)/ },
@@ -191,6 +191,9 @@ function GeneralStep({ form, setField, errors, catalogs, departments, outage }) 
  * Mục 3, phần "Thực hiện:": bảng "Thiết bị cần thí nghiệm" — nhập tay hoặc điền sẵn từ Phụ lục I rồi sửa.
  * Cột tên thiết bị chọn từ danh sách loại thiết bị QĐ 1901 (hoặc tự ghi); cột ghi chú chọn chu kỳ của thiết bị đó.
  */
+// ô chu kỳ: "Tự ghi…" bỏ chu kỳ đang chọn khỏi ghi chú, đưa con trỏ vào ô ghi chú để ghi chu kỳ khác
+const CUSTOM_CYCLE = '__custom';
+
 function TestEquipment({ form, setField, devices }) {
   const { confirmAction } = useDkct();
   const rows = form.testEquipment || [];
@@ -209,7 +212,7 @@ function TestEquipment({ form, setField, devices }) {
       <p className="text-xs text-slate-500 dark:text-slate-400">In ở phần "Thực hiện:" của mục 3, sau dòng "Kiểm tra thí nghiệm các hạng mục…" (thêm dòng "Thiết bị cần thí nghiệm:"). Để trống: không in bảng.</p>
       {rows.length > 0 && (
         <div className="hidden sm:grid grid-cols-[2rem_1fr_1fr_1.3fr_4.5rem] gap-1.5 text-[11px] font-semibold text-slate-500">
-          <span>STT</span><span>Tên thiết bị (QĐ 1901 hoặc tự ghi)</span><span>Ký hiệu / vị trí</span><span>Hạng mục / Ghi chú (chu kỳ QĐ 1901)</span><span />
+          <span>STT</span><span>Tên thiết bị (QĐ 1901 hoặc tự ghi)</span><span>Ký hiệu / vị trí</span><span>Hạng mục / Ghi chú (chu kỳ QĐ 1901, đột xuất, sửa chữa)</span><span />
         </div>
       )}
       <datalist id="pa-test-equipment-1901">
@@ -217,7 +220,7 @@ function TestEquipment({ form, setField, devices }) {
       </datalist>
       {rows.map((r, i) => {
         const devs = equipmentDevices(r, devices);
-        const cycles = devs.length ? deviceCycles(devs) : Object.keys(CYCLE_LABELS);
+        const cycles = equipmentCycles(r, devices);
         const cycle = noteCycle(r.note);
         return (
         <div key={i} className="grid grid-cols-[2rem_1fr_auto] sm:grid-cols-[2rem_1fr_1fr_1.3fr_4.5rem] gap-1.5 items-start">
@@ -233,12 +236,18 @@ function TestEquipment({ form, setField, devices }) {
             onChange={e => set(i, { position: e.target.value })} />
           <div className="flex flex-col gap-1 col-start-2 sm:col-start-auto">
             <select aria-label={`Chu kỳ thí nghiệm ${i + 1}`} className={`${inputCls} ${inputBorder()}`} value={cycles.includes(cycle) || !cycle ? cycle : ''}
-              title={devs.length ? `Chu kỳ có hạng mục theo QĐ 1901 (${devs.map(d => d.key).join(', ')})` : 'Thiết bị tự ghi: mọi chu kỳ'}
-              onChange={e => set(i, { note: withCycle(r.note, e.target.value) })}>
+              title={devs.length ? `Chu kỳ có hạng mục theo QĐ 1901 (${devs.map(d => d.key).join(', ')}), thêm Đột xuất, Sửa chữa` : 'Chu kỳ, thêm Đột xuất, Sửa chữa; "Tự ghi…" để ghi chu kỳ khác'}
+              onChange={e => {
+                if (e.target.value !== CUSTOM_CYCLE) { set(i, { note: withCycle(r.note, e.target.value) }); return; }
+                set(i, { note: withCycle(r.note, '') });
+                const note = document.getElementById(`pa-eq-note-${i}`);
+                if (note) { note.focus(); note.setSelectionRange(0, 0); }
+              }}>
               <option value="">— Chu kỳ —</option>
-              {cycles.map(c => <option key={c} value={c}>{CYCLE_LABELS[c]}</option>)}
+              {cycles.map(c => <option key={c} value={c}>{EQUIPMENT_CYCLE_LABELS[c]}</option>)}
+              <option value={CUSTOM_CYCLE}>Tự ghi…</option>
             </select>
-            <textarea aria-label={`Hạng mục / ghi chú ${i + 1}`}
+            <textarea id={`pa-eq-note-${i}`} aria-label={`Hạng mục / ghi chú ${i + 1}`}
               rows={Math.min(4, Math.max(1, Math.ceil(String(r.note || '').length / 34) + (String(r.note || '').match(/\n/g) || []).length))} className={`${inputCls} ${inputBorder()}`} value={r.note} placeholder="Hạng mục / ghi chú"
               onChange={e => set(i, { note: e.target.value })} />
           </div>
