@@ -1,0 +1,15 @@
+{
+  "name": "Chuẩn bị công tác",
+  "short_name": "Chuẩn bị CT",
+  "description": "Lịch cắt điện, biên bản khảo sát, phương án, giấy đăng ký công tác",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0058e0",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

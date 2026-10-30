@@ -49,6 +49,9 @@ const { createOutageImporter } = require('./services/outageImport');
 const { createAutoFetch } = require('./services/outageAutoFetch');
 const { createOutageSettings } = require('./services/outageSettings');
 const { createZaloBot } = require('./services/zaloBot');
+const { createWebPush } = require('./services/webPush');
+const { pushRouter } = require('./routes/push');
+const path = require('node:path');
 const { safeParse } = require('./util');
 
 const REQUIRED = ['db', 'getActor', 'getProfile', 'isAdmin', 'isDepartmentHead', 'isUnitLead', 'getUnit'];
@@ -123,10 +126,13 @@ function createDkctModule(deps) {
     db, secret: secretKey, envToken: deps.zalo?.token ?? process.env.ZALO_BOT_TOKEN ?? '',
     fetch: deps.zalo?.fetch, listDepartments
   });
+  // thông báo đẩy tới máy tính / điện thoại (mỗi người tự bật trên thiết bị); khóa VAPID chung trong CSDL
+  shared.push = createWebPush({ db, send: deps.pushSend });
   // nạp lịch (chọn file / bấm tải / tự tải) dùng chung một quy trình; tự tải theo giờ hẹn
   shared.importer = createOutageImporter({
     db, notifyUsers: deps.notifyUsers, listTeamLeads: deps.listTeamLeads,
-    onChanges: (events, ctx) => shared.zalo.onChanges(events, ctx)
+    // Zalo và thông báo đẩy (không lỗi ngược: mỗi kênh tự ghi lỗi); trả về số tin Zalo như trước
+    onChanges: async (events, ctx) => (await Promise.all([shared.zalo.onChanges(events, ctx), shared.push.onChanges(events, ctx)]))[0]
   });
   shared.autoFetch = createAutoFetch({ db, importer: shared.importer, settings: shared.outageSettings });
   // mẫu Word: mẫu admin tải lên (đang dùng) hoặc mẫu gốc trong templates/; thử điền bằng văn bản gần nhất
@@ -156,6 +162,7 @@ function createDkctModule(deps) {
   router.use(catalogRouter(shared));
   router.use(outageRouter(shared));
   router.use(zaloRouter(shared));
+  router.use(pushRouter(shared));
   router.use(workRouter(shared));
   router.use(registrationRouter(shared));
   router.use(surveyRouter(shared));
@@ -179,8 +186,21 @@ function createDkctModule(deps) {
     startAutoFetch: () => shared.autoFetch.start(),
     stopAutoFetch: () => shared.autoFetch.stop(),
     autoFetch: shared.autoFetch,
-    zalo: shared.zalo
+    zalo: shared.zalo,
+    push: shared.push,
+    /** Service worker thông báo đẩy: ứng dụng chủ phục vụ công khai (không cần đăng nhập) tại SERVICE_WORKER_PATH. */
+    serviceWorker: serveServiceWorker
   };
 }
 
+const SERVICE_WORKER_PATH = '/dkct-sw.js';
+const SERVICE_WORKER_FILE = path.join(__dirname, 'static', 'dkct-sw.js');
+function serveServiceWorker(req, res) {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(SERVICE_WORKER_FILE);
+}
+
 module.exports = createDkctModule;
+module.exports.SERVICE_WORKER_PATH = SERVICE_WORKER_PATH;
+module.exports.serveServiceWorker = serveServiceWorker;

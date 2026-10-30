@@ -28,6 +28,15 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   phụ trách (Khu vực của tổ → sửa tổ, bảng `dkct_team_stations`; trạm nhận từ địa điểm ghi tự do "Trạm 220kV Phan Thiết,
   ĐZ …", kể cả trạm chưa có trong danh mục): tổ đã tích trạm thì lọc và báo thay đổi chỉ gồm các trạm đó; dòng lịch không
   ghi rõ trạm vẫn theo khu vực.
+  **Thông báo đẩy** (nút chuông ở đầu trang, `services/webPush.js`, `routes/push.js`): mỗi người tự bật trên từng máy tính /
+  điện thoại (Web Push, thư viện `web-push`), chọn nhận thay đổi của tổ mình hoặc tất cả; gửi cùng lúc với Zalo sau mỗi lần nạp
+  lịch có thay đổi (cả tự tải, bấm tải, chọn file), mỗi thay đổi một lần do tiến trình nạp lịch gửi. Khóa VAPID sinh một lần,
+  lưu trong `dkct_settings` (`push.vapid`) nên bản độc lập và ChatLan-cloud dùng chung; thiết bị ở bảng
+  `dkct_push_subscriptions` (404/410 từ dịch vụ đẩy thì xóa). Service worker `server/static/dkct-sw.js`: ứng dụng chủ phục vụ
+  **công khai** (trước bước đăng nhập) tại `/dkct-sw.js` — `app.get('/dkct-sw.js', dkct.serviceWorker)`; trang đăng ký với
+  scope `/dkct-push/` để không đụng service worker khác. iPhone/iPad (iOS 16.4+) chỉ nhận khi đã "Thêm vào MH chính" và mở
+  từ biểu tượng (bản độc lập có `manifest.webmanifest`). Tùy chọn `DKCT_PUSH_SUBJECT` (mặc định https://dkct.onrender.com).
+
   **Thông báo Zalo** (Cài đặt → Thông báo Zalo, `services/zaloBot.js`): bot của Zalo Bot Platform
   (https://bot.zapps.me/docs, gửi bằng `bot-api.zaloplatforms.com/bot<token>/sendMessage`) báo các dòng phát sinh / hoãn /
   dời / sửa / có lại sau mỗi lần **tự tải theo giờ hẹn** (tùy chọn cả khi bấm tải, chọn file). Token bot lưu mã hóa như mật

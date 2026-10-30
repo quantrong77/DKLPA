@@ -12,7 +12,7 @@ const USERS = {
 const byId = Object.fromEntries(Object.values(USERS).map(u => [u.id, u]));
 const SHORT = { 'Tổ Thí nghiệm điện Lâm Đồng': 'TNLĐ', 'Tổ Vận tải': 'VT', 'Ban giám đốc': 'BGĐ' };
 
-async function startApp({ legacyLastIssued, outageSource, outageAuto, notifyUsers, listTeamLeads, secretKey, zalo = { token: '' } } = {}) {
+async function startApp({ legacyLastIssued, outageSource, outageAuto, notifyUsers, listTeamLeads, secretKey, zalo = { token: '' }, pushSend } = {}) {
   const db = createTestDb();
   const dkct = createDkctModule({
     db,
@@ -29,7 +29,8 @@ async function startApp({ legacyLastIssued, outageSource, outageAuto, notifyUser
     notifyUsers,
     listTeamLeads,
     secretKey,
-    zalo
+    zalo,
+    pushSend
   });
   await dkct.migrate();
   const app = express();

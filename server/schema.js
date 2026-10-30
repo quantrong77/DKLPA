@@ -397,6 +397,24 @@ function tables(t) {
       updatedAt ${t.now},
       revision ${t.int} NOT NULL DEFAULT 1`,
     // Cài đặt/dấu mốc của module (vd đã nạp dữ liệu bổ sung nào)
+    // Thông báo đẩy (Web Push) tới trình duyệt / điện thoại khi lịch cắt điện thay đổi: mỗi thiết bị một dòng.
+    // scope 'team': thay đổi của tổ người đăng ký (department); 'all': mọi thay đổi. endpointHash: sha256 của endpoint.
+    dkct_push_subscriptions: `
+      id ${t.id} PRIMARY KEY,
+      userId ${t.id} NOT NULL,
+      department ${t.short},
+      scope ${t.short} NOT NULL,
+      endpointHash ${t.short} NOT NULL,
+      endpoint ${t.text} NOT NULL,
+      p256dh ${t.str} NOT NULL,
+      auth ${t.str} NOT NULL,
+      label ${t.str},
+      openUrl ${t.text},
+      failCount ${t.int} NOT NULL DEFAULT 0,
+      lastSentAt ${t.time},
+      createdAt ${t.now},
+      updatedAt ${t.now},
+      UNIQUE (endpointHash)`,
     dkct_settings: `
       name ${t.short} PRIMARY KEY,
       value ${t.text},
@@ -426,6 +444,7 @@ const INDEXES = [
   ['idx_dkct_survey_photos_survey', 'dkct_survey_photos', 'surveyId'],
   ['idx_dkct_plan_work', 'dkct_plans', 'workId'],
   ['idx_dkct_plan_attachment_plan', 'dkct_plan_attachments', 'planId'],
+  ['idx_dkct_push_user', 'dkct_push_subscriptions', 'userId'],
   ['idx_dkct_personnel_name', 'dkct_personnel', 'fullName'],
   ['idx_dkct_survey_department', 'dkct_surveys', 'department'],
   ['idx_dkct_substation_station', 'dkct_substations', 'stationId'],

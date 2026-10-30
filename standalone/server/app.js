@@ -137,6 +137,8 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
   app.use('/api', (req, res, next) => (HEAVY_PATH.test(req.path) ? heavyLimit(req, res, next) : next()));
 
   app.get('/healthz', (req, res) => res.json({ ok: true }));
+  // service worker thông báo đẩy lịch cắt điện: công khai (trình duyệt tải không kèm đăng nhập)
+  app.get(createDkctModule.SERVICE_WORKER_PATH, dkct.serviceWorker);
   app.get('/api/app/config', (req, res) => res.json(publicConfig));
 
   const api = express.Router();

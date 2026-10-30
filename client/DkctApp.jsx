@@ -15,6 +15,7 @@ import { confirmationFromPlan } from './lib/confirmation.js';
 import { fromSaved } from './lib/form.js';
 import { loadTheme, saveTheme, themeClass } from './lib/theme.js';
 import ThemePicker from './components/ThemePicker.jsx';
+import PushButton from './components/PushButton.jsx';
 import HelpAboutButtons from './components/HelpAbout.jsx';
 import { reloadHint, refreshedLabel } from './lib/help.js';
 import { usePersistentState } from './lib/persist.js';
@@ -271,6 +272,7 @@ export default function DkctApp() {
               <button type="button" className={btnPrimary} onClick={primary.onClick} disabled={!meta}><Plus className="w-4 h-4" /> {primary.label}</button>
             )}
             <HelpAboutButtons tab={tab} />
+            <PushButton />
             <ThemePicker value={theme} onChange={chooseTheme} />
             <button type="button" className={`${btnGhost} inline-flex items-center gap-1.5 disabled:opacity-70`} onClick={refresh} disabled={refreshing}
               aria-label={refreshing ? 'Đang tải lại' : 'Tải lại dữ liệu'} title={reloadHint(tab, firstView, refreshedAt)}>

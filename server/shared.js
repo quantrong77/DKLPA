@@ -170,7 +170,9 @@ function createSharedDkct({ pool, db: givenDb, emailOf, notifyByEmail, standalon
     },
     stop() { dkct.stopAutoFetch(); if (timer) clearInterval(timer); timer = null; },
     pollChanges,
-    autoFetch: dkct.autoFetch
+    autoFetch: dkct.autoFetch,
+    /** Service worker thông báo đẩy: ứng dụng chủ phục vụ công khai tại /dkct-sw.js. */
+    serviceWorker: dkct.serviceWorker
   };
 }
 
