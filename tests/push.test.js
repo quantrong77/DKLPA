@@ -30,18 +30,23 @@ function fakePush(gone = new Set()) {
 
 test('notificationFor: lọc theo tổ, rút gọn thân tin, tiêu đề có số mục', () => {
   const described = [
-    { line: '• Hoãn: 05/10 07:00 Trạm A — việc A', teams: [LD] },
-    { line: '• Phát sinh: 06/10 07:00 Trạm B — việc B', teams: ['Tổ Vận tải'] }
+    { line: '• Hoãn: 05/10 07:00 Trạm A — việc A', teams: [LD], outageId: 'LCD-a', day: '2024-10-05' },
+    { line: '• Phát sinh: 06/10 07:00 Trạm B — việc B', teams: ['Tổ Vận tải'], outageId: 'LCD-b', day: '2024-10-06' },
+    { line: '• Sửa nội dung: 05/10 07:00 Trạm A — việc A', teams: [LD], outageId: 'LCD-a', day: '2024-10-05' }
   ];
   const mine = notificationFor(described, { department: LD, openUrl: 'https://dkct.test/' });
-  assert.equal(mine.title, `⚡ Lịch cắt điện thay đổi: 1 mục — ${LD}`);
-  assert.equal(mine.body, '• Hoãn: 05/10 07:00 Trạm A — việc A');
+  assert.equal(mine.title, `⚡ Lịch cắt điện thay đổi: 2 mục — ${LD}`);
+  assert.equal(mine.body, '• Hoãn: 05/10 07:00 Trạm A — việc A\n• Sửa nội dung: 05/10 07:00 Trạm A — việc A');
   assert.equal(mine.url, 'https://dkct.test/');
-  assert.equal(notificationFor(described, {}).title, '⚡ Lịch cắt điện thay đổi: 2 mục');
+  assert.equal(mine.outages, 'LCD-a~2024-10-05', 'dòng lịch để tới khi bấm, không trùng');
+  assert.equal(notificationFor(described, {}).title, '⚡ Lịch cắt điện thay đổi: 3 mục');
+  assert.equal(notificationFor(described, {}).outages, 'LCD-a~2024-10-05,LCD-b~2024-10-06');
   assert.equal(notificationFor(described, { department: 'Tổ khác' }), null);
   const many = Array.from({ length: 30 }, (_, i) => ({ line: `• Phát sinh: dòng số ${i} ${'x'.repeat(60)}`, teams: [LD] }));
-  const long = notificationFor(many, {});
+  const long = notificationFor(many.map((d, i) => ({ ...d, outageId: `LCD-${'0'.repeat(32)}${String(i).padStart(4, '0')}`, day: '2024-10-05' })), {});
   assert.ok(long.body.length < 1000);
+  assert.equal(long.outages.split(',').length, 15, 'tối đa 15 dòng');
+  assert.ok(Buffer.byteLength(JSON.stringify(long)) < 3000, 'tin đẩy dưới giới hạn ~4 KB');
   assert.match(long.body, /… và \d+ thay đổi khác\.$/);
 });
 
@@ -93,6 +98,8 @@ test('thông báo đẩy: khóa VAPID chung trong CSDL, bật / tắt từng thi
     assert.equal(msg.payload.title, `⚡ Lịch cắt điện thay đổi: 1 mục — ${LD}`);
     assert.match(msg.payload.body, /Trạm 220kV Phan Thiết/);
     assert.equal(msg.payload.url, 'https://dkct.test/');
+    const [outage] = (await app.call('lead', 'GET', '/outages?from=2024-10-05&to=2024-10-05')).body.items;
+    assert.equal(msg.payload.outages, `${outage.id}~2024-10-05`, 'bấm thông báo: tới dòng lịch thay đổi');
     assert.equal(msg.options.vapidDetails.publicKey, config.publicKey);
     assert.equal(msg.options.TTL, 12 * 3600);
     assert.equal(await app.db.queryOne('SELECT id FROM dkct_push_subscriptions WHERE userId = ?', [USERS.admin.id]), null, '410: xóa thiết bị');

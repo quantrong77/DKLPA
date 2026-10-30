@@ -23,6 +23,44 @@ test('pushSupport: máy tính / Android được; iPhone phải mở từ Màn h
   assert.match(SUPPORT_HINT['ios-install'], /Thêm vào MH chính/);
 });
 
+/** window giả: địa chỉ, history, sessionStorage, sự kiện, service worker gửi tin. */
+function fakeWindow(href) {
+  const events = [];
+  const data = new Map();
+  const listeners = [];
+  const w = {
+    location: { href },
+    history: { state: null, replaceState: (s, t, url) => { w.location.href = new URL(url, href).href; } },
+    sessionStorage: { getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)), removeItem: k => data.delete(k) },
+    Event: class { constructor(type) { this.type = type; } },
+    dispatchEvent: e => events.push(e.type),
+    navigator: { serviceWorker: { addEventListener: (t, f) => listeners.push(f), removeEventListener: (t, f) => listeners.splice(listeners.indexOf(f), 1) } },
+    events,
+    post: (msg) => listeners.forEach(f => f({ data: msg }))
+  };
+  return w;
+}
+
+test('bấm thông báo: đọc ?dkct-outages (bỏ khỏi địa chỉ) hoặc tin của service worker, giữ tới khi màn hình lịch lấy', async () => {
+  const { receiveOpenRequests, takeOpenRequest, decodeOutages, OPEN_EVENT, OPEN_MESSAGE } = await load();
+  assert.deepEqual(decodeOutages('LCD-a~2024-10-05,LCD-b~,bad id~x,~2024-01-01'), [{ id: 'LCD-a', day: '2024-10-05' }, { id: 'LCD-b', day: '' }]);
+
+  const w = fakeWindow('https://dkct.test/?x=1&dkct-outages=LCD-a~2024-10-05#top');
+  const off = receiveOpenRequests(w);
+  assert.equal(w.location.href, 'https://dkct.test/?x=1#top', 'bỏ tham số, giữ phần khác');
+  assert.deepEqual(w.events, [OPEN_EVENT]);
+  assert.deepEqual(takeOpenRequest(w), [{ id: 'LCD-a', day: '2024-10-05' }]);
+  assert.deepEqual(takeOpenRequest(w), [], 'lấy một lần');
+
+  w.post({ type: OPEN_MESSAGE, outages: 'LCD-b~2024-10-06' });
+  w.post({ type: 'khac', outages: 'LCD-c~2024-10-07' });
+  assert.deepEqual(takeOpenRequest(w), [{ id: 'LCD-b', day: '2024-10-06' }]);
+  off();
+  w.post({ type: OPEN_MESSAGE, outages: 'LCD-d~2024-10-08' });
+  assert.deepEqual(takeOpenRequest(w), [], 'đã gỡ bộ nghe');
+  assert.deepEqual(takeOpenRequest(fakeWindow('https://dkct.test/')), []);
+});
+
 test('urlBase64ToUint8Array / deviceLabel', async () => {
   const { urlBase64ToUint8Array, deviceLabel } = await load();
   const bytes = Buffer.from([0, 255, 62, 63, 1, 2, 3]);

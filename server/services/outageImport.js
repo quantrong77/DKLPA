@@ -222,7 +222,8 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, onChanges, log =
   const noteOf = (ev) => (ev.note && ev.kind !== 'RESTORED' ? `\n   ${ev.note}` : '');
 
   /**
-   * Tóm tắt từng sự kiện cho kênh báo ngoài (Zalo): [{ event, line, teams: [tổ phụ trách / tổ có hồ sơ gắn] }].
+   * Tóm tắt từng sự kiện cho kênh báo ngoài (Zalo, thông báo đẩy):
+   * [{ event, line, teams: [tổ phụ trách / tổ có hồ sơ gắn], outageId, day: ngày bắt đầu 'YYYY-MM-DD' (để tới dòng lịch) }].
    */
   async function describeEvents(events) {
     if (!events.length) return [];
@@ -233,7 +234,10 @@ function createOutageImporter({ db, notifyUsers, listTeamLeads, onChanges, log =
       if (!o) continue;
       const linked = docs.filter(d => d.outageId === ev.outageId);
       const related = linked.length && ['POSTPONED', 'MOVED', 'EDITED'].includes(ev.kind) ? `\n   Hồ sơ liên quan: ${linked.map(d => d.label).join(', ')}` : '';
-      out.push({ event: ev, line: `${headOf(ev, o)}${noteOf(ev)}${related}`, teams: [...new Set([...teamsOf(o), ...linked.map(d => d.department)].filter(Boolean))] });
+      out.push({
+        event: ev, line: `${headOf(ev, o)}${noteOf(ev)}${related}`, teams: [...new Set([...teamsOf(o), ...linked.map(d => d.department)].filter(Boolean))],
+        outageId: o.id, day: String(o.regStart || '').slice(0, 10)
+      });
     }
     return out;
   }

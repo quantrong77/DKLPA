@@ -375,7 +375,7 @@ function StepTracker({ outage }) {
 }
 
 /** Lịch cắt điện = kế hoạch công tác: import Excel, lọc, theo dõi tiến độ, lập biên bản/phương án/giấy từ một dòng. */
-export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, canConfigure, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage, onCreateConfirmationFromOutage }) {
+export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, canConfigure, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage, onCreateConfirmationFromOutage, focus }) {
   const { api, notify, EmptyState } = useDkct();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -429,6 +429,13 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
     if (day && to && to < day) setTo('');
     setPending(r.id);
   };
+  // từ thông báo đẩy: tới dòng đầu, mở lịch sử thay đổi của các dòng được báo
+  useEffect(() => {
+    if (!focus?.list?.length) return;
+    const [first] = focus.list;
+    locate({ id: first.id, regStart: first.day });
+    setHistoryOf(prev => new Set([...prev, ...focus.list.map(o => o.id)]));
+  }, [focus]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!pending || loading) return undefined;
     const el = document.getElementById(`outage-${pending}`);

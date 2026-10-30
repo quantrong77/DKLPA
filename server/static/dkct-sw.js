@@ -15,19 +15,24 @@ self.addEventListener('push', (event) => {
     tag: data.tag || 'dkct',
     renotify: true,
     requireInteraction: false,
-    data: { url: data.url || '/' }
+    data: { url: data.url || '/', outages: data.outages || '' }
   }));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
+  const data = event.notification.data || {};
   event.waitUntil((async () => {
-    const target = new URL(url, self.location.origin);
+    const target = new URL(data.url || '/', self.location.origin);
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    // đã mở ứng dụng: chỉ đưa lên trước (không chuyển trang: có thể đang soạn dở); chưa mở thì mở trang
+    // đã mở ứng dụng: không tải lại trang (có thể đang soạn dở) — báo cửa sổ tới các dòng lịch thay đổi rồi đưa lên trước;
+    // chưa mở: mở trang kèm ?dkct-outages=… (ứng dụng đọc khi khởi động)
     const open = windows.find(c => new URL(c.url).origin === target.origin);
-    if (open) return open.focus();
+    if (open) {
+      if (data.outages) open.postMessage({ type: 'dkct:open-outages', outages: data.outages });
+      return open.focus();
+    }
+    if (data.outages) target.searchParams.set('dkct-outages', data.outages);
     await self.clients.openWindow(target.href);
   })());
 });

@@ -36,6 +36,11 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   **công khai** (trước bước đăng nhập) tại `/dkct-sw.js` — `app.get('/dkct-sw.js', dkct.serviceWorker)`; trang đăng ký với
   scope `/dkct-push/` để không đụng service worker khác. iPhone/iPad (iOS 16.4+) chỉ nhận khi đã "Thêm vào MH chính" và mở
   từ biểu tượng (bản độc lập có `manifest.webmanifest`). Tùy chọn `DKCT_PUSH_SUBJECT` (mặc định https://dkct.onrender.com).
+  Bấm thông báo: tin mang các dòng lịch (`outages`: `id~YYYY-MM-DD,…`, tối đa 15); trang đang mở thì service worker gửi
+  `{ type: 'dkct:open-outages', outages }` (không tải lại trang), chưa mở thì mở trang kèm `?dkct-outages=…`. Giao diện
+  (`client/lib/push.js`: `receiveOpenRequests`, `takeOpenRequest`) giữ yêu cầu ở `sessionStorage['dkct.openOutages']`, phát
+  sự kiện `dkct:open-outages`; DkctApp mở tab Lịch cắt điện, tới dòng đầu, mở lịch sử thay đổi. Ứng dụng chủ chưa mở module
+  (ChatLan) làm như trên rồi chuyển sang tab module.
 
   **Thông báo Zalo** (Cài đặt → Thông báo Zalo, `services/zaloBot.js`): bot của Zalo Bot Platform
   (https://bot.zapps.me/docs, gửi bằng `bot-api.zaloplatforms.com/bot<token>/sendMessage`) báo các dòng phát sinh / hoãn /

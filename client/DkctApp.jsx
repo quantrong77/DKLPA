@@ -16,6 +16,7 @@ import { fromSaved } from './lib/form.js';
 import { loadTheme, saveTheme, themeClass } from './lib/theme.js';
 import ThemePicker from './components/ThemePicker.jsx';
 import PushButton from './components/PushButton.jsx';
+import { receiveOpenRequests, takeOpenRequest, OPEN_EVENT } from './lib/push.js';
 import HelpAboutButtons from './components/HelpAbout.jsx';
 import { reloadHint, refreshedLabel } from './lib/help.js';
 import { usePersistentState } from './lib/persist.js';
@@ -79,6 +80,22 @@ export default function DkctApp() {
       .catch(() => { if (alive) { setChain(null); setSelection(null); } }); // hồ sơ đã xóa / không còn quyền xem
     return () => { alive = false; };
   }, [api, selection, reloadKey]);
+
+  // bấm thông báo đẩy "lịch cắt điện thay đổi": mở tab Lịch cắt điện, tới các dòng đó (OutagePanel focus)
+  const [outageFocus, setOutageFocus] = useState(null); // { list: [{ id, day }], at }
+  useEffect(() => {
+    const off = receiveOpenRequests();
+    const open = () => {
+      const list = takeOpenRequest();
+      if (!list.length) return;
+      setTab('outages');
+      setFirstView('outages');
+      setOutageFocus({ list, at: Date.now() });
+    };
+    open();
+    window.addEventListener(OPEN_EVENT, open);
+    return () => { off(); window.removeEventListener(OPEN_EVENT, open); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMeta = useCallback(() => api.get('/meta').then(setMeta).catch(err => notify(err.message, 'error')), [api, notify]);
   const loadCatalog = useCallback(async (name) => {
@@ -312,7 +329,7 @@ export default function DkctApp() {
         )}
         {tab === 'outages' && firstView === 'outages' && (
           <OutagePanel {...pick('outage')} reloadKey={reloadKey} canCreate={permissions.canCreate} canPurge={permissions.isAdmin} canConfigure={permissions.isAdmin} onCreateFromOutage={openFromOutage} onCreateSurveyFromOutage={openSurveyFromOutage}
-            onCreatePlanFromOutage={openPlanFromOutage} onCreateConfirmationFromOutage={openConfirmationFromOutage} />
+            onCreatePlanFromOutage={openPlanFromOutage} onCreateConfirmationFromOutage={openConfirmationFromOutage} focus={outageFocus} />
         )}
         {tab === 'outages' && firstView === 'works' && (
           <WorkList {...pick('work')} reloadKey={reloadKey} canCreate={permissions.canCreate} onOpen={openWork}

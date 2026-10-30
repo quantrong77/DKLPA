@@ -18,6 +18,12 @@ const MAX_FAILS = 20;
 const MAX_BODY = 900; // payload Web Push tối đa ~4 KB (sau mã hóa); thân tin ngắn để hiện đủ trên điện thoại
 const TTL_SECONDS = 12 * 3600;
 const B64URL = /^[A-Za-z0-9_-]+=*$/;
+// bấm thông báo: tới các dòng lịch thay đổi (service worker mở trang kèm ?dkct-outages=… hoặc báo cửa sổ đang mở);
+// tối đa MAX_LINKED dòng (mã dòng ~40 ký tự, tin đẩy tối đa ~4 KB)
+const MAX_LINKED = 15;
+
+/** Các dòng lịch của thông báo -> "id~YYYY-MM-DD,…" (giao diện đọc bằng decodeOutages). */
+const encodeOutages = (list) => list.map(o => `${o.id}~${o.day || ''}`).join(',');
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const hashOf = (endpoint) => crypto.createHash('sha256').update(endpoint).digest('hex');
@@ -48,8 +54,12 @@ function cleanOpenUrl(value) {
  * described: [{ line, teams }] (importer.describeEvents).
  */
 function notificationFor(described, { department = '', openUrl = '' } = {}) {
-  const lines = described.filter(d => !department || d.teams.includes(department)).map(d => d.line);
+  const mine = described.filter(d => !department || d.teams.includes(department));
+  const lines = mine.map(d => d.line);
   if (!lines.length) return null;
+  const seen = new Set();
+  const outages = mine.filter(d => d.outageId && !seen.has(d.outageId) && seen.add(d.outageId))
+    .slice(0, MAX_LINKED).map(d => ({ id: d.outageId, day: d.day || '' }));
   let body = '';
   let shown = 0;
   for (const line of lines) {
@@ -63,6 +73,7 @@ function notificationFor(described, { department = '', openUrl = '' } = {}) {
     title: `⚡ Lịch cắt điện thay đổi: ${lines.length} mục${department ? ` — ${department}` : ''}`,
     body,
     url: openUrl || '/',
+    outages: encodeOutages(outages),
     tag: 'dkct-outage-change'
   };
 }
@@ -198,4 +209,4 @@ function createWebPush({ db, subject = process.env.DKCT_PUSH_SUBJECT || 'https:/
   return { publicKey, devicesOf, subscribe, unsubscribe, remove, test, onChanges };
 }
 
-module.exports = { createWebPush, notificationFor, cleanSubscription, SCOPES };
+module.exports = { createWebPush, notificationFor, cleanSubscription, encodeOutages, SCOPES };

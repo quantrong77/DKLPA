@@ -89,3 +89,57 @@ export async function subscribeDevice(publicKey) {
     throw err;
   }
 }
+
+// ---- bấm thông báo -> tới các dòng lịch thay đổi --------------------------------------------------------------------
+// Service worker mở trang kèm ?dkct-outages=<id>~<YYYY-MM-DD>,… hoặc (trang đang mở) gửi { type: OPEN_MESSAGE, outages }.
+// Yêu cầu giữ trong sessionStorage[OPEN_KEY] tới khi màn hình lịch đọc (ứng dụng chủ có thể chưa mở module), rồi phát
+// sự kiện OPEN_EVENT trên window. Ứng dụng chủ (ChatLan) làm như vậy để chuyển sang tab module.
+export const OPEN_PARAM = 'dkct-outages';
+export const OPEN_MESSAGE = 'dkct:open-outages';
+export const OPEN_KEY = 'dkct.openOutages';
+export const OPEN_EVENT = 'dkct:open-outages';
+
+/** "id~YYYY-MM-DD,…" -> [{ id, day }] (bỏ phần không hợp lệ). */
+export function decodeOutages(value) {
+  return String(value || '').split(',').map(part => {
+    const [id = '', day = ''] = part.split('~');
+    return /^[\w-]{1,80}$/.test(id) ? { id, day: /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : '' } : null;
+  }).filter(Boolean);
+}
+
+function store(value, env) {
+  try { env.sessionStorage.setItem(OPEN_KEY, String(value)); } catch { /* trình duyệt chặn bộ nhớ: bỏ qua */ }
+  env.dispatchEvent?.(new env.Event(OPEN_EVENT));
+}
+
+/**
+ * Nhận yêu cầu mở dòng lịch: tham số ?dkct-outages trên địa chỉ (bỏ khỏi địa chỉ sau khi đọc) và tin của service worker.
+ * -> hàm gỡ bộ nghe.
+ */
+export function receiveOpenRequests(env = globalThis) {
+  try {
+    const url = new URL(env.location.href);
+    const value = url.searchParams.get(OPEN_PARAM);
+    if (value) {
+      url.searchParams.delete(OPEN_PARAM);
+      env.history?.replaceState(env.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+      store(value, env);
+    }
+  } catch { /* không có location */ }
+  const sw = env.navigator?.serviceWorker;
+  if (!sw?.addEventListener) return () => {};
+  const onMessage = (e) => { if (e.data?.type === OPEN_MESSAGE && e.data.outages) store(e.data.outages, env); };
+  sw.addEventListener('message', onMessage);
+  sw.startMessages?.();
+  return () => sw.removeEventListener('message', onMessage);
+}
+
+/** Lấy (và xóa) yêu cầu đang chờ: [{ id, day }] | []. */
+export function takeOpenRequest(env = globalThis) {
+  try {
+    const value = env.sessionStorage.getItem(OPEN_KEY);
+    if (!value) return [];
+    env.sessionStorage.removeItem(OPEN_KEY);
+    return decodeOutages(value);
+  } catch { return []; }
+}
