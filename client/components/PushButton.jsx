@@ -15,6 +15,17 @@ export default function PushButton() {
   const [scope, setScope] = useState('team');
   const [busy, setBusy] = useState('');
   const box = useRef(null);
+  // điện thoại (< 640px): bảng cố định theo chiều ngang màn hình, ngay dưới nút chuông; máy tính: thả xuống cạnh nút
+  const bell = useRef(null);
+  const [phoneTop, setPhoneTop] = useState(null);
+  const place = useCallback(() => {
+    setPhoneTop(window.innerWidth < 640 && bell.current ? Math.round(bell.current.getBoundingClientRect().bottom + 6) : null);
+  }, []);
+  useEffect(() => {
+    if (!open) return undefined;
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [open, place]);
   const support = pushSupport();
 
   const load = useCallback(async () => {
@@ -84,12 +95,13 @@ export default function PushButton() {
     <div ref={box} className="relative">
       <button type="button" className={btnGhost} aria-haspopup="true" aria-expanded={open}
         aria-label="Thông báo lịch cắt điện" title={on ? 'Đang bật thông báo lịch cắt điện trên thiết bị này' : 'Thông báo lịch cắt điện'}
-        onClick={() => setOpen(v => !v)}>
+        ref={bell} onClick={() => { if (!open) place(); setOpen(v => !v); }}>
         <Icon className={`w-4 h-4 ${on ? 'text-chatlan-600' : ''}`} />
       </button>
       {open && (
         <div role="dialog" aria-label="Thông báo lịch cắt điện"
-          className="absolute right-0 top-full mt-1 z-50 w-80 max-w-[calc(100vw-2rem)] p-3 space-y-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg text-sm">
+          style={phoneTop === null ? undefined : { top: phoneTop, maxHeight: `calc(100dvh - ${phoneTop + 12}px)` }}
+          className={`${phoneTop === null ? 'absolute right-0 top-full mt-1 w-80' : 'fixed inset-x-3 overflow-y-auto overscroll-contain'} z-[60] p-3 space-y-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg text-sm text-left`}>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Thông báo lịch cắt điện</p>
           <p className="text-xs text-slate-600 dark:text-slate-400">
             Hiện thông báo trên máy tính / điện thoại này khi lịch cắt điện phát sinh, hoãn, dời, sửa — kể cả khi không mở trang.
