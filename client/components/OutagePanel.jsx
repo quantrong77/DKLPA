@@ -374,6 +374,31 @@ function StepTracker({ outage }) {
   );
 }
 
+// nội dung nhiều việc ghi liền "…; - …": mỗi việc một dòng khi hiện theo cột
+const asLines = (text) => String(text || '').replace(/;\s*(?=[-–•+])/g, ';\n');
+const COL_LABEL = 'block text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-0.5';
+
+/** Nội dung | Phạm vi | ĐV công tác (+ tình trạng đăng ký) theo cột từ màn hình vừa (≥ 768px), xếp chồng trên điện thoại. */
+function OutageColumns({ outage: o }) {
+  return (
+    <div className="mt-1.5 grid grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,0.8fr)] gap-x-4 gap-y-1.5">
+      <div className="min-w-0">
+        <span className={COL_LABEL}>Nội dung</span>
+        <p className="text-sm text-slate-900 dark:text-white whitespace-pre-line line-clamp-4">{asLines(o.content)}</p>
+      </div>
+      <div className="min-w-0">
+        <span className={COL_LABEL}>Phạm vi</span>
+        <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line line-clamp-4">{o.scope || '—'}</p>
+      </div>
+      <div className="min-w-0">
+        <span className={COL_LABEL}>ĐV công tác</span>
+        <p className="text-xs text-slate-700 dark:text-slate-300">{o.workUnit || '—'}</p>
+        {o.status && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{o.status}</p>}
+      </div>
+    </div>
+  );
+}
+
 /** Lịch cắt điện = kế hoạch công tác: import Excel, lọc, theo dõi tiến độ, lập biên bản/phương án/giấy từ một dòng. */
 export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, canCreate, canPurge, canConfigure, onCreateFromOutage, onCreateSurveyFromOutage, onCreatePlanFromOutage, onCreateConfirmationFromOutage, focus }) {
   const { api, notify, EmptyState } = useDkct();
@@ -506,7 +531,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
               className={`${o.id !== selectedId && !linked?.has(o.id) && CHANGE_FRAME[o.changeKind] ? CHANGE_FRAME[o.changeKind] : rowFrame(o.id, selectedId, linked)} rounded-xl p-3 shadow-sm transition-shadow ${flash === o.id ? 'ring-4 ring-chatlan-400' : ''}`}>
               <div className="flex flex-wrap items-start gap-2">
                 {onTrack && <TrackButton active={o.id === selectedId} linked={linked?.has(o.id)} onClick={() => onTrack(o)} />}
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-72">
                   <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold text-chatlan-700 dark:text-chatlan-300">
                     {CHANGE_TAG[o.changeKind] && (
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${CHANGE_TAG[o.changeKind].cls}`}>{CHANGE_TAG[o.changeKind].label}</span>
@@ -517,9 +542,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
                     <span>· {o.location}</span>
                   </p>
                   {o.changeNote && o.changeKind !== 'NEW' && <p className="text-xs font-semibold mt-0.5 text-slate-700 dark:text-slate-200">{o.changeNote}</p>}
-                  <p className="text-sm text-slate-900 dark:text-white mt-1 whitespace-pre-line line-clamp-3">{o.content}</p>
-                  {o.scope && <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 whitespace-pre-line line-clamp-2">Phạm vi: {o.scope}</p>}
-                  <p className="text-xs text-slate-500 mt-1">ĐV công tác: {o.workUnit} · {o.status}</p>
+                  <OutageColumns outage={o} />
                   <StepTracker outage={o} />
                   {o.changeCount > 0 && (
                     <button type="button" onClick={() => toggleHistory(o.id)} aria-expanded={historyOf.has(o.id)}
@@ -530,7 +553,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
                   {historyOf.has(o.id) && <div className="mt-1.5"><OutageHistory outageId={o.id} /></div>}
                 </div>
                 {canCreate && (
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-wrap gap-1.5 lg:flex-col">
                     <button type="button" className={btnSecondary} onClick={() => onCreateSurveyFromOutage(o)}>
                       <ClipboardList className="w-4 h-4 text-chatlan-600" /> Lập biên bản KSHT{o.surveyCount > 0 ? ` (đã có ${o.surveyCount})` : ''}
                     </button>
