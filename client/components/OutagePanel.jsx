@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck, Eye, EyeOff, BadgeCheck } from 'lucide-react';
 import { useDkct } from '../context.jsx';
-import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, formatDateTime } from './ui.jsx';
+import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, formatDateTime, TimeBox } from './ui.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 import { CHANGE_TONES } from './OutageAlert.jsx';
 import { OutageHistory, AutoFetchStatus } from './OutageHistory.jsx';
@@ -507,11 +507,14 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
               <div className="flex flex-wrap items-start gap-2">
                 {onTrack && <TrackButton active={o.id === selectedId} linked={linked?.has(o.id)} onClick={() => onTrack(o)} />}
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-chatlan-700 dark:text-chatlan-300">
+                  <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold text-chatlan-700 dark:text-chatlan-300">
                     {CHANGE_TAG[o.changeKind] && (
-                      <span className={`inline-block mr-1.5 px-1.5 py-0.5 rounded text-[11px] font-bold ${CHANGE_TAG[o.changeKind].cls}`}>{CHANGE_TAG[o.changeKind].label}</span>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${CHANGE_TAG[o.changeKind].cls}`}>{CHANGE_TAG[o.changeKind].label}</span>
                     )}
-                    {formatDateTime(o.regStart)} → {formatDateTime(o.regEnd)} · {o.location}
+                    <TimeBox kind={o.changeKind} title={CHANGE_TAG[o.changeKind] ? `${CHANGE_TAG[o.changeKind].label}${o.changeNote ? `: ${o.changeNote}` : ''}` : 'Thời gian đăng ký'}>
+                      {formatDateTime(o.regStart)} → {formatDateTime(o.regEnd)}
+                    </TimeBox>
+                    <span>· {o.location}</span>
                   </p>
                   {o.changeNote && o.changeKind !== 'NEW' && <p className="text-xs font-semibold mt-0.5 text-slate-700 dark:text-slate-200">{o.changeNote}</p>}
                   <p className="text-sm text-slate-900 dark:text-white mt-1 whitespace-pre-line line-clamp-3">{o.content}</p>

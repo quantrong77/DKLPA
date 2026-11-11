@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Briefcase, Search, Trash2, Eye, Pencil, ClipboardList, FileStack, FilePlus2, MapPin } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { useLatestRequest } from '../lib/latest.js';
-import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime, ListError, NoMatch } from './ui.jsx';
+import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime, ListError, NoMatch, TimeBox } from './ui.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
 
 const range = (a, b) => [formatDateTime(a), formatDateTime(b)].filter(Boolean).join(' → ');
@@ -81,7 +81,9 @@ export default function WorkList({ selectedId, linked, onTrack, reloadKey, canCr
                 {onTrack && <TrackButton active={item.id === selectedId} linked={linked?.has(item.id)} onClick={() => onTrack(item)} />}
                 <button type="button" className="flex-1 min-w-[12rem] text-left" onClick={() => onOpen(item)}>
                   <p className="text-xs font-semibold text-chatlan-700 dark:text-chatlan-300">
-                    {range(item.startTime, item.endTime) || 'Chưa ghi thời gian'}
+                    {range(item.startTime, item.endTime)
+                      ? <TimeBox title="Thời gian thực hiện">{range(item.startTime, item.endTime)}</TimeBox>
+                      : 'Chưa ghi thời gian'}
                   </p>
                   <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2 whitespace-pre-line">{item.content}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 inline-flex items-center gap-1">

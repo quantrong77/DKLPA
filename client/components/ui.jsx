@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, RefreshCw, SearchX } from 'lucide-react';
+import { AlertTriangle, RefreshCw, SearchX, Clock } from 'lucide-react';
 
 // Lớp Tailwind theo hệ thiết kế của ChatLan (ba mức nút, ô nhập, thẻ).
 export const btnPrimary = 'px-3.5 py-2 bg-chatlan-600 hover:bg-chatlan-700 disabled:opacity-60 text-white font-bold rounded-lg shadow-sm text-xs inline-flex items-center gap-1.5 transition';
@@ -104,6 +104,24 @@ export function TabButton({ active, onClick, icon: Icon, children }) {
       {Icon && <Icon className="w-4 h-4" aria-hidden="true" />}
       <span>{children}</span>
     </button>
+  );
+}
+
+// khung thời gian trên dòng lịch / công việc: tô theo màu biến động (hoãn đỏ, dời lịch xanh, sửa nội dung tím, phát sinh vàng)
+const TIME_TONES = {
+  POSTPONED: 'bg-red-100 border-red-400 text-red-900 dark:bg-red-900/50 dark:border-red-600 dark:text-red-100',
+  MOVED: 'bg-sky-100 border-sky-400 text-sky-900 dark:bg-sky-900/50 dark:border-sky-600 dark:text-sky-100',
+  EDITED: 'bg-violet-100 border-violet-400 text-violet-900 dark:bg-violet-900/50 dark:border-violet-600 dark:text-violet-100',
+  NEW: 'bg-yellow-100 border-yellow-400 text-yellow-900 dark:bg-yellow-900/40 dark:border-yellow-600 dark:text-yellow-100'
+};
+const TIME_DEFAULT = 'bg-chatlan-50 border-chatlan-300 text-chatlan-700 dark:bg-chatlan-900/40 dark:border-chatlan-800 dark:text-chatlan-200';
+
+/** Thời gian của một dòng (bắt đầu → kết thúc) trong khung có viền; kind: loại biến động của dòng lịch (tô màu tương ứng). */
+export function TimeBox({ kind, title, children }) {
+  return (
+    <span title={title} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-bold tabular-nums ${TIME_TONES[kind] || TIME_DEFAULT}`}>
+      <Clock className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />{children}
+    </span>
   );
 }
 
