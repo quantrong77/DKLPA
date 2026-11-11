@@ -15,6 +15,7 @@ const express = require('express');
 const createDkctModule = require('../../server');
 
 const { createAccounts, APP_TABLE_TEXT, USER_COLUMNS, ROLES } = require('../../server/accounts');
+const { renameDepartment } = require('../../server/services/departmentRename');
 const text = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
 const bad = (message, status = 400) => Object.assign(new Error(message), { status });
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -167,9 +168,15 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     res.status(201).json({ items: await listDepartments() });
   }));
 
-  // Chỉ sửa tên viết tắt: tên tổ đã ghi vào giấy, số giấy và quyền xem, đổi tên sẽ làm "mất" hồ sơ cũ.
+  // Sửa tên viết tắt; đổi tên tổ (name): chuyển theo thành viên, hồ sơ, số văn bản, khu vực / trạm, người nhận thông báo
+  // (services/departmentRename.js). Văn bản đã lập giữ tên tổ đã in.
   api.put('/departments/:name', requireAuth, requireAdmin, wrap(async (req, res) => {
     const shortName = text(req.body?.shortName, 64);
+    const name = text(req.body?.name, 191);
+    if (name && name !== req.params.name) {
+      const result = await renameDepartment(db, { from: req.params.name, to: name, shortName });
+      return res.json({ items: await listDepartments(), renamed: result });
+    }
     if (!shortName) throw bad('Nhập tên viết tắt.');
     const r = await db.execute('UPDATE dkct_app_departments SET shortName = ? WHERE name = ?', [shortName, req.params.name]);
     if (!Number(r.changes ?? r.affectedRows)) throw bad('Không tìm thấy tổ.', 404);

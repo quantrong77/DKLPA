@@ -114,3 +114,54 @@ test('hồ sơ cá nhân: sửa tên, chức danh, điện thoại; dùng cho "n
     assert.deepEqual([rep.name, rep.role, rep.contact], ['Nguyễn Thị Lan', 'Tổ trưởng', '0909 (lan@example.com)']);
   } finally { await app.close(); }
 });
+
+test('admin đổi tên tổ: thành viên, hồ sơ, số văn bản (đánh tiếp), khu vực, người nhận Zalo chuyển theo; văn bản cũ giữ tên đã in', async () => {
+  const { PLAN } = require('../../tests/fixtures/samplePlan');
+  const app = await startApp();
+  try {
+    await app.call('lan', 'GET', '/api/app/me');
+    await app.call('minh', 'GET', '/api/app/me');
+    const OLD = 'Tổ Thí nghiệm điện Lâm Đồng';
+    const NEW = 'Tổ Thí nghiệm khu vực Lâm Đồng';
+    await app.call('boss', 'POST', '/api/app/departments', { name: OLD, shortName: 'TNLĐ' });
+    await app.call('boss', 'POST', '/api/app/departments', { name: 'Tổ Vận tải', shortName: 'VT' });
+    await app.call('boss', 'PUT', '/api/app/users/a1', { department: OLD, role: 'lead' });
+    await app.call('boss', 'PUT', '/api/app/users/a2', { department: OLD });
+    const first = (await app.call('lan', 'POST', '/api/dkct/plans', PLAN)).body.plan;
+    assert.match(first.docNumber, /^1\/PA-TNLĐ/);
+    await app.call('boss', 'PUT', '/api/dkct/team-areas', { department: OLD, areas: ['Truyền tải điện Lâm Đồng'] });
+    assert.equal((await app.call('boss', 'PUT', '/api/dkct/zalo-settings', { recipients: [{ chatId: 'c1', label: 'Tổ LĐ', department: OLD }] })).status, 200);
+
+    const url = `/api/app/departments/${encodeURIComponent(OLD)}`;
+    assert.equal((await app.call('lan', 'PUT', url, { name: NEW })).status, 403, 'chỉ admin');
+    assert.equal((await app.call('boss', 'PUT', url, { name: 'Tổ Vận tải' })).status, 409, 'không gộp vào tổ khác');
+    const r = await app.call('boss', 'PUT', url, { name: NEW });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body.items.map(d => [d.name, d.shortName]).sort(), [[NEW, 'TNLĐ'], ['Tổ Vận tải', 'VT']].sort());
+    assert.equal((await app.call('boss', 'PUT', url, { name: 'Tên khác' })).status, 404, 'tên cũ không còn');
+
+    // thành viên theo tên mới, vẫn thấy và sửa được hồ sơ cũ; văn bản cũ giữ tên tổ đã in
+    const users = (await app.call('boss', 'GET', '/api/app/users')).body.items;
+    assert.deepEqual(users.filter(u => u.department).map(u => u.department), [NEW, NEW]);
+    const meta = (await app.call('lan', 'GET', '/api/dkct/meta')).body;
+    assert.equal(meta.defaults.header.teamName, NEW, 'văn bản mới dùng tên mới');
+    const plans = (await app.call('minh', 'GET', '/api/dkct/plans')).body.items;
+    assert.deepEqual(plans.map(p => p.id), [first.id]);
+    assert.equal(plans[0].canEdit, false);
+    const old = (await app.call('lan', 'GET', `/api/dkct/plans/${first.id}`)).body.plan;
+    assert.equal(old.canEdit, true);
+    assert.equal(old.data.header.teamName, PLAN.header.teamName, 'không sửa tên đã in');
+    // số đánh tiếp
+    const second = (await app.call('lan', 'POST', '/api/dkct/plans', PLAN)).body.plan;
+    assert.match(second.docNumber, /^2\/PA-TNLĐ/);
+    // khu vực, người nhận Zalo
+    const teams = (await app.call('boss', 'GET', '/api/dkct/team-areas')).body.teams;
+    assert.deepEqual(teams.find(t => t.department === NEW).areas, ['Truyền tải điện Lâm Đồng']);
+    assert.equal(teams.some(t => t.department === OLD), false);
+    const zalo = (await app.call('boss', 'GET', '/api/dkct/zalo-settings')).body;
+    assert.equal(zalo.recipients[0].department, NEW);
+
+    // đổi tên viết tắt vẫn như trước
+    assert.equal((await app.call('boss', 'PUT', `/api/app/departments/${encodeURIComponent(NEW)}`, { shortName: 'TNKVLĐ' })).status, 200);
+  } finally { await app.close(); }
+});

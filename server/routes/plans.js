@@ -51,7 +51,7 @@ const DEFAULT_INSTRUMENTS = [
   ['Thiết bị nâng', 'Xe chở người 16C', 'Xe', '01']
 ].map(([group, name, unit, qty]) => ({ group, name, unit, qty, note: '' }));
 
-function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
+function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates, orgNames }) {
   const router = express.Router();
   const numbering = createNumbering(db, undefined, { table: 'dkct_plans', prefix: 'PA:' });
   const places = createPlaces(db);
@@ -165,10 +165,11 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     const lastData = (last && safeParse(last.data)) || {};
     const lh = lastData.header || {};
     const teamShort = unit?.shortName || '';
+    const { companyName, unitName } = await orgNames.headerNames(lh, defaultUnitName);
     return {
       header: {
-        companyName: lh.companyName || 'Công ty Truyền tải điện 3',
-        unitName: lh.unitName || defaultUnitName,
+        companyName,
+        unitName,
         teamName: actor.department || '',
         teamShort,
         transmissionName: lh.transmissionName || '',

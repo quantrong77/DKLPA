@@ -50,6 +50,8 @@ const { createAutoFetch } = require('./services/outageAutoFetch');
 const { createOutageSettings } = require('./services/outageSettings');
 const { createZaloBot } = require('./services/zaloBot');
 const { createWebPush } = require('./services/webPush');
+const { createOrgNames } = require('./services/orgNames');
+const { orgNamesRouter } = require('./routes/orgNames');
 const { pushRouter } = require('./routes/push');
 const path = require('node:path');
 const { safeParse } = require('./util');
@@ -84,11 +86,12 @@ function createDkctModule(deps) {
       db.query('SELECT hazard, measures, performer FROM dkct_risks WHERE active = 1 ORDER BY sortOrder')
     ]);
     const lastHeader = (last && safeParse(last.data).header) || {};
+    const { unitName } = await shared.orgNames.headerNames(lastHeader, deps.defaultUnitName || DEFAULT_UNIT_NAME);
     const phone = profile?.phone || '';
     const email = profile?.email || '';
     return {
       header: {
-        unitName: lastHeader.unitName || deps.defaultUnitName || DEFAULT_UNIT_NAME,
+        unitName,
         teamName: actor.department || lastHeader.teamName || '',
         place: lastHeader.place || '',
         date: vnToday(),
@@ -120,6 +123,8 @@ function createDkctModule(deps) {
   // khóa mã hóa mật khẩu trang lịch, token Zalo; dùng chung CSDL với ứng dụng khác thì phải cùng khóa
   // (deps.secretKey = '' : không có khóa, không dùng JWT_SECRET của ứng dụng chủ)
   const secretKey = deps.secretKey ?? (process.env.DKCT_SECRET_KEY || process.env.JWT_SECRET || '');
+  // tên công ty, đội in trên văn bản mới (admin đổi ở Cài đặt → Tên đơn vị)
+  shared.orgNames = createOrgNames(db);
   shared.outageSettings = createOutageSettings({ db, source: deps.outageSource, auto: deps.outageAuto, secret: secretKey });
   // báo biến động lịch qua Zalo Bot (admin đặt token, người nhận ở Cài đặt → Thông báo Zalo; mặc định ZALO_BOT_TOKEN)
   shared.zalo = createZaloBot({
@@ -163,6 +168,7 @@ function createDkctModule(deps) {
   router.use(outageRouter(shared));
   router.use(zaloRouter(shared));
   router.use(pushRouter(shared));
+  router.use(orgNamesRouter(shared));
   router.use(workRouter(shared));
   router.use(registrationRouter(shared));
   router.use(surveyRouter(shared));

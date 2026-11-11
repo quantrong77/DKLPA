@@ -29,7 +29,7 @@ const upload = multer({
 
 const LIST_COLUMNS = 'id, department, surveyTime, stationName, substationId, workContent, outageId, workId, diagramType, createdBy, createdAt, updatedAt';
 
-function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
+function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates, orgNames }) {
   const router = express.Router();
 
   const present = async (row, actor, canEdit = policy.canEdit) => ({
@@ -88,10 +88,11 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
       db.queryOne('SELECT data FROM dkct_surveys WHERE department = ? ORDER BY createdAt DESC LIMIT 1', [actor.department || ''])
     ]);
     const lastHeader = (last && safeParse(last.data).header) || {};
+    const { unitName } = await orgNames.headerNames(lastHeader, defaultUnitName);
     const teamShort = unit?.shortName || '';
     const position = profile?.position || '';
     return {
-      header: { unitName: lastHeader.unitName || defaultUnitName, teamName: actor.department || '', teamShort },
+      header: { unitName, teamName: actor.department || '', teamShort },
       surveyTime: vnNow(),
       station: { substationId: null, name: '', qlvhUnitId: null, qlvhUnitName: '' },
       workUnitReps: [{

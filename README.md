@@ -121,6 +121,18 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
     không đổi phương án đã lập); nút "Đối chiếu thư viện" liệt kê khác biệt và cập nhật khi đồng ý. Mọi thay đổi ghi nhật ký.
   - Ảnh trang tối đa 10 MB lưu trong CSDL: MySQL cần `max_allowed_packet` ≥ 16 MB (mặc định MySQL 8 là 64 MB).
 
+## Tên đơn vị, đổi tên tổ
+
+- **Tên công ty, tên đội** in ở đầu văn bản lập mới: admin đặt ở Cài đặt → Tên đơn vị (`services/orgNames.js`,
+  `GET/PUT /org-names`, lưu `dkct_settings` `org.names`). Thứ tự: tên admin đặt → văn bản gần nhất của tổ → mặc định
+  (`Công ty Truyền tải điện 3`, `Đội Sửa chữa, thí nghiệm điện 3` hoặc `deps.defaultUnitName`). Văn bản đã lập giữ tên lúc lập.
+- **Đổi tên tổ** (bản độc lập: Quản trị → Tổ → bút chì, `PUT /api/app/departments/:name { name }`):
+  `services/departmentRename.js` đổi tên tổ ở mọi chỗ dùng làm khóa — người dùng, nhân sự, công việc, biên bản, phương án,
+  giấy ĐKCT, giấy xác nhận (`department`, `docDepartment`), phụ lục đính kèm, khu vực / trạm của tổ, thiết bị nhận thông báo
+  đẩy, bộ đếm số văn bản (`<tiền tố><tên tổ>`: số đánh tiếp), người nhận Zalo — rồi danh sách tổ. Dữ liệu văn bản (tên tổ đã
+  in) giữ nguyên. Không gộp vào tên đang là tổ khác hoặc còn dữ liệu cũ (409). Không có giao dịch CSDL: dấu
+  `department.rename` trong `dkct_settings`; lỗi giữa chừng thì đổi lại cùng tên cũ → tên mới để làm nốt.
+
 ## Cấu trúc
 
 ```

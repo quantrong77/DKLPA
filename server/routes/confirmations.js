@@ -16,7 +16,7 @@ const { likePattern, LIKE, safeParse, sendPreview, previewNumber } = require('..
 
 const LIST_COLUMNS = 'id, docNumber, docYear, department, stationName, bays, workDate, substationId, registrationId, planId, createdBy, createdAt, updatedAt';
 
-function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates }) {
+function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, templates, orgNames }) {
   const router = express.Router();
   const numbering = createNumbering(db, undefined, { table: 'dkct_confirmations', prefix: 'GXN:' });
   const notFound = (message) => Object.assign(new Error(message), { status: 404 });
@@ -68,10 +68,11 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
       db.queryOne('SELECT data FROM dkct_confirmations WHERE department = ? ORDER BY createdAt DESC LIMIT 1', [actor.department || ''])
     ]);
     const lh = ((last && safeParse(last.data)) || {}).header || {};
+    const { companyName, unitName } = await orgNames.headerNames(lh, defaultUnitName);
     return {
       header: {
-        companyName: lh.companyName || 'Công ty Truyền tải điện 3',
-        unitName: lh.unitName || defaultUnitName,
+        companyName,
+        unitName,
         teamName: actor.department || '',
         teamShort: unit?.shortName || '',
         place: lh.place || '',
