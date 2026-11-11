@@ -126,7 +126,7 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
 - **Tên công ty, tên đội** in ở đầu văn bản lập mới: admin đặt ở Cài đặt → Tên đơn vị (`services/orgNames.js`,
   `GET/PUT /org-names`, lưu `dkct_settings` `org.names`). Thứ tự: tên admin đặt → văn bản gần nhất của tổ → mặc định
   (`Công ty Truyền tải điện 3`, `Đội Sửa chữa, thí nghiệm điện 3` hoặc `deps.defaultUnitName`). Văn bản đã lập giữ tên lúc lập.
-- **Đổi tên tổ** (bản độc lập: Quản trị → Tổ → bút chì, `PUT /api/app/departments/:name { name }`):
+- **Đổi tên tổ** (bản độc lập: Quản trị → Tổ → Sửa, `PUT /api/app/departments/:name { name }`):
   `services/departmentRename.js` đổi tên tổ ở mọi chỗ dùng làm khóa — người dùng, nhân sự, công việc, biên bản, phương án,
   giấy ĐKCT, giấy xác nhận (`department`, `docDepartment`), phụ lục đính kèm, khu vực / trạm của tổ, thiết bị nhận thông báo
   đẩy, bộ đếm số văn bản (`<tiền tố><tên tổ>`: số đánh tiếp), người nhận Zalo — rồi danh sách tổ. Dữ liệu văn bản (tên tổ đã

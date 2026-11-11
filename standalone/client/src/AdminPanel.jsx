@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Trash2, Users, Building2, Loader2, ArrowLeft, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Users, Building2, Loader2, ArrowLeft, Pencil, Save, X } from 'lucide-react';
 import { btnPrimary, btnGhost, btnSecondary, cardCls, inputCls, inputBorder } from '@dkct/components/ui.jsx';
 import { appApi } from './api.js';
 import { notify, confirmAction } from './ui/feedback.js';
@@ -12,7 +12,8 @@ export default function AdminPanel({ me, onChanged, onBack }) {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState({ name: '', shortName: '' });
-  const [editing, setEditing] = useState(null); // { from, name }: tổ đang đổi tên
+  const [editing, setEditing] = useState(null); // { from, name, shortName, oldShort }: tổ đang sửa
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -29,29 +30,35 @@ export default function AdminPanel({ me, onChanged, onBack }) {
     e.preventDefault();
     run(async () => { await appApi('/departments', { method: 'POST', body: draft }); setDraft({ name: '', shortName: '' }); }, 'Đã thêm tổ.');
   };
-  const renameShort = (d, shortName) => {
-    if (shortName.trim() && shortName.trim() !== d.shortName) run(() => appApi(`/departments/${encodeURIComponent(d.name)}`, { method: 'PUT', body: { shortName } }));
-  };
-  // đổi tên tổ: thành viên, hồ sơ, số văn bản, khu vực / trạm, người nhận thông báo chuyển theo tên mới
-  const renameDept = async (e) => {
+  // Lưu tổ đang sửa: đổi tên tổ (thành viên, hồ sơ, số văn bản, khu vực / trạm, người nhận thông báo chuyển theo tên mới)
+  // và / hoặc tên viết tắt; xong tải lại danh sách tổ và người dùng (người dùng hiện tên tổ mới)
+  const saveDept = async (e) => {
     e.preventDefault();
-    const { from, name } = editing;
-    const to = name.trim();
-    if (!to || to === from) { setEditing(null); return; }
-    const ok = await confirmAction({
+    const { from, oldShort } = editing;
+    const name = editing.name.trim();
+    const shortName = editing.shortName.trim();
+    if (!name || !shortName) { notify('Nhập tên tổ và tên viết tắt.', 'error'); return; }
+    const renamed = name !== from;
+    if (!renamed && shortName === oldShort) { setEditing(null); return; }
+    if (renamed && !(await confirmAction({
       title: 'Đổi tên tổ?',
-      message: `"${from}" → "${to}".
+      message: `"${from}" → "${name}".
 
 Thành viên, hồ sơ, số văn bản (đánh tiếp), khu vực / trạm phụ trách, người nhận Zalo và thiết bị nhận thông báo chuyển sang tên mới. Văn bản đã lập giữ tên tổ đã in; văn bản lập sau dùng tên mới.`,
       confirmLabel: 'Đổi tên'
-    });
-    if (!ok) return;
-    run(async () => { await appApi(`/departments/${encodeURIComponent(from)}`, { method: 'PUT', body: { name: to } }); setEditing(null); }, `Đã đổi tên tổ thành "${to}".`);
+    }))) return;
+    setSaving(true);
+    await run(async () => {
+      await appApi(`/departments/${encodeURIComponent(from)}`, { method: 'PUT', body: renamed ? { name, shortName } : { shortName } });
+      setEditing(null);
+    }, renamed ? `Đã đổi tên tổ thành "${name}"; thành viên đã chuyển theo.` : 'Đã lưu tên viết tắt.');
+    setSaving(false);
   };
   const removeDept = async (d) => {
     if (await confirmAction({ message: `Xóa tổ "${d.name}"?` })) run(() => appApi(`/departments/${encodeURIComponent(d.name)}`, { method: 'DELETE' }), 'Đã xóa tổ.');
   };
-  const updateUser = (u, body) => run(() => appApi(`/users/${u.id}`, { method: 'PUT', body }));
+  const updateUser = (u, body) => run(() => appApi(`/users/${u.id}`, { method: 'PUT', body }),
+    `Đã lưu: ${u.fullName || u.email}${body.department !== undefined ? ` → ${body.department || 'chưa xếp tổ'}` : ''}${body.role ? ` (${ROLE_LABEL[body.role]})` : ''}.`);
 
   if (loading) return <div className="p-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-chatlan-600" /></div>;
   const pending = users.filter(u => !u.department && u.role !== 'admin').length;
@@ -66,30 +73,34 @@ Thành viên, hồ sơ, số văn bản (đánh tiếp), khu vực / trạm ph�
       <section className={cardCls}>
         <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2"><Building2 className="w-4 h-4 text-chatlan-600" /> Tổ</h2>
         <p className="text-xs text-slate-500 mt-1">
-          Tên viết tắt dùng trong số giấy, vd 12/ĐK-<b>TNKH</b>. Đổi tên tổ (nút bút chì): thành viên, hồ sơ, số văn bản chuyển theo;
-          văn bản đã lập giữ tên cũ đã in. Tên đội, công ty in trên văn bản: trang chính → <b>Cài đặt</b> → <b>Tên đơn vị</b>.
+          Tên viết tắt dùng trong số giấy, vd 12/ĐK-<b>TNKH</b>. Bấm <b>Sửa</b> để đổi tên tổ / tên viết tắt rồi <b>Lưu</b>: thành viên, hồ sơ,
+          số văn bản chuyển theo tên mới; văn bản đã lập giữ tên cũ đã in. Tên đội, công ty in trên văn bản: trang chính → <b>Cài đặt</b> → <b>Tên đơn vị</b>.
         </p>
         <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
           {departments.map(d => (
-            <li key={d.name} className="py-2 flex items-center gap-2">
+            <li key={d.name} className="py-2">
               {editing?.from === d.name ? (
-                <form onSubmit={renameDept} className="flex-1 flex items-center gap-1">
+                <form onSubmit={saveDept} className="flex flex-wrap items-center gap-2">
                   <input autoFocus aria-label={`Tên mới của ${d.name}`} value={editing.name} onChange={e => setEditing(x => ({ ...x, name: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Escape') setEditing(null); }} className={`${inputCls} ${inputBorder()} flex-1`} />
-                  <button type="submit" className={btnGhost} aria-label="Lưu tên mới"><Check className="w-4 h-4 text-chatlan-600" /></button>
-                  <button type="button" className={btnGhost} aria-label="Hủy đổi tên" onClick={() => setEditing(null)}><X className="w-4 h-4" /></button>
+                    onKeyDown={e => { if (e.key === 'Escape') setEditing(null); }} className={`${inputCls} ${inputBorder()} flex-1 min-w-[14rem]`} />
+                  <input aria-label={`Tên viết tắt của ${d.name}`} value={editing.shortName} onChange={e => setEditing(x => ({ ...x, shortName: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Escape') setEditing(null); }} className={`${inputCls} ${inputBorder()} !w-32`} />
+                  <button type="submit" className={btnPrimary} disabled={saving}>
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Lưu
+                  </button>
+                  <button type="button" className={btnSecondary} onClick={() => setEditing(null)} disabled={saving}><X className="w-4 h-4" /> Hủy</button>
                 </form>
               ) : (
-                <>
-                  <span className="flex-1 text-sm text-slate-800 dark:text-slate-100">{d.name}</span>
-                  <button type="button" className={btnGhost} aria-label={`Đổi tên ${d.name}`} title="Đổi tên tổ" onClick={() => setEditing({ from: d.name, name: d.name })}>
-                    <Pencil className="w-4 h-4" />
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-100">{d.name}</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300" title="Tên viết tắt (dùng trong số giấy)">{d.shortName}</span>
+                  <button type="button" className={btnSecondary} aria-label={`Sửa ${d.name}`} disabled={!!editing}
+                    onClick={() => setEditing({ from: d.name, name: d.name, shortName: d.shortName || '', oldShort: d.shortName || '' })}>
+                    <Pencil className="w-4 h-4" /> Sửa
                   </button>
-                </>
+                  <button type="button" className={btnGhost} aria-label={`Xóa ${d.name}`} onClick={() => removeDept(d)}><Trash2 className="w-4 h-4" /></button>
+                </div>
               )}
-              <input aria-label={`Tên viết tắt của ${d.name}`} defaultValue={d.shortName} onBlur={e => renameShort(d, e.target.value)}
-                className={`${inputCls} ${inputBorder()} !w-28`} />
-              <button type="button" className={btnGhost} aria-label={`Xóa ${d.name}`} onClick={() => removeDept(d)}><Trash2 className="w-4 h-4" /></button>
             </li>
           ))}
         </ul>

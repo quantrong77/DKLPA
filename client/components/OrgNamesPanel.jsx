@@ -34,7 +34,7 @@ export default function OrgNamesPanel() {
     <form onSubmit={save} className={`${cardCls} space-y-3 max-w-2xl`}>
       <p className="text-xs text-slate-600 dark:text-slate-400">
         Tên in ở đầu văn bản lập mới (giấy ĐKCT, biên bản KSHT, phương án, giấy xác nhận). Văn bản đã lập giữ tên lúc lập; người lập
-        vẫn sửa được trên từng văn bản. Để trống: lấy theo văn bản gần nhất của tổ. Đổi tên <b>tổ</b>: trang Quản trị → Tổ → nút bút chì.
+        vẫn sửa được trên từng văn bản. Để trống: lấy theo văn bản gần nhất của tổ. Đổi tên <b>tổ</b>: trang Quản trị → Tổ → nút Sửa.
       </p>
       <Field label="Tên công ty" htmlFor="org-company" hint={`Mặc định: ${defaults.companyName || ''}`}>
         <input id="org-company" className={`${inputCls} ${inputBorder()}`} value={form.companyName} maxLength={200}
