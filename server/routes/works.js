@@ -42,7 +42,7 @@ function workRouter({ db, policy, wrap, buildDraftDefaults }) {
   async function loadEditable(req) {
     const actor = await policy.actorOf(req);
     const work = await loadVisibleWork(db, policy, actor, req.params.id);
-    if (!(await policy.canEdit(actor, work))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa công việc.');
+    if (!(await policy.canEdit(actor, work))) throw forbidden('Chỉ người lập, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa công việc.');
     return { actor, work };
   }
 
@@ -84,7 +84,7 @@ function workRouter({ db, policy, wrap, buildDraftDefaults }) {
 
   router.post('/works', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được thêm công việc.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được thêm công việc.');
     const data = await normalize(req.body, res);
     if (!data) return;
     const id = newId('CV');

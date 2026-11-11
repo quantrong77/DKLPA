@@ -39,7 +39,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
     const actor = await policy.actorOf(req);
     const row = await db.queryOne('SELECT * FROM dkct_registrations WHERE id = ?', [req.params.id]);
     if (!row) throw Object.assign(new Error('Không tìm thấy giấy đăng ký công tác.'), { status: 404 });
-    if (!policy.canView(actor, row)) throw forbidden('Giấy đăng ký công tác này thuộc tổ khác.');
+    if (!policy.canView(actor, row)) throw forbidden('Giấy đăng ký công tác này thuộc đơn vị khác.');
     return { actor, row };
   }
 
@@ -87,7 +87,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
 
   router.put('/numbering', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được đặt số khởi đầu.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được đặt số khởi đầu.');
     const unit = await getUnit(actor.id);
     await numbering.setStartNumber(unit.department, vnYear(), req.body?.startNumber, actor.id);
     res.json({ numbering: await numberingInfo(actor) });
@@ -135,7 +135,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
 
   router.post('/registrations', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy đăng ký công tác.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập giấy đăng ký công tác.');
     const data = await normalize(req.body, res);
     if (!data) return;
     const unit = await getUnit(actor.id);
@@ -154,7 +154,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
 
   router.put('/registrations/:id', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó tổ, trưởng phòng hoặc admin được sửa.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa.');
     const data = await normalize(req.body, res);
     if (!data) return;
     await db.execute(`
@@ -167,7 +167,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
 
   router.delete('/registrations/:id', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó tổ, trưởng phòng hoặc admin được xóa.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó đơn vị, trưởng phòng hoặc admin được xóa.');
     await db.execute('DELETE FROM dkct_registrations WHERE id = ?', [row.id]);
     res.json({ success: true });
   }));
@@ -175,7 +175,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
   // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu): không cấp số, không ghi gì
   router.post('/registrations/preview', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy đăng ký công tác.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập giấy đăng ký công tác.');
     const data = await normalize(req.body, res);
     if (!data) return;
     sendPreview(res, await templates.render('registration', (tpl) => renderRegistrationDocx({ docNumber: previewNumber(null, req.query), data }, tpl)));
@@ -183,7 +183,7 @@ function registrationRouter({ db, policy, wrap, numbering, getUnit, buildDraftDe
 
   router.post('/registrations/:id/preview', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó tổ, trưởng phòng hoặc admin được sửa.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập giấy, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa.');
     const data = await normalize(req.body, res);
     if (!data) return;
     sendPreview(res, await templates.render('registration', (tpl) => renderRegistrationDocx({ docNumber: row.docNumber, data }, tpl)));

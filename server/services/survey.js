@@ -81,8 +81,8 @@ function normalizeSurvey(input = {}, { substations }) {
   const data = {
     header: {
       unitName: checkLength(text(header.unitName), 'header.unitName', 'Đơn vị cấp trên', errors),
-      teamName: checkLength(text(header.teamName), 'header.teamName', 'Tổ', errors),
-      teamShort: checkLength(text(header.teamShort), 'header.teamShort', 'Tên viết tắt của tổ', errors)
+      teamName: checkLength(text(header.teamName), 'header.teamName', 'Đơn vị', errors),
+      teamShort: checkLength(text(header.teamShort), 'header.teamShort', 'Tên viết tắt của đơn vị', errors)
     },
     surveyTime,
     station,

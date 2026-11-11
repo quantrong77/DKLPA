@@ -62,3 +62,35 @@ test('đổi tên tổ: không gộp vào tên còn dữ liệu cũ; lỗi giữ
     assert.equal(await app.db.queryOne("SELECT value FROM dkct_settings WHERE name = 'department.rename'"), null, 'xóa dấu đang đổi');
   } finally { app.close(); }
 });
+
+test('chức danh: tên gọi đơn vị, chức danh gợi ý, chức danh người ký phương án (lưu theo văn bản, in trên Word), tên vai trò', async () => {
+  const PizZip = require('pizzip');
+  const { PLAN } = require('./fixtures/samplePlan');
+  const app = await startApp();
+  try {
+    let v = (await app.call('lead', 'GET', '/org-names')).body;
+    assert.deepEqual(v.effective, { teamWord: 'Tổ', positions: ['Tổ trưởng', 'Tổ phó', 'Kỹ sư', 'Công nhân'], leadSignTitle: 'Tổ trưởng/ Tổ phó',
+      roleLabels: { admin: 'Quản trị viên', lead: 'Trưởng/phó đơn vị', member: 'Thành viên' } });
+    v = (await app.call('admin', 'PUT', '/org-names', {
+      teamWord: 'Đội', positions: ['Đội trưởng', ' Đội phó ', '', 'Đội trưởng', 'Kỹ sư'], leadSignTitle: 'Đội trưởng/ Đội phó',
+      roleLabels: { lead: 'Trưởng/phó đội' }
+    })).body;
+    assert.deepEqual(v.positions, ['Đội trưởng', 'Đội phó', 'Kỹ sư'], 'bỏ trống, bỏ trùng');
+    assert.deepEqual(v.effective.roleLabels, { admin: 'Quản trị viên', lead: 'Trưởng/phó đội', member: 'Thành viên' });
+    // lưu một phần: mục khác giữ nguyên
+    v = (await app.call('admin', 'PUT', '/org-names', { unitName: 'Đội Thí nghiệm' })).body;
+    assert.deepEqual([v.unitName, v.teamWord, v.leadSignTitle], ['Đội Thí nghiệm', 'Đội', 'Đội trưởng/ Đội phó']);
+
+    // phương án mới mang chức danh người ký; in thay chữ "Tổ trưởng/ Tổ phó" của mẫu
+    const draft = (await app.call('lead', 'GET', '/plan-defaults')).body.draft;
+    assert.equal(draft.header.leadSignTitle, 'Đội trưởng/ Đội phó');
+    const plan = (await app.call('lead', 'POST', '/plans', { ...PLAN, header: { ...PLAN.header, leadSignTitle: draft.header.leadSignTitle } })).body.plan;
+    const text = (buf) => new PizZip(buf).file('word/document.xml').asText().replace(/<[^>]+>/g, '');
+    const printed = text((await app.call('lead', 'GET', `/plans/${plan.id}/docx`)).body);
+    assert.ok(printed.includes('Đội trưởng/ Đội phó'));
+    assert.ok(!printed.includes('Tổ trưởng/ Tổ phó'));
+    // phương án cũ (không lưu chức danh): in như mẫu
+    const old = (await app.call('lead', 'POST', '/plans', PLAN)).body.plan;
+    assert.ok(text((await app.call('lead', 'GET', `/plans/${old.id}/docx`)).body).includes('Tổ trưởng/ Tổ phó'));
+  } finally { app.close(); }
+});

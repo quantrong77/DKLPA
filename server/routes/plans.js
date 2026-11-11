@@ -66,7 +66,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     const actor = await policy.actorOf(req);
     const row = await db.queryOne(`SELECT ${columns} FROM dkct_plans WHERE id = ?`, [req.params.id]);
     if (!row) throw Object.assign(new Error('Không tìm thấy phương án.'), { status: 404 });
-    if (!policy.canView(actor, row)) throw forbidden('Phương án này thuộc tổ khác.');
+    if (!policy.canView(actor, row)) throw forbidden('Phương án này thuộc đơn vị khác.');
     return { actor, row };
   }
 
@@ -165,11 +165,12 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     const lastData = (last && safeParse(last.data)) || {};
     const lh = lastData.header || {};
     const teamShort = unit?.shortName || '';
-    const { companyName, unitName } = await orgNames.headerNames(lh, defaultUnitName);
+    const { companyName, unitName, leadSignTitle } = await orgNames.headerNames(lh, defaultUnitName);
     return {
       header: {
         companyName,
         unitName,
+        leadSignTitle,
         teamName: actor.department || '',
         teamShort,
         transmissionName: lh.transmissionName || '',
@@ -260,7 +261,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
 
   router.put('/plan-numbering', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được đặt số khởi đầu.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được đặt số khởi đầu.');
     const unit = await getUnit(actor.id);
     await numbering.setStartNumber(unit.department, vnYear(), req.body?.startNumber, actor.id);
     res.json({ numbering: await numberingInfo(actor) });
@@ -303,7 +304,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
 
   router.post('/plans', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
     await checkAttachments(data, actor);
@@ -327,7 +328,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
 
   router.put('/plans/:id', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req, `${LIST_COLUMNS}, data`);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa phương án.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
     await checkAttachments(data, actor, row.id);
@@ -344,7 +345,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
 
   router.delete('/plans/:id', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req, LIST_COLUMNS);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được xóa phương án.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó đơn vị, trưởng phòng hoặc admin được xóa phương án.');
     await db.execute('DELETE FROM dkct_plan_attachments WHERE planId = ?', [row.id]);
     await db.execute('DELETE FROM dkct_plans WHERE id = ?', [row.id]);
     res.json({ success: true });
@@ -353,7 +354,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
   // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu): không cấp số, không ghi gì
   router.post('/plans/preview', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
     await checkAttachments(data, actor);
@@ -363,7 +364,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
 
   router.post('/plans/:id/preview', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req, `${LIST_COLUMNS}, data`);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa phương án.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa phương án.');
     const data = await normalize(req.body, res);
     if (!data) return;
     await checkAttachments(data, actor, row.id);
@@ -390,7 +391,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
   });
   router.post('/plan-attachments', receiveFile, wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập phương án.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập phương án.');
     const file = req.file;
     if (!file?.buffer?.length) return res.status(400).json({ error: 'Chọn file Word phụ lục (.doc, .docx).' });
     // tên file gửi kèm (UTF-8); multer đọc tên trong phần file theo latin1
@@ -421,7 +422,7 @@ function planRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, te
     const row = await db.queryOne(`SELECT a.fileName, a.content, a.department, p.department AS planDepartment
       FROM dkct_plan_attachments a LEFT JOIN dkct_plans p ON p.id = a.planId WHERE a.id = ?`, [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Không tìm thấy file phụ lục.' });
-    if (!policy.canView(actor, { department: row.planDepartment ?? row.department })) throw forbidden('File phụ lục này thuộc tổ khác.');
+    if (!policy.canView(actor, { department: row.planDepartment ?? row.department })) throw forbidden('File phụ lục này thuộc đơn vị khác.');
     res.setHeader('Content-Type', DOCX_TYPE);
     res.setHeader('Content-Disposition', attachment(row.fileName || 'phuluc.docx'));
     res.send(Buffer.from(row.content));

@@ -48,9 +48,13 @@ export function withQlvhFor(reps, oldUnitName, newUnitName, leaderName) {
   }));
 }
 
-export function workUnitRoleOptions(teamShort) {
+/**
+ * Chức vụ gợi ý cho người của đơn vị trực tiếp: chức danh (Cài đặt → Tên đơn vị, chức danh) + "- <tên gọi> <viết tắt>",
+ * vd "Kỹ sư - Tổ TNLĐ".
+ */
+export function workUnitRoleOptions(teamShort, positions = ['Tổ trưởng', 'Tổ phó', 'Kỹ sư', 'Công nhân'], teamWord = 'Tổ') {
   if (!teamShort) return [];
-  return ['Tổ trưởng', 'Tổ phó', 'Kỹ sư', 'Công nhân'].map(r => `${r} - Tổ ${teamShort}`);
+  return positions.map(r => `${r} - ${teamWord} ${teamShort}`);
 }
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));

@@ -166,7 +166,7 @@ function createZaloBot({ db, secret, envToken = '', fetch = globalThis.fetch, li
         if (seen.has(chatId)) continue;
         seen.add(chatId);
         const department = clean(r?.department, 191);
-        if (department && departments.size && !departments.has(department)) throw fail(400, `Tổ không tồn tại: "${department}".`);
+        if (department && departments.size && !departments.has(department)) throw fail(400, `Đơn vị không tồn tại: "${department}".`);
         s.recipients.push({ chatId, label: clean(r?.label, 100), department });
       }
     }

@@ -99,7 +99,7 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
         <EmptyState icon={BadgeCheck} title="Chưa có giấy xác nhận"
-          description={canCreate ? 'Bấm "Lập giấy xác nhận", hoặc lập từ một giấy ĐKCT (tab Giấy ĐKCT).' : 'Giấy xác nhận do trưởng/phó tổ lập sẽ hiện ở đây.'} />
+          description={canCreate ? 'Bấm "Lập giấy xác nhận", hoặc lập từ một giấy ĐKCT (tab Giấy ĐKCT).' : 'Giấy xác nhận do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (

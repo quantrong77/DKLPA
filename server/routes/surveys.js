@@ -53,13 +53,13 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
     const actor = await policy.actorOf(req);
     const row = await db.queryOne(`SELECT ${columns} FROM dkct_surveys WHERE id = ?`, [req.params.id]);
     if (!row) throw Object.assign(new Error('Không tìm thấy biên bản khảo sát.'), { status: 404 });
-    if (!policy.canView(actor, row)) throw forbidden('Biên bản khảo sát này thuộc tổ khác.');
+    if (!policy.canView(actor, row)) throw forbidden('Biên bản khảo sát này thuộc đơn vị khác.');
     return { actor, row };
   }
 
   async function loadEditable(req, columns) {
     const found = await loadVisible(req, columns);
-    if (!(await policy.canEdit(found.actor, found.row))) throw forbidden('Chỉ người lập biên bản, trưởng/phó tổ, trưởng phòng hoặc admin được sửa.');
+    if (!(await policy.canEdit(found.actor, found.row))) throw forbidden('Chỉ người lập biên bản, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa.');
     return found;
   }
 
@@ -181,7 +181,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
 
   router.post('/surveys', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập biên bản khảo sát.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập biên bản khảo sát.');
     const data = await normalize(req.body, res);
     if (!data) return;
     const id = newId('KS');
@@ -315,7 +315,7 @@ function surveyRouter({ db, policy, wrap, getProfile, getUnit, defaultUnitName, 
   // ảnh mới chọn chỉ có sau khi lưu. Hình ảnh khảo sát: các ảnh đã lưu.
   router.post('/surveys/preview', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập biên bản khảo sát.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập biên bản khảo sát.');
     const data = await normalize(req.body, res);
     if (!data) return;
     sendPreview(res, await templates.render('survey', (tpl) => renderSurveyDocx({ data }, null, tpl)));

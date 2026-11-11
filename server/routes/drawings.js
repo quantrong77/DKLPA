@@ -65,7 +65,7 @@ function drawingRouter({ db, policy, wrap }) {
   // kiểm tra quyền TRƯỚC khi nhận file (tới 20 MB)
   const requireManager = wrap(async (req, res, next) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canManageCatalog(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được tải bản vẽ trạm.');
+    if (!(await policy.canManageCatalog(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được tải bản vẽ trạm.');
     if (req.params.substationId) {
       const sub = await db.queryOne('SELECT id FROM dkct_substations WHERE id = ?', [req.params.substationId]);
       if (!sub) throw fail(404, 'Không tìm thấy trạm biến áp.');

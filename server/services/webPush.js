@@ -180,7 +180,7 @@ function createWebPush({ db, subject = process.env.DKCT_PUSH_SUBJECT || 'https:/
     if (!rows.length) throw fail(400, 'Thiết bị này chưa bật thông báo.');
     const sent = await deliverAll(rows.map(r => [r, {
       title: '✅ Thử thông báo lịch cắt điện',
-      body: `Thiết bị này sẽ nhận thông báo khi lịch cắt điện ${r.scope === 'all' ? 'thay đổi' : `của ${r.department || 'tổ'} thay đổi`}.`,
+      body: `Thiết bị này sẽ nhận thông báo khi lịch cắt điện ${r.scope === 'all' ? 'thay đổi' : `của ${r.department || 'đơn vị'} thay đổi`}.`,
       url: r.openUrl || '/', tag: 'dkct-test'
     }]));
     return { sent, total: rows.length };

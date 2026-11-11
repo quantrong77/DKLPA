@@ -72,7 +72,7 @@ export default function WorkList({ selectedId, linked, onTrack, reloadKey, canCr
         <EmptyState icon={Briefcase} title="Chưa có công việc nào"
           description={canCreate
             ? 'Việc không đăng ký cắt điện: bấm "Thêm công việc", rồi lập biên bản KSHT, phương án, giấy ĐKCT từ công việc đó.'
-            : 'Công việc do trưởng/phó tổ thêm sẽ hiện ở đây.'} />
+            : 'Công việc do trưởng/phó đơn vị thêm sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (

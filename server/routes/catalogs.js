@@ -61,7 +61,7 @@ function catalogRouter({ db, policy, wrap }) {
     const getOne = (id) => db.queryOne(`SELECT * FROM ${cfg.table} WHERE id = ?`, [id]);
     const requireManager = async (req) => {
       const actor = await policy.actorOf(req);
-      if (!(await policy.canManageCatalog(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được sửa danh mục.');
+      if (!(await policy.canManageCatalog(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa danh mục.');
       return actor;
     };
     const ownsRow = (actor, row) => !cfg.scopedByDepartment || policy.isAdmin(actor) || !row.department || row.department === actor.department;
@@ -74,7 +74,7 @@ function catalogRouter({ db, policy, wrap }) {
     const loadOwned = async (actor, id) => {
       const row = await getOne(id);
       if (!row) throw Object.assign(new Error('Không tìm thấy mục này.'), { status: 404 });
-      if (!ownsRow(actor, row)) throw forbidden('Nhân sự này thuộc tổ khác; chỉ tổ đó hoặc admin được sửa.');
+      if (!ownsRow(actor, row)) throw forbidden('Nhân sự này thuộc đơn vị khác; chỉ đơn vị đó hoặc admin được sửa.');
       return row;
     };
 

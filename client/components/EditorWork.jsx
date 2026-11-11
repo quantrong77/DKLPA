@@ -20,11 +20,11 @@ export default function EditorWork({ form, setForm, errors, stations, department
             <input id="dk-unit" className={`${inputCls} ${inputBorder()}`} value={form.header.unitName || ''}
               onChange={e => setIn('header', { unitName: e.target.value })} placeholder="Đội Sửa chữa, thí nghiệm điện 3" />
           </Field>
-          <Field label="Tổ đăng ký" htmlFor="dk-team">
+          <Field label="Đơn vị đăng ký" htmlFor="dk-team">
             {teamOptions.length ? (
               <select id="dk-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''}
                 onChange={e => setIn('header', { teamName: e.target.value })}>
-                <option value="">— Chọn tổ —</option>
+                <option value="">— Chọn đơn vị —</option>
                 {teamOptions.map(name => <option key={name} value={name}>{name}</option>)}
               </select>
             ) : (

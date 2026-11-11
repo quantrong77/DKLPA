@@ -468,8 +468,8 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
         </div>
         <button type="button" aria-pressed={mineOnly} onClick={toggleMine}
           className={`${btnSecondary} ${mineOnly ? '!bg-chatlan-600 !text-white !border-chatlan-600' : ''}`}
-          title="Chỉ hiện dòng lịch thuộc khu vực tổ phụ trách, hoặc tổ đã lập biên bản / phương án / giấy ĐKCT">
-          <Users className="w-4 h-4" /> Chỉ tổ của tôi
+          title="Chỉ hiện dòng lịch thuộc khu vực đơn vị phụ trách, hoặc đơn vị đã lập biên bản / phương án / giấy ĐKCT">
+          <Users className="w-4 h-4" /> Chỉ đơn vị của tôi
         </button>
         {canPurge && <OutagePurge onDone={load} />}
         <div className="flex gap-1" role="group" aria-label="Ẩn/hiện khung">
@@ -482,11 +482,11 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
         <p className="text-xs text-slate-600 dark:text-slate-300" role="note">
           {myAreas.length || mySubs.length
             ? <>{mySubs.length > 0
-              ? <>Trạm tổ phụ trách ({mySubs.length}): <b>{mySubs.length > 10 ? `${mySubs.slice(0, 10).join(', ')}…` : mySubs.join(', ')}</b>. </>
-              : <>Khu vực tổ phụ trách: <b>{myAreas.join(', ')}</b>. </>}
+              ? <>Trạm đơn vị phụ trách ({mySubs.length}): <b>{mySubs.length > 10 ? `${mySubs.slice(0, 10).join(', ')}…` : mySubs.join(', ')}</b>. </>
+              : <>Khu vực đơn vị phụ trách: <b>{myAreas.join(', ')}</b>. </>}
               {mySubs.length > 0 && myAreas.length > 0 && <>Dòng lịch không ghi rõ trạm: theo khu vực {myAreas.join(', ')}. </>}
-              Cùng các dòng tổ đã lập hồ sơ.</>
-            : <>Tổ chưa chọn khu vực phụ trách — chỉ hiện dòng tổ đã lập hồ sơ. Admin chọn khu vực ở <b>Danh mục</b>.</>}
+              Cùng các dòng đơn vị đã lập hồ sơ.</>
+            : <>Đơn vị chưa chọn khu vực phụ trách — chỉ hiện dòng đơn vị đã lập hồ sơ. Admin chọn khu vực ở <b>Danh mục</b>.</>}
         </p>
       )}
 
@@ -495,7 +495,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
       {!loading && shown.length === 0 ? (
         base.length > 0 || (mineOnly && items.length > 0) ? (
           <EmptyState icon={CheckCircle2} title="Không có dòng lịch nào khớp bộ lọc"
-            description={mineOnly && base.length === 0 ? 'Không có dòng nào của tổ trong khoảng này. Bỏ "Chỉ tổ của tôi" để xem tất cả.' : 'Bấm lại thẻ thống kê đang chọn để xem tất cả.'} />
+            description={mineOnly && base.length === 0 ? 'Không có dòng nào của đơn vị trong khoảng này. Bỏ "Chỉ đơn vị của tôi" để xem tất cả.' : 'Bấm lại thẻ thống kê đang chọn để xem tất cả.'} />
         ) : 
         <EmptyState icon={Zap} title="Không có lịch cắt điện trong khoảng này"
           description={canCreate ? 'Import file Excel lịch cắt điện ở trên, hoặc đổi khoảng ngày.' : 'Đổi khoảng ngày để xem lịch khác.'} />
@@ -539,7 +539,7 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
                     </button>
                     {onCreateConfirmationFromOutage && (
                       <button type="button" className={btnSecondary} onClick={() => onCreateConfirmationFromOutage(o)}
-                        title="Lập giấy xác nhận đủ điều kiện đóng điện: theo giấy ĐKCT mới nhất của tổ cho dòng lịch này, chưa có giấy thì theo chính dòng lịch">
+                        title="Lập giấy xác nhận đủ điều kiện đóng điện: theo giấy ĐKCT mới nhất của đơn vị cho dòng lịch này, chưa có giấy thì theo chính dòng lịch">
                         <BadgeCheck className="w-4 h-4 text-chatlan-600" /> Lập giấy xác nhận{o.confirmationCount > 0 ? ` (đã có ${o.confirmationCount})` : ''}
                       </button>
                     )}

@@ -12,6 +12,9 @@ const { imageInfo, fitImage, imageParagraphXml, addImagePart } = require('./surv
 const { DEFAULT_DRAWING_LABEL } = require('../schema');
 const { isolationDevices } = require('./plan');
 const { appendDocx } = require('./docxAppend');
+const { DEFAULTS: ORG_DEFAULTS } = require('./orgNames');
+
+const DEFAULT_SIGN_TITLE = ORG_DEFAULTS.leadSignTitle;
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'templates', 'template_pa.docx');
 // vùng in khổ A4 dọc của mẫu (lề trái 1701, phải 851 twip); cao ~ 2/3 trang để còn tiêu đề phụ lục
@@ -173,6 +176,9 @@ function renderPlanDocx(plan, drawings = [], templatePath = TEMPLATE_PATH, appen
   let xml = out.file('word/document.xml').asText();
   if ((equipXml || detail) && !hasEquipTag) xml = insertAfterCheckLine(xml, equipXml, detail);
   xml = markIsolationTable(xml, isolationDevices(plan?.data?.isolationDevices));
+  // chức danh người ký (Cài đặt → Tên đơn vị, chức danh; lưu theo phương án): thay chữ có sẵn của mẫu
+  const signTitle = String(plan?.data?.header?.leadSignTitle || '').trim();
+  if (signTitle && signTitle !== DEFAULT_SIGN_TITLE) xml = xml.split(`<w:t>${DEFAULT_SIGN_TITLE}</w:t>`).join(`<w:t xml:space="preserve">${xmlEscape(signTitle)}</w:t>`);
   out.file('word/document.xml', xml);
   for (const d of images) addImagePart(out, d.buffer, d.info.type, d.part);
   files.forEach((a, i) => appendDocx(out, a.buffer, i + 1));

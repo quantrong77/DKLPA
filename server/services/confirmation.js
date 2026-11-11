@@ -52,7 +52,7 @@ function normalizeConfirmation(input = {}, { substations }) {
   if (list(input.items).length > MAX_ITEMS) return { data: null, errors: [{ field: 'items', message: `Tối đa ${MAX_ITEMS} mục kết quả.` }] };
   const h = input.header || {};
   const header = {};
-  for (const [key, label] of [['companyName', 'Công ty'], ['unitName', 'Đội'], ['teamName', 'Tổ'], ['teamShort', 'Tên viết tắt tổ'], ['place', 'Địa danh']]) {
+  for (const [key, label] of [['companyName', 'Công ty'], ['unitName', 'Đội'], ['teamName', 'Đơn vị'], ['teamShort', 'Tên viết tắt đơn vị'], ['place', 'Địa danh']]) {
     header[key] = checkLength(text(h[key]), `header.${key}`, label, errors);
   }
   header.date = /^\d{4}-\d{2}-\d{2}$/.test(text(h.date)) ? text(h.date) : null;

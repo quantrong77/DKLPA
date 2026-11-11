@@ -115,8 +115,8 @@ export default function PushButton() {
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Nhận thay đổi
                 <select className={`${inputCls} ${inputBorder()} mt-1`} value={scope} onChange={e => changeScope(e.target.value)} disabled={!!busy}>
-                  <option value="team">{state.department ? `Của ${state.department}` : 'Của tổ tôi'}</option>
-                  <option value="all">Tất cả các tổ</option>
+                  <option value="team">{state.department ? `Của ${state.department}` : 'Của đơn vị tôi'}</option>
+                  <option value="all">Tất cả các đơn vị</option>
                 </select>
               </label>
               <div className="flex flex-wrap gap-2">
@@ -144,7 +144,7 @@ export default function PushButton() {
                 {state.devices.map(d => (
                   <li key={d.id} className="flex items-center gap-2 text-xs">
                     <span className="flex-1 min-w-0 truncate" title={d.lastSentAt ? `Gửi gần nhất: ${d.lastSentAt.replace('T', ' ')}` : 'Chưa gửi tin nào'}>
-                      {d.label || 'Thiết bị'}{d.current ? ' (thiết bị này)' : ''} · {d.scope === 'all' ? 'tất cả' : 'tổ mình'}
+                      {d.label || 'Thiết bị'}{d.current ? ' (thiết bị này)' : ''} · {d.scope === 'all' ? 'tất cả' : 'đơn vị mình'}
                     </span>
                     <button type="button" className={btnGhost} aria-label={`Gỡ ${d.label || 'thiết bị'}`} onClick={() => remove(d.id)} disabled={!!busy}>
                       {busy === `rm:${d.id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}

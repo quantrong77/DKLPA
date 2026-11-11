@@ -97,7 +97,7 @@ function createSharedDkct({ pool, db: givenDb, emailOf, notifyByEmail, standalon
         return res.status(403).json({ code: 'DKCT_NOT_LINKED', error: `Chưa có tài khoản Chuẩn bị công tác cho email ${email || '(chưa có email)'}. Đăng ký ở ${standaloneUrl || 'trang Chuẩn bị công tác'} bằng cùng email.` });
       }
       if (user.role !== 'admin' && !user.department) {
-        return res.status(403).json({ code: 'DKCT_NO_TEAM', error: 'Tài khoản Chuẩn bị công tác chưa được xếp tổ. Liên hệ quản trị viên.' });
+        return res.status(403).json({ code: 'DKCT_NO_TEAM', error: 'Tài khoản Chuẩn bị công tác chưa được xếp đơn vị. Liên hệ quản trị viên.' });
       }
       req.hostUserId = req.userId;
       req.userId = user.id; // từ đây module làm việc với tài khoản dkct

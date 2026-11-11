@@ -101,7 +101,7 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
         <EmptyState icon={FileText} title="Chưa có giấy đăng ký công tác"
-          description={canCreate ? 'Tạo giấy từ tab "Lịch cắt điện" hoặc bấm "Lập giấy mới".' : 'Giấy do trưởng/phó tổ lập sẽ hiện ở đây.'} />
+          description={canCreate ? 'Tạo giấy từ tab "Lịch cắt điện" hoặc bấm "Lập giấy mới".' : 'Giấy do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (

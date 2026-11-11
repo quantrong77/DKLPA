@@ -56,7 +56,7 @@ function workflowRouter({ db, policy, wrap, importer }) {
         const rows = await db.query(`SELECT ${TYPES[t].columns} FROM ${TYPES[t].table} WHERE id IN (${fresh.map(() => '?').join(', ')})`, fresh);
         const shown = rows.filter(r => visible(t, r));
         if (t === type && !found[t].size && !shown.some(r => r.id === id)) {
-          if (rows.length) throw forbidden('Hồ sơ này thuộc tổ khác.');
+          if (rows.length) throw forbidden('Hồ sơ này thuộc đơn vị khác.');
           throw Object.assign(new Error('Không tìm thấy hồ sơ.'), { status: 404 });
         }
         for (const r of shown) {

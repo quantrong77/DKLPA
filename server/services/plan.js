@@ -138,7 +138,7 @@ function normalizePlan(input = {}, { personnel, substations }) {
   const errors = [];
   const h = input.header || {};
   const header = {};
-  for (const [key, label] of [['companyName', 'Công ty'], ['unitName', 'Đội'], ['teamName', 'Tổ'], ['teamShort', 'Tên viết tắt tổ'],
+  for (const [key, label] of [['companyName', 'Công ty'], ['unitName', 'Đội'], ['teamName', 'Đơn vị trực tiếp'], ['teamShort', 'Tên viết tắt đơn vị'], ['leadSignTitle', 'Chức danh người ký'],
     ['transmissionName', 'Truyền tải điện'], ['place', 'Địa danh'], ['numberSuffix', 'Hậu tố số phương án']]) {
     header[key] = checkLength(text(h[key]), `header.${key}`, label, errors);
   }

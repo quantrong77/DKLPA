@@ -31,7 +31,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
     const actor = await policy.actorOf(req);
     const row = await db.queryOne(`SELECT ${columns} FROM dkct_confirmations WHERE id = ?`, [req.params.id]);
     if (!row) throw notFound('Không tìm thấy giấy xác nhận.');
-    if (!policy.canView(actor, row)) throw forbidden('Giấy xác nhận này thuộc tổ khác.');
+    if (!policy.canView(actor, row)) throw forbidden('Giấy xác nhận này thuộc đơn vị khác.');
     return { actor, row };
   }
 
@@ -135,7 +135,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
     const actor = await policy.actorOf(req);
     const reg = await db.queryOne('SELECT id, department, outageId, workId, planId, data FROM dkct_registrations WHERE id = ?', [req.params.id]);
     if (!reg) throw notFound('Không tìm thấy giấy ĐKCT.');
-    if (!policy.canView(actor, reg)) throw forbidden('Giấy ĐKCT này thuộc tổ khác.');
+    if (!policy.canView(actor, reg)) throw forbidden('Giấy ĐKCT này thuộc đơn vị khác.');
     res.json({ draft: await draftFromRegistration(actor, reg) });
   }));
 
@@ -175,7 +175,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
 
   router.put('/confirmation-numbering', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được đặt số khởi đầu.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được đặt số khởi đầu.');
     const unit = await getUnit(actor.id);
     await numbering.setStartNumber(unit.department, vnYear(), req.body?.startNumber, actor.id);
     res.json({ numbering: await numberingInfo(actor) });
@@ -212,7 +212,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
 
   router.post('/confirmations', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy xác nhận.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập giấy xác nhận.');
     const data = await normalize(req.body, res);
     if (!data) return;
     const unit = await getUnit(actor.id);
@@ -231,7 +231,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
 
   router.put('/confirmations/:id', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req, LIST_COLUMNS);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa giấy xác nhận.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa giấy xác nhận.');
     const data = await normalize(req.body, res);
     if (!data) return;
     await db.execute(`
@@ -244,7 +244,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
 
   router.delete('/confirmations/:id', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req, LIST_COLUMNS);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được xóa giấy xác nhận.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó đơn vị, trưởng phòng hoặc admin được xóa giấy xác nhận.');
     await db.execute('DELETE FROM dkct_confirmations WHERE id = ?', [row.id]);
     res.json({ success: true });
   }));
@@ -252,7 +252,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
   // Xem trước bản Word từ dữ liệu đang soạn (chưa lưu): không cấp số, không ghi gì
   router.post('/confirmations/preview', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được lập giấy xác nhận.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được lập giấy xác nhận.');
     const data = await normalize(req.body, res);
     if (!data) return;
     sendPreview(res, await templates.render('confirmation', (tpl) => renderConfirmationDocx({ docNumber: previewNumber(null, req.query), data }, tpl)));
@@ -260,7 +260,7 @@ function confirmationRouter({ db, policy, wrap, getProfile, getUnit, defaultUnit
 
   router.post('/confirmations/:id/preview', wrap(async (req, res) => {
     const { actor, row } = await loadVisible(req, LIST_COLUMNS);
-    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó tổ, trưởng phòng hoặc admin được sửa giấy xác nhận.');
+    if (!(await policy.canEdit(actor, row))) throw forbidden('Chỉ người lập, trưởng/phó đơn vị, trưởng phòng hoặc admin được sửa giấy xác nhận.');
     const data = await normalize(req.body, res);
     if (!data) return;
     sendPreview(res, await templates.render('confirmation', (tpl) => renderConfirmationDocx({ docNumber: row.docNumber, data }, tpl)));

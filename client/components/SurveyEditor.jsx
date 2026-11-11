@@ -13,6 +13,7 @@ import { openDrawingPdf } from './DrawingDialog.jsx';
 import { fieldErrors } from '../lib/form.js';
 import { suggestDrawings } from '../lib/plan.js';
 import { emptyRep, qlvhRoleFor, qlvhRoleOptions, workUnitRoleOptions, stationFromCatalog, withQlvhFor, markFromPoints } from '../lib/survey.js';
+import { useOrg } from './useOrg.js';
 
 const MAX_IMAGE = 10 * 1024 * 1024;
 
@@ -179,6 +180,7 @@ function DiagramPicker({ diagram, setDiagram, readOnly, marks, setMarks, station
  */
 export default function SurveyEditor({ initial, survey, catalogs, departments = [], onClose, onSaved }) {
   const { api, notify, confirmAction, downloadAuthenticatedFile, ModalOverlay } = useDkct();
+  const org = useOrg();
   const [form, setForm] = useState(initial);
   const [current, setCurrent] = useState(survey);
   const [diagram, setDiagram] = useState({ status: survey?.hasDiagram ? 'saved' : 'none', hadSaved: !!survey?.hasDiagram, file: null, url: null });
@@ -333,10 +335,10 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
                   <input id="ks-unit" className={`${inputCls} ${inputBorder()}`} value={form.header.unitName || ''}
                     onChange={e => setField('header', h => ({ ...h, unitName: e.target.value }))} />
                 </Field>
-                <Field label="Tổ lập biên bản" htmlFor="ks-team">
+                <Field label="Đơn vị lập biên bản" htmlFor="ks-team">
                   {teamOptions.length ? (
                     <select id="ks-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''} onChange={e => chooseTeam(e.target.value)}>
-                      <option value="">— Chọn tổ —</option>
+                      <option value="">— Chọn đơn vị —</option>
                       {teamOptions.map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   ) : (
@@ -367,7 +369,7 @@ export default function SurveyEditor({ initial, survey, catalogs, departments = 
 
             <Section title="Thành phần" subtitle="Đại diện đầu tiên của mỗi bên ký ở cuối biên bản.">
               <RepList label="1. Đại diện đơn vị công tác" prefix="1" field="workUnitReps" reps={form.workUnitReps} errors={errors}
-                onChange={(fn) => setField('workUnitReps', fn)} roleOptions={workUnitRoleOptions(form.header.teamShort)} peopleListId="ks-people"
+                onChange={(fn) => setField('workUnitReps', fn)} roleOptions={workUnitRoleOptions(form.header.teamShort, org.positions, org.teamWord)} peopleListId="ks-people"
                 onAdd={() => setField('workUnitReps', l => [...l, emptyRep()])} />
               <RepList label="2. Đại diện (các) đơn vị QLVH" prefix="2" field="qlvhReps" reps={form.qlvhReps} errors={errors}
                 onChange={(fn) => setField('qlvhReps', fn)} roleOptions={qlvhRoleOptions(qlvhUnit)} peopleListId="ks-qlvh-people"

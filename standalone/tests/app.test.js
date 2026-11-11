@@ -51,7 +51,7 @@ test('lần đầu đăng nhập tạo hồ sơ; email trong ADMIN_EMAILS là ad
     for (const url of ['/api/dkct/meta', '/api/dkct/personnel', '/api/dkct/outages', '/api/dkct/substation-drawings']) {
       const r = await app.call('lan', 'GET', url);
       assert.equal(r.status, 403, url);
-      assert.match(r.body.error, /chưa được xếp tổ/);
+      assert.match(r.body.error, /chưa được xếp đơn vị/);
     }
     assert.equal((await app.call('boss', 'GET', '/api/dkct/meta')).status, 200, 'admin chưa có tổ vẫn vào được');
     assert.equal((await app.call('lan', 'GET', '/api/app/users')).status, 403);

@@ -99,7 +99,7 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
         <EmptyState icon={FileStack} title="Chưa có phương án"
-          description={canCreate ? 'Bấm "Lập phương án", hoặc lập từ lịch cắt điện / công việc / biên bản khảo sát.' : 'Phương án do trưởng/phó tổ lập sẽ hiện ở đây.'} />
+          description={canCreate ? 'Bấm "Lập phương án", hoặc lập từ lịch cắt điện / công việc / biên bản khảo sát.' : 'Phương án do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (

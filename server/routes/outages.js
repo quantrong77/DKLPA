@@ -32,7 +32,7 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
   // Kiểm tra quyền TRƯỚC khi nhận file: người không có quyền không đẩy được file vào bộ nhớ
   const requireImporter = wrap(async (req, res, next) => {
     const actor = await policy.actorOf(req);
-    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó tổ, trưởng phòng hoặc admin được import lịch cắt điện.');
+    if (!(await policy.canCreate(actor))) throw forbidden('Chỉ trưởng/phó đơn vị, trưởng phòng hoặc admin được import lịch cắt điện.');
     req.dkctActor = actor;
     next();
   });
@@ -203,9 +203,9 @@ function outageRouter({ db, policy, wrap, buildDraftDefaults, outageSettings, im
    */
   router.put('/team-areas', wrap(async (req, res) => {
     const actor = await policy.actorOf(req);
-    if (!policy.isAdmin(actor)) throw forbidden('Chỉ admin được đặt khu vực phụ trách của tổ.');
+    if (!policy.isAdmin(actor)) throw forbidden('Chỉ admin được đặt khu vực phụ trách của đơn vị.');
     const department = String(req.body?.department || '').trim().slice(0, 191);
-    if (!department) throw Object.assign(new Error('Chọn tổ.'), { status: 400 });
+    if (!department) throw Object.assign(new Error('Chọn đơn vị.'), { status: 400 });
     const areas = [...new Map((Array.isArray(req.body?.areas) ? req.body.areas : [])
       .map(a => String(a || '').trim().slice(0, 191)).filter(a => areaKey(a)).map(a => [areaKey(a), a])).values()].slice(0, 30);
     const stations = Array.isArray(req.body?.stations)

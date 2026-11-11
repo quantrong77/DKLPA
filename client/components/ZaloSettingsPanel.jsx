@@ -67,7 +67,7 @@ export default function ZaloSettingsPanel() {
   return (
     <form className="space-y-3 max-w-3xl" onSubmit={e => { e.preventDefault(); save(); }}>
       <p className={hint}>
-        Bot Zalo gửi tin cho tổ trưởng / nhóm Zalo của tổ khi lịch cắt điện có <b>phát sinh, hoãn, dời lịch, sửa nội dung</b>
+        Bot Zalo gửi tin cho trưởng/phó đơn vị / nhóm Zalo của đơn vị khi lịch cắt điện có <b>phát sinh, hoãn, dời lịch, sửa nội dung</b>
         {' '}sau mỗi lần tự tải theo giờ hẹn (Cài đặt → Tải lịch tự động). Máy chủ cần ra được Internet.
       </p>
       <details className={`${card} text-xs text-slate-600 dark:text-slate-300`}>
@@ -75,7 +75,7 @@ export default function ZaloSettingsPanel() {
         <ol className="list-decimal pl-5 space-y-1 mt-2">
           <li>Trên Zalo, tìm <b>Zalo Bot Creator</b> → tạo bot → nhận <b>token</b> (dạng 1234567890:AbCd…). Dán token bên dưới, Lưu.</li>
           <li>Mỗi người cần nhận báo: tìm bot trên Zalo, bấm <b>Quan tâm</b> và nhắn một tin bất kỳ (vd "đăng ký"). Nhóm Zalo: thêm bot vào nhóm rồi nhắn trong nhóm (Zalo đang thử nghiệm bot trong nhóm).</li>
-          <li>Bấm <b>Tìm người vừa nhắn bot</b>, rồi <b>trong lúc nút đang chờ</b> nhắn một tin cho bot (Zalo chỉ trả tin đến trong lúc chờ) → <b>Thêm</b> người / nhóm hiện ra → chọn tổ (chỉ nhận thay đổi của tổ đó) → Lưu → <b>Gửi thử</b>.</li>
+          <li>Bấm <b>Tìm người vừa nhắn bot</b>, rồi <b>trong lúc nút đang chờ</b> nhắn một tin cho bot (Zalo chỉ trả tin đến trong lúc chờ) → <b>Thêm</b> người / nhóm hiện ra → chọn đơn vị (chỉ nhận thay đổi của đơn vị đó) → Lưu → <b>Gửi thử</b>.</li>
         </ol>
         <a className="inline-flex items-center gap-1 mt-2 underline" href="https://bot.zapps.me/docs/" target="_blank" rel="noreferrer">
           Tài liệu Zalo Bot <ExternalLink className="w-3 h-3" aria-hidden="true" />
@@ -147,8 +147,8 @@ export default function ZaloSettingsPanel() {
             <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] items-center">
               <input aria-label={`Tên người nhận ${i + 1}`} className={field} value={r.label} placeholder="Tên (vd Tổ trưởng TN Lâm Đồng)" onChange={e => setRow(i, { label: e.target.value })} />
               <input aria-label={`Chat ID ${i + 1}`} className={`${field} font-mono`} value={r.chatId} placeholder="Chat ID" onChange={e => setRow(i, { chatId: e.target.value.trim() })} />
-              <select aria-label={`Tổ của người nhận ${i + 1}`} className={field} value={r.department} onChange={e => setRow(i, { department: e.target.value })}>
-                <option value="">Mọi tổ (mọi thay đổi)</option>
+              <select aria-label={`Đơn vị của người nhận ${i + 1}`} className={field} value={r.department} onChange={e => setRow(i, { department: e.target.value })}>
+                <option value="">Mọi đơn vị (mọi thay đổi)</option>
                 {view.departments.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
               <div className="flex">
@@ -167,7 +167,7 @@ export default function ZaloSettingsPanel() {
         <button type="button" className={btnSecondary} onClick={() => setForm(f => ({ ...f, recipients: [...f.recipients, emptyRow()] }))}>
           <Plus className="w-4 h-4" /> Thêm người nhận
         </button>
-        <p className={hint}>Chọn tổ: người nhận chỉ nhận thay đổi ở trạm / khu vực tổ đó phụ trách (Cài đặt → Khu vực, trạm của tổ) hoặc dòng lịch đã có hồ sơ của tổ.</p>
+        <p className={hint}>Chọn đơn vị: người nhận chỉ nhận thay đổi ở trạm / khu vực đơn vị đó phụ trách (Cài đặt → Khu vực, trạm của đơn vị) hoặc dòng lịch đã có hồ sơ của đơn vị.</p>
       </section>
 
       {status.at && (

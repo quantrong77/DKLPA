@@ -9,11 +9,11 @@ import { TabButton } from './ui.jsx';
 import { usePersistentState } from '../lib/persist.js';
 
 const TABS = [
-  { id: 'teamAreas', label: 'Khu vực, trạm của tổ', icon: MapPinned },
+  { id: 'teamAreas', label: 'Khu vực, trạm của đơn vị', icon: MapPinned },
   { id: 'outageSettings', label: 'Tải lịch tự động', icon: CloudDownload },
   { id: 'zalo', label: 'Thông báo Zalo', icon: MessageCircle },
   { id: 'templates', label: 'Mẫu văn bản', icon: FileText },
-  { id: 'orgNames', label: 'Tên đơn vị', icon: Building2 }
+  { id: 'orgNames', label: 'Tên đơn vị, chức danh', icon: Building2 }
 ];
 
 /** Cài đặt hệ thống (chỉ admin): khu vực / trạm từng tổ phụ trách, tải lịch cắt điện tự động, thông báo Zalo, mẫu Word, tên đơn vị. */

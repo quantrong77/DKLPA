@@ -72,7 +72,7 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
         <EmptyState icon={ClipboardList} title="Chưa có biên bản khảo sát hiện trường"
-          description={canCreate ? 'Bấm "Lập biên bản", hoặc lập từ một dòng ở tab "Lịch cắt điện".' : 'Biên bản do trưởng/phó tổ lập sẽ hiện ở đây.'} />
+          description={canCreate ? 'Bấm "Lập biên bản", hoặc lập từ một dòng ở tab "Lịch cắt điện".' : 'Biên bản do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {items.map(item => (

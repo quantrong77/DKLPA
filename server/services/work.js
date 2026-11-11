@@ -79,7 +79,7 @@ function workAsOutage(work) {
 async function loadVisibleWork(db, policy, actor, id) {
   const work = await db.queryOne('SELECT * FROM dkct_works WHERE id = ?', [id]);
   if (!work) throw Object.assign(new Error('Không tìm thấy công việc.'), { status: 404 });
-  if (!policy.canView(actor, work)) throw forbidden('Công việc này thuộc tổ khác.');
+  if (!policy.canView(actor, work)) throw forbidden('Công việc này thuộc đơn vị khác.');
   return work;
 }
 

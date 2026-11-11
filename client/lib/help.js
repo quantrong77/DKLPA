@@ -9,7 +9,7 @@ export const ABOUT = {
     'Theo dõi luồng công việc 5 bước cho từng hồ sơ, kể cả công việc không có lịch cắt điện; cảnh báo khi lịch cắt điện của hồ sơ thay đổi.',
     'Lập biên bản khảo sát, phương án, giấy đăng ký công tác, giấy xác nhận; xem trước Word, tải Word/PDF.',
     'Thư viện cô lập mạch dòng TI và tự đọc bản vẽ mạch dòng PDF (không dùng AI).',
-    'Danh mục nhân sự, đơn vị, trạm, rủi ro; khu vực phụ trách của tổ; mẫu Word thay đổi được không cần sửa phần mềm.'
+    'Danh mục nhân sự, đơn vị, trạm, rủi ro; khu vực phụ trách của đơn vị; mẫu Word thay đổi được không cần sửa phần mềm.'
   ],
   developer: { name: 'Hoàng Trần Quản Trọng', email: 'quantrong77@gmail.com' }
 };
@@ -26,7 +26,7 @@ export const HELP_SECTIONS = [
       ['Phím tắt', 'Trong biểu mẫu: Ctrl+S lưu, Esc đóng (hỏi lại nếu chưa lưu); ảnh khảo sát, sơ đồ: Ctrl+V dán ảnh. Nhãn "● Chưa lưu" ở đầu biểu mẫu nhắc còn thay đổi chưa lưu; đóng tab trình duyệt khi chưa lưu thì trình duyệt hỏi lại.'],
       ['Nhớ chỗ đang xem', 'Tải lại trang vẫn mở đúng tab, đúng mục danh mục / cài đặt đang xem.'],
       ['Giao diện', 'Nút bảng màu ở đầu trang: chọn "Mặc định" hoặc "Chuyên nghiệp"; trình duyệt ghi nhớ lựa chọn.'],
-      ['Quyền', 'Trưởng/phó tổ, trưởng phòng, admin lập và sửa hồ sơ của tổ; thành viên xem. Dọn lịch, sửa thư viện mạch dòng và tab "Cài đặt" (khu vực, trạm của tổ, tải lịch tự động, mẫu văn bản) chỉ admin.']
+      ['Quyền', 'Trưởng/phó đơn vị, trưởng phòng, admin lập và sửa hồ sơ của đơn vị; thành viên xem. Dọn lịch, sửa thư viện mạch dòng và tab "Cài đặt" (khu vực, trạm của đơn vị, tải lịch tự động, mẫu văn bản) chỉ admin.']
     ]
   },
   {
@@ -35,10 +35,10 @@ export const HELP_SECTIONS = [
       ['Công việc không có lịch cắt điện', 'Ở bước 1 chọn "Công việc không có lịch cắt điện" → "Thêm công việc": ghi nội dung, trạm, địa điểm/thiết bị, thời gian, điều kiện (mặc định "Không cắt điện."). Trên dòng công việc bấm Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT — các mục tự điền và hồ sơ nối vào luồng như khi lập từ lịch. Công việc đã có hồ sơ thì không xóa được.'],
       ['Nạp lịch', '"Tải lịch cắt điện": máy chủ tự đăng nhập trang lịch Công ty, tải theo khoảng ngày rồi nạp luôn (cần cấu hình tài khoản). Hoặc "Chọn file lịch cắt điện (Excel)" → xem trước → "Cập nhật lịch".'],
       ['So sánh khi nạp lại', 'Chọn khoảng so sánh: dòng Hoãn (đỏ), Dời lịch (xanh), Sửa nội dung (tím), Phát sinh (vàng); không đổi để nguyên. Bấm một mục trong kết quả để tới dòng đó. Dời/sửa cập nhật tại chỗ nên hồ sơ đã gắn vẫn trỏ đúng.'],
-      ['Tự tải và báo', 'Admin đặt tài khoản và giờ tải bằng nút "Cài đặt tải lịch" ở dòng trên cùng (hoặc Cài đặt → Tải lịch tự động); dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và tổ trưởng nhận tin nhắn khi lịch thay đổi; có thể báo thêm qua Zalo (Cài đặt → Thông báo Zalo).'],
-      ['Lọc, tìm', 'Chọn khoảng ngày, gõ từ khóa (trạm, thiết bị, đơn vị); bấm thẻ thống kê để lọc; "Chỉ tổ của tôi" giữ dòng thuộc khu vực tổ phụ trách hoặc tổ đã lập hồ sơ.'],
+      ['Tự tải và báo', 'Admin đặt tài khoản và giờ tải bằng nút "Cài đặt tải lịch" ở dòng trên cùng (hoặc Cài đặt → Tải lịch tự động); dòng trên cùng cho biết giờ tải và lần tải gần nhất; người lập hồ sơ liên quan và trưởng/phó đơn vị nhận tin nhắn khi lịch thay đổi; có thể báo thêm qua Zalo (Cài đặt → Thông báo Zalo).'],
+      ['Lọc, tìm', 'Chọn khoảng ngày, gõ từ khóa (trạm, thiết bị, đơn vị); bấm thẻ thống kê để lọc; "Chỉ đơn vị của tôi" giữ dòng thuộc khu vực đơn vị phụ trách hoặc đơn vị đã lập hồ sơ.'],
       ['Ẩn/hiện khung', 'Nút con mắt "Tải lịch" và "Thống kê" ở hàng lọc ẩn/hiện khung tải lịch và các thẻ thống kê cho gọn màn hình; trình duyệt ghi nhớ lựa chọn.'],
-      ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT, Lập giấy xác nhận — nội dung, phạm vi, thời gian tự điền (giấy xác nhận theo giấy ĐKCT mới nhất của tổ cho dòng lịch, chưa có giấy thì theo chính dòng lịch). "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
+      ['Từ một dòng lịch', 'Lập biên bản KSHT, Lập phương án, Tạo giấy ĐKCT, Lập giấy xác nhận — nội dung, phạm vi, thời gian tự điền (giấy xác nhận theo giấy ĐKCT mới nhất của đơn vị cho dòng lịch, chưa có giấy thì theo chính dòng lịch). "Lịch sử thay đổi" xem các lần dòng lịch bị hoãn / dời / sửa.'],
       ['Dọn lịch cũ (admin)', 'Chọn khoảng ngày, xem số dòng sẽ xóa rồi xác nhận; dòng đã có hồ sơ gắn được giữ lại.']
     ]
   },
@@ -71,7 +71,7 @@ export const HELP_SECTIONS = [
       ['Lập giấy', 'Từ dòng lịch cắt điện, công việc không có lịch, biên bản khảo sát, phương án (nút "Lập giấy ĐKCT" ở tab Phương án) hoặc "Lập giấy mới".'],
       ['Nơi nhận', 'Chọn từ danh mục (email tự điền); lập từ biên bản hoặc phương án thì tự chọn đơn vị QLVH của trạm.'],
       ['Đơn vị công tác', 'Có thể nhiều ĐVCT; mỗi ĐVCT bắt buộc có chỉ huy trực tiếp, có thời gian và địa điểm riêng; số nhân viên tự đếm. LĐCV, GSATĐ, người cảnh giới chọn từ danh mục hoặc tự ghi, bậc ATĐ tự hiện.'],
-      ['Số giấy', 'Số theo tổ, theo năm (vd 215/ĐK-TNLĐ); trưởng/phó tổ đặt được số khởi đầu.'],
+      ['Số giấy', 'Số theo đơn vị, theo năm (vd 215/ĐK-TNLĐ); trưởng/phó đơn vị đặt được số khởi đầu.'],
       ['Tiếp theo', 'Tải Word; từ giấy lập giấy xác nhận đủ điều kiện đóng điện (giấy lập từ phương án thì giấy xác nhận lấy luôn hạng mục của phương án đó).']
     ]
   },
@@ -80,7 +80,7 @@ export const HELP_SECTIONS = [
     items: [
       ['Lập giấy', 'Từ giấy ĐKCT hoặc phương án (hạng mục lấy theo nhóm thiết bị), hoặc tự ghi.'],
       ['Nội dung', 'Mỗi hạng mục một dòng, kết quả "đạt"; ghi chú (nếu có) in thêm dòng "Ghi chú:".'],
-      ['Số và xuất', 'Số GXN riêng theo tổ, theo năm; Xem trước, Tải Word / PDF.']
+      ['Số và xuất', 'Số GXN riêng theo đơn vị, theo năm; Xem trước, Tải Word / PDF.']
     ]
   },
   {
@@ -94,11 +94,11 @@ export const HELP_SECTIONS = [
   {
     id: 'settings', title: 'Cài đặt (admin)',
     items: [
-      ['Khu vực, trạm của tổ', 'Chọn khu vực TTĐ mỗi tổ phụ trách: dùng cho "Chỉ tổ của tôi" và để báo lịch thay đổi cho tổ trưởng. Bấm sửa một tổ để tích đúng các trạm tổ phụ trách (gom theo khu vực, tích cả khu vực một lần): đã tích trạm thì "Chỉ tổ của tôi" chỉ hiện lịch các trạm đó.'],
+      ['Khu vực, trạm của đơn vị', 'Chọn khu vực TTĐ mỗi đơn vị phụ trách: dùng cho "Chỉ đơn vị của tôi" và để báo lịch thay đổi cho trưởng/phó đơn vị. Bấm sửa một đơn vị để tích đúng các trạm đơn vị phụ trách (gom theo khu vực, tích cả khu vực một lần): đã tích trạm thì "Chỉ đơn vị của tôi" chỉ hiện lịch các trạm đó.'],
       ['Tải lịch tự động', 'Tên đăng nhập, mật khẩu trang lịch cắt điện của Công ty (mật khẩu lưu mã hóa, không hiện lại), giờ tự tải hằng ngày (vd 07:00, 15:00; để trống = tắt) và số ngày tới. "Thử kết nối" kiểm tra đăng nhập. Lưu là có hiệu lực ngay; ô để trống dùng giá trị trong .env của máy chủ.'],
-      ['Thông báo trên máy tính, điện thoại', 'Nút chuông ở đầu trang → "Bật trên thiết bị này" → cho phép thông báo: máy tính / điện thoại hiện thông báo khi lịch cắt điện phát sinh, hoãn, dời, sửa, kể cả khi không mở trang. Bấm vào thông báo: mở tab Lịch cắt điện, tới dòng lịch thay đổi (nổi bật) và mở lịch sử thay đổi của các dòng được báo. Chọn nhận thay đổi của tổ mình hoặc tất cả các tổ; "Gửi thử" để kiểm tra. Mỗi thiết bị bật riêng. iPhone/iPad: mở trang bằng Safari → Chia sẻ → "Thêm vào MH chính", mở ứng dụng từ biểu tượng rồi mới bật được. Cửa sổ ẩn danh không nhận được thông báo.'],
-      ['Thông báo Zalo', 'Bot Zalo gửi tin khi lịch cắt điện phát sinh, hoãn, dời, sửa sau lần tự tải theo giờ hẹn (tùy chọn cả khi bấm tải / chọn file). Tạo bot bằng Zalo Bot Creator, dán token (lưu mã hóa); người nhận nhắn một tin cho bot → "Tìm người vừa nhắn bot" → Thêm, chọn tổ (chỉ nhận thay đổi của tổ đó) → Lưu → Gửi thử. Dòng cuối cho biết lần báo gần nhất và lỗi (nếu có).'],
-      ['Tên đơn vị, đổi tên tổ', 'Cài đặt → Tên đơn vị: tên công ty, tên đội in ở đầu văn bản lập mới (văn bản đã lập giữ tên lúc lập; để trống thì theo văn bản gần nhất của tổ). Đổi tên tổ: trang Quản trị → Tổ → nút Sửa; thành viên, hồ sơ, số văn bản (đánh tiếp), khu vực / trạm, người nhận Zalo, thiết bị nhận thông báo chuyển theo tên mới; văn bản đã lập giữ tên tổ đã in.'],
+      ['Thông báo trên máy tính, điện thoại', 'Nút chuông ở đầu trang → "Bật trên thiết bị này" → cho phép thông báo: máy tính / điện thoại hiện thông báo khi lịch cắt điện phát sinh, hoãn, dời, sửa, kể cả khi không mở trang. Bấm vào thông báo: mở tab Lịch cắt điện, tới dòng lịch thay đổi (nổi bật) và mở lịch sử thay đổi của các dòng được báo. Chọn nhận thay đổi của đơn vị mình hoặc tất cả các đơn vị; "Gửi thử" để kiểm tra. Mỗi thiết bị bật riêng. iPhone/iPad: mở trang bằng Safari → Chia sẻ → "Thêm vào MH chính", mở ứng dụng từ biểu tượng rồi mới bật được. Cửa sổ ẩn danh không nhận được thông báo.'],
+      ['Thông báo Zalo', 'Bot Zalo gửi tin khi lịch cắt điện phát sinh, hoãn, dời, sửa sau lần tự tải theo giờ hẹn (tùy chọn cả khi bấm tải / chọn file). Tạo bot bằng Zalo Bot Creator, dán token (lưu mã hóa); người nhận nhắn một tin cho bot → "Tìm người vừa nhắn bot" → Thêm, chọn đơn vị (chỉ nhận thay đổi của đơn vị đó) → Lưu → Gửi thử. Dòng cuối cho biết lần báo gần nhất và lỗi (nếu có).'],
+      ['Tên công ty, đội; đổi tên đơn vị trực tiếp', 'Cài đặt → Tên đơn vị: tên công ty, tên đội in ở đầu văn bản lập mới (văn bản đã lập giữ tên lúc lập; để trống thì theo văn bản gần nhất của đơn vị). Đổi tên đơn vị trực tiếp (tổ): trang Quản trị → Đơn vị trực tiếp → nút Sửa; thành viên, hồ sơ, số văn bản (đánh tiếp), khu vực / trạm, người nhận Zalo, thiết bị nhận thông báo chuyển theo tên mới; văn bản đã lập giữ tên đơn vị đã in.'],
       ['Mẫu văn bản', 'Tải mẫu Word về sửa (giữ thẻ {…} và nhãn ((…))), tải lên: phần mềm kiểm tra, thử điền, cho xem thử; "Lưu & dùng ngay" hoặc quay về mẫu gốc bất cứ lúc nào.']
     ]
   },

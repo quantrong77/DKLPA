@@ -12,6 +12,7 @@ import { openDrawingPdf } from './DrawingDialog.jsx';
 import { SourceDialog } from './CtSource.jsx';
 import DocPreview from './DocPreview.jsx';
 import QltnLink from './QltnLink.jsx';
+import { useOrg } from './useOrg.js';
 import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
@@ -125,11 +126,11 @@ function GeneralStep({ form, setField, errors, catalogs, departments, outage }) 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Công ty" htmlFor="pa-company"><input id="pa-company" className={`${inputCls} ${inputBorder()}`} value={form.header.companyName || ''} onChange={e => setHeader({ companyName: e.target.value })} /></Field>
           <Field label="Đội" htmlFor="pa-unit"><input id="pa-unit" className={`${inputCls} ${inputBorder()}`} value={form.header.unitName || ''} onChange={e => setHeader({ unitName: e.target.value })} /></Field>
-          <Field label="Tổ lập phương án" htmlFor="pa-team">
+          <Field label="Đơn vị lập phương án" htmlFor="pa-team">
             {teamOptions.length ? (
               <select id="pa-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''}
                 onChange={e => setHeader({ teamName: e.target.value, teamShort: departments.find(d => d.name === e.target.value)?.shortName || form.header.teamShort })}>
-                <option value="">— Chọn tổ —</option>
+                <option value="">— Chọn đơn vị —</option>
                 {teamOptions.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             ) : <input id="pa-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''} onChange={e => setHeader({ teamName: e.target.value })} />}
@@ -683,6 +684,7 @@ function People({ form, setField, personnel }) {
  */
 export default function PlanEditor({ initial, plan, catalogs, departments = [], numberPreview, onClose, onSaved }) {
   const { api, notify, confirmAction, downloadAuthenticatedFile, ModalOverlay } = useDkct();
+  const org = useOrg();
   const [form, setForm] = useState(initial);
   const [current, setCurrent] = useState(plan);
   const [step, setStep] = useState('general');
@@ -706,7 +708,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
 
   // nơi nhận mặc định khi mở bước ký duyệt (đã có trạm, khu vực truyền tải, tổ)
   useEffect(() => {
-    if (step === 'appendix23' && !readOnly && !form.recipients.length) setField('recipients', defaultRecipients(form));
+    if (step === 'appendix23' && !readOnly && !form.recipients.length) setField('recipients', defaultRecipients(form, org.teamWord));
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pickSurvey = async (id) => {
@@ -826,13 +828,13 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
                 <Section title="Ký duyệt · Nơi nhận">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="Người lập" htmlFor="pa-prep" hint="Theo người lập phương án."><input id="pa-prep" className={`${inputCls} ${inputBorder()}`} value={form.preparedBy || ''} disabled /></Field>
-                    <Field label="Tổ trưởng / Tổ phó ký" htmlFor="pa-lead">
+                    <Field label={`${form.header.leadSignTitle || org.leadSignTitle} ký`} htmlFor="pa-lead" hint="Chức danh in theo Cài đặt → Tên đơn vị, chức danh.">
                       <input id="pa-lead" list="pa-people" className={`${inputCls} ${inputBorder()}`} value={form.teamLeader || ''} onChange={e => setField('teamLeader', e.target.value)} />
                       <datalist id="pa-people">{(catalogs.personnel || []).map(p => <option key={p.id} value={p.fullName} />)}</datalist>
                     </Field>
                   </div>
                   <LinesEditor label="Nơi nhận" lines={form.recipients} onChange={fn => setField('recipients', fn)}
-                    actions={<button type="button" className={btnSecondary} onClick={() => setField('recipients', defaultRecipients(form))}><Wand2 className="w-4 h-4" /> Mặc định</button>} />
+                    actions={<button type="button" className={btnSecondary} onClick={() => setField('recipients', defaultRecipients(form, org.teamWord))}><Wand2 className="w-4 h-4" /> Mặc định</button>} />
                 </Section>
                 <Section title="Phụ lục IV — Bản vẽ sơ đồ nhất thứ">
                   <DrawingChoice form={form} setField={setField} catalogs={catalogs} />

@@ -122,8 +122,8 @@ export default function App() {
         <main className="flex-1 min-h-0 overflow-y-auto">
           {view === 'admin' && isAdmin ? <AdminPanel me={me} onChanged={loadMe} onBack={() => setView('dkct')} />
             : waiting ? (
-              <EmptyState icon={Hourglass} title="Đang chờ quản trị viên xếp tổ"
-                description="Tài khoản đã tạo. Khi quản trị viên xếp bạn vào tổ, tải lại trang để bắt đầu dùng.">
+              <EmptyState icon={Hourglass} title="Đang chờ quản trị viên xếp đơn vị"
+                description="Tài khoản đã tạo. Khi quản trị viên xếp bạn vào đơn vị, tải lại trang để bắt đầu dùng.">
                 <button type="button" className={btnSecondary} onClick={loadMe}>Tải lại</button>
                 <button type="button" className={btnSecondary} onClick={() => setProfileOpen(true)}>Cập nhật hồ sơ</button>
               </EmptyState>

@@ -65,13 +65,13 @@ async function usedBy(db, name) {
 async function renameDepartment(db, { from, to, shortName, departmentsTable = 'dkct_app_departments' }) {
   const oldName = clean(from);
   const newName = clean(to).slice(0, 191);
-  if (!newName) throw fail(400, 'Nhập tên mới của tổ.');
+  if (!newName) throw fail(400, 'Nhập tên mới của đơn vị.');
   if (newName === oldName) throw fail(400, 'Tên mới giống tên cũ.');
   const team = await db.queryOne(`SELECT name FROM ${departmentsTable} WHERE name = ?`, [oldName]);
   const mark = await readSetting(db, MARK);
   const resuming = mark?.from === oldName && mark?.to === newName;
-  if (!team && !resuming) throw fail(404, 'Không tìm thấy tổ.');
-  if (await db.queryOne(`SELECT name FROM ${departmentsTable} WHERE name = ?`, [newName])) throw fail(409, `Đã có tổ "${newName}".`);
+  if (!team && !resuming) throw fail(404, 'Không tìm thấy đơn vị.');
+  if (await db.queryOne(`SELECT name FROM ${departmentsTable} WHERE name = ?`, [newName])) throw fail(409, `Đã có đơn vị "${newName}".`);
   if (!resuming) {
     const used = await usedBy(db, newName);
     if (used) throw fail(409, `Tên "${newName}" đã từng dùng và còn dữ liệu (${used}). Chọn tên khác.`);

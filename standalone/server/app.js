@@ -102,7 +102,7 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
   });
   // chưa được admin xếp tổ thì chưa xem được dữ liệu nào (lịch, bản vẽ trạm, mạch dòng, nhân sự…)
   const requireMember = (req, res, next) => (req.user?.role === 'admin' || req.user?.department ? next()
-    : res.status(403).json({ error: 'Tài khoản chưa được xếp tổ. Liên hệ quản trị viên.' }));
+    : res.status(403).json({ error: 'Tài khoản chưa được xếp đơn vị. Liên hệ quản trị viên.' }));
   const requireAdmin = (req, res, next) => (req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Chỉ quản trị viên được làm việc này.' }));
 
   const dkct = createDkctModule({
@@ -161,8 +161,8 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
   api.post('/departments', requireAuth, requireAdmin, wrap(async (req, res) => {
     const name = text(req.body?.name, 191);
     const shortName = text(req.body?.shortName, 64);
-    if (!name || !shortName) throw bad('Nhập tên tổ và tên viết tắt (dùng trong số giấy, vd 12/ĐK-TNKH).');
-    if (await db.queryOne('SELECT name FROM dkct_app_departments WHERE name = ?', [name])) throw bad('Tổ này đã có.', 409);
+    if (!name || !shortName) throw bad('Nhập tên đơn vị và tên viết tắt (dùng trong số giấy, vd 12/ĐK-TNKH).');
+    if (await db.queryOne('SELECT name FROM dkct_app_departments WHERE name = ?', [name])) throw bad('Đơn vị này đã có.', 409);
     const max = await db.queryOne('SELECT MAX(sortOrder) AS n FROM dkct_app_departments');
     await db.execute('INSERT INTO dkct_app_departments (name, shortName, sortOrder) VALUES (?, ?, ?)', [name, shortName, (Number(max?.n) || 0) + 1]);
     res.status(201).json({ items: await listDepartments() });
@@ -179,13 +179,13 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     }
     if (!shortName) throw bad('Nhập tên viết tắt.');
     const r = await db.execute('UPDATE dkct_app_departments SET shortName = ? WHERE name = ?', [shortName, req.params.name]);
-    if (!Number(r.changes ?? r.affectedRows)) throw bad('Không tìm thấy tổ.', 404);
+    if (!Number(r.changes ?? r.affectedRows)) throw bad('Không tìm thấy đơn vị.', 404);
     res.json({ items: await listDepartments() });
   }));
 
   api.delete('/departments/:name', requireAuth, requireAdmin, wrap(async (req, res) => {
     const used = await db.queryOne('SELECT COUNT(*) AS n FROM dkct_app_users WHERE department = ?', [req.params.name]);
-    if (Number(used?.n) > 0) throw bad('Tổ còn thành viên, chuyển họ sang tổ khác trước khi xóa.', 409);
+    if (Number(used?.n) > 0) throw bad('Đơn vị còn thành viên, chuyển họ sang đơn vị khác trước khi xóa.', 409);
     await db.execute('DELETE FROM dkct_app_departments WHERE name = ?', [req.params.name]);
     res.json({ items: await listDepartments() });
   }));
@@ -201,7 +201,7 @@ function createApp({ db, verifyToken, adminEmails = [], clientDir, publicConfig 
     if (!ROLES.includes(role)) throw bad('Vai trò không hợp lệ.');
     if (target.id === req.userId && role !== 'admin') throw bad('Không tự bỏ quyền admin của chính mình.');
     let department = req.body?.department === undefined ? target.department : text(req.body.department, 191) || null;
-    if (department && !(await db.queryOne('SELECT name FROM dkct_app_departments WHERE name = ?', [department]))) throw bad('Tổ không tồn tại.');
+    if (department && !(await db.queryOne('SELECT name FROM dkct_app_departments WHERE name = ?', [department]))) throw bad('Đơn vị không tồn tại.');
     await db.execute('UPDATE dkct_app_users SET role = ?, department = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?', [role, department, target.id]);
     res.json({ user: await getUser(target.id) });
   }));

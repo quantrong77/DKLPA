@@ -183,11 +183,11 @@ export default function ConfirmationEditor({ initial, confirmation, catalogs, de
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Công ty" htmlFor="xn-company"><input id="xn-company" className={`${inputCls} ${inputBorder()}`} value={form.header.companyName || ''} onChange={e => setHeader({ companyName: e.target.value })} /></Field>
                 <Field label="Đội" htmlFor="xn-unit"><input id="xn-unit" className={`${inputCls} ${inputBorder()}`} value={form.header.unitName || ''} onChange={e => setHeader({ unitName: e.target.value })} /></Field>
-                <Field label="Tổ" htmlFor="xn-team">
+                <Field label="Đơn vị trực tiếp" htmlFor="xn-team">
                   {teamOptions.length ? (
                     <select id="xn-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''}
                       onChange={e => setHeader({ teamName: e.target.value, teamShort: departments.find(d => d.name === e.target.value)?.shortName || form.header.teamShort })}>
-                      <option value="">— Chọn tổ —</option>
+                      <option value="">— Chọn đơn vị —</option>
                       {teamOptions.map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   ) : <input id="xn-team" className={`${inputCls} ${inputBorder()}`} value={form.header.teamName || ''} onChange={e => setHeader({ teamName: e.target.value })} />}

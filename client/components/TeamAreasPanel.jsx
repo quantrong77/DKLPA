@@ -30,12 +30,12 @@ function StationPicker({ substations, teamAreas, stations, onChange }) {
   return (
     <fieldset className="space-y-2">
       <legend className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-        Trạm tổ phụ trách <span className="font-normal text-slate-500">({stations.size} trạm đã tích)</span>
+        Trạm đơn vị phụ trách <span className="font-normal text-slate-500">({stations.size} trạm đã tích)</span>
       </legend>
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Đã tích trạm: "Chỉ tổ của tôi" và tin báo lịch thay đổi chỉ gồm lịch của các trạm đã tích (dòng lịch không ghi rõ trạm,
-        vd chỉ ghi đường dây, vẫn theo khu vực ở trên). Không tích trạm nào: tổ phụ trách mọi trạm trong các khu vực đã chọn.
-        Một trạm có thể tích cho nhiều tổ.
+        Đã tích trạm: "Chỉ đơn vị của tôi" và tin báo lịch thay đổi chỉ gồm lịch của các trạm đã tích (dòng lịch không ghi rõ trạm,
+        vd chỉ ghi đường dây, vẫn theo khu vực ở trên). Không tích trạm nào: đơn vị phụ trách mọi trạm trong các khu vực đã chọn.
+        Một trạm có thể tích cho nhiều đơn vị.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[12rem] max-w-sm">
@@ -121,12 +121,12 @@ export default function TeamAreasPanel({ canManage }) {
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-500 dark:text-slate-400">
-        Lịch cắt điện của Công ty chỉ ghi đơn vị TTĐ (vd "TTĐ Lâm Đồng") và địa điểm, không ghi tổ. Mỗi tổ chọn khu vực, và
-        tích đúng các trạm tổ phụ trách: "Chỉ tổ của tôi" và tin báo lịch thay đổi cho tổ trưởng/tổ phó chỉ gồm các trạm đó.
+        Lịch cắt điện của Công ty chỉ ghi đơn vị TTĐ (vd "TTĐ Lâm Đồng") và địa điểm, không ghi đơn vị trực tiếp. Mỗi đơn vị chọn khu vực, và
+        tích đúng các trạm đơn vị phụ trách: "Chỉ đơn vị của tôi" và tin báo lịch thay đổi cho trưởng/phó đơn vị chỉ gồm các trạm đó.
         Trạm được nhận từ địa điểm của dòng lịch (vd "Trạm 220kV Phan Thiết, ĐZ …").
       </p>
       {data.teams.length === 0 && (
-        <p className="text-sm text-slate-500 dark:text-slate-400" role="status">Chưa có tổ nào. Thêm tổ ở phần quản trị (danh sách tổ/phòng) trước.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400" role="status">Chưa có đơn vị nào. Thêm đơn vị ở phần quản trị (danh sách đơn vị/phòng) trước.</p>
       )}
       <ul className="space-y-2">
         {data.teams.map(t => {

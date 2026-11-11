@@ -204,3 +204,15 @@ test('bảng thiết bị cần thí nghiệm: Tụ bù dọc (1 năm, 3 năm); 
   assert.equal(withCycle('Đột xuất; đo điện dung', 'y3'), '3 năm; đo điện dung');
   assert.equal(withCycle('Sửa chữa', ''), '');
 });
+
+test('nơi nhận mặc định, chức vụ gợi ý theo tên gọi đơn vị trực tiếp và chức danh trong Cài đặt', async () => {
+  const { defaultRecipients } = await load();
+  const { workUnitRoleOptions } = await import('../client/lib/survey.js');
+  const form = { header: { teamShort: 'TNLĐ', transmissionName: 'Truyền tải điện Lâm Đồng' }, station: { qlvhShort: 'TTLĐ PT' } };
+  assert.deepEqual(defaultRecipients(form), ['TTĐ Lâm Đồng;', 'TTLĐ PT;', 'Lưu: VT, Tổ TNLĐ.']);
+  assert.equal(defaultRecipients(form, 'Đội')[2], 'Lưu: VT, Đội TNLĐ.');
+  assert.equal(defaultRecipients({ header: {}, station: {} })[2], 'Lưu: VT, Tổ.');
+  assert.deepEqual(workUnitRoleOptions('TNLĐ'), ['Tổ trưởng - Tổ TNLĐ', 'Tổ phó - Tổ TNLĐ', 'Kỹ sư - Tổ TNLĐ', 'Công nhân - Tổ TNLĐ']);
+  assert.deepEqual(workUnitRoleOptions('TNLĐ', ['Đội trưởng', 'Kỹ sư'], 'Đội'), ['Đội trưởng - Đội TNLĐ', 'Kỹ sư - Đội TNLĐ']);
+  assert.deepEqual(workUnitRoleOptions(''), []);
+});
