@@ -397,6 +397,24 @@ function tables(t) {
       updatedAt ${t.now},
       revision ${t.int} NOT NULL DEFAULT 1`,
     // Cài đặt/dấu mốc của module (vd đã nạp dữ liệu bổ sung nào)
+    // Kế hoạch thí nghiệm định kỳ hằng năm đồng bộ từ Google Sheet / file .xlsx (services/testPlan.js): mỗi dòng một thiết bị
+    dkct_test_plan_items: `
+      id ${t.id} PRIMARY KEY,
+      year ${t.int} NOT NULL,
+      rowNo ${t.int},
+      transmission ${t.short},
+      stationName ${t.str},
+      stationKey ${t.short},
+      bay ${t.short},
+      bayKey ${t.short},
+      deviceCode ${t.short},
+      deviceName ${t.str},
+      deviceKey ${t.short},
+      cycles ${t.text},
+      inspection ${t.int} NOT NULL DEFAULT 0,
+      note ${t.text},
+      testDate ${t.short},
+      syncedAt ${t.now}`,
     // Thông báo đẩy (Web Push) tới trình duyệt / điện thoại khi lịch cắt điện thay đổi: mỗi thiết bị một dòng.
     // scope 'team': thay đổi của tổ người đăng ký (department); 'all': mọi thay đổi. endpointHash: sha256 của endpoint.
     dkct_push_subscriptions: `
@@ -445,6 +463,7 @@ const INDEXES = [
   ['idx_dkct_plan_work', 'dkct_plans', 'workId'],
   ['idx_dkct_plan_attachment_plan', 'dkct_plan_attachments', 'planId'],
   ['idx_dkct_push_user', 'dkct_push_subscriptions', 'userId'],
+  ['idx_dkct_test_plan_station', 'dkct_test_plan_items', 'stationKey'],
   ['idx_dkct_personnel_name', 'dkct_personnel', 'fullName'],
   ['idx_dkct_survey_department', 'dkct_surveys', 'department'],
   ['idx_dkct_substation_station', 'dkct_substations', 'stationId'],

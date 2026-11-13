@@ -184,6 +184,8 @@ function normalizePlan(input = {}, { personnel, substations }) {
       .filter(r => r.name || r.position || r.note),
     // "Chi tiết thực hiện: theo Phụ lục … đính kèm.": file Word người lập tải lên (dkct_plan_attachments), ghép vào cuối bản in
     attachments: attachments(input.attachments),
+    // dòng kế hoạch thí nghiệm năm phương án đã lấy (dkct_test_plan_items), để theo dõi tiến độ kế hoạch
+    testPlanItemIds: [...new Set(list(input.testPlanItemIds).map(x => text(x).slice(0, 64)).filter(Boolean))].slice(0, 500),
     ctIsolation: text(input.ctIsolation),
     liveDisconnectors: text(input.liveDisconnectors),
     risks: list(input.risks)

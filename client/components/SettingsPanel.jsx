@@ -1,10 +1,11 @@
 import React from 'react';
-import { MapPinned, FileText, CloudDownload, MessageCircle, Building2 } from 'lucide-react';
+import { MapPinned, FileText, CloudDownload, MessageCircle, Building2, CalendarRange } from 'lucide-react';
 import TeamAreasPanel from './TeamAreasPanel.jsx';
 import TemplatesPanel from './TemplatesPanel.jsx';
 import OutageSettingsPanel from './OutageSettingsPanel.jsx';
 import ZaloSettingsPanel from './ZaloSettingsPanel.jsx';
 import OrgNamesPanel from './OrgNamesPanel.jsx';
+import TestPlanSettingsPanel from './TestPlanSettingsPanel.jsx';
 import { TabButton } from './ui.jsx';
 import { usePersistentState } from '../lib/persist.js';
 
@@ -13,6 +14,7 @@ const TABS = [
   { id: 'outageSettings', label: 'Tải lịch tự động', icon: CloudDownload },
   { id: 'zalo', label: 'Thông báo Zalo', icon: MessageCircle },
   { id: 'templates', label: 'Mẫu văn bản', icon: FileText },
+  { id: 'testPlan', label: 'Kế hoạch thí nghiệm', icon: CalendarRange },
   { id: 'orgNames', label: 'Tên đơn vị, chức danh', icon: Building2 }
 ];
 
@@ -29,6 +31,7 @@ export default function SettingsPanel() {
       {tab === 'zalo' && <ZaloSettingsPanel />}
       {tab === 'templates' && <TemplatesPanel canManage />}
       {tab === 'orgNames' && <OrgNamesPanel />}
+      {tab === 'testPlan' && <TestPlanSettingsPanel />}
     </div>
   );
 }

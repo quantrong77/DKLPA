@@ -78,10 +78,10 @@ const EQUIPMENT_KINDS = [
   [/^ND$/, 'Hệ thống nối đất', '']
 ];
 // chu kỳ ghi gọn trong cột "Hạng mục / Ghi chú"; bảng thiết bị cần thí nghiệm có thêm "Đột xuất", "Sửa chữa" (ngoài QĐ 1901)
-const CYCLE_SHORT = { install: 'Sau lắp đặt', year1: 'Sau 1 năm', annual: '1 năm', y3: '3 năm', y6: '6 năm', adhoc: 'Đột xuất', repair: 'Sửa chữa' };
-/** Chu kỳ trong ô chọn của bảng "Thiết bị cần thí nghiệm": chu kỳ QĐ 1901 và thêm Đột xuất, Sửa chữa (mọi thiết bị). */
-export const EQUIPMENT_CYCLE_LABELS = { ...CYCLE_LABELS, adhoc: 'Đột xuất', repair: 'Sửa chữa' };
-const EXTRA_CYCLES = ['adhoc', 'repair'];
+const CYCLE_SHORT = { install: 'Sau lắp đặt', year1: 'Sau 1 năm', annual: '1 năm', y3: '3 năm', y6: '6 năm', tc: 'Tăng cường', adhoc: 'Đột xuất', repair: 'Sửa chữa' };
+/** Chu kỳ trong ô chọn của bảng "Thiết bị cần thí nghiệm": chu kỳ QĐ 1901 và thêm Tăng cường, Đột xuất, Sửa chữa (mọi thiết bị). */
+export const EQUIPMENT_CYCLE_LABELS = { ...CYCLE_LABELS, tc: 'Tăng cường', adhoc: 'Đột xuất', repair: 'Sửa chữa' };
+const EXTRA_CYCLES = ['tc', 'adhoc', 'repair'];
 
 /**
  * Dòng bảng "Thiết bị cần thí nghiệm" (mục 3, phần "Thực hiện:") từ các nhóm của Phụ lục I, vd
@@ -124,7 +124,7 @@ export const equipmentOptions = (devices) => [
 
 /**
  * Chu kỳ chọn được cho một dòng bảng "Thiết bị cần thí nghiệm": thiết bị QĐ 1901 -> chu kỳ có hạng mục của thiết bị đó;
- * Tụ bù dọc -> 1 năm, 3 năm; tên tự ghi khác -> mọi chu kỳ QĐ 1901. Mọi thiết bị thêm Đột xuất, Sửa chữa.
+ * Tụ bù dọc -> 1 năm, 3 năm; tên tự ghi khác -> mọi chu kỳ QĐ 1901. Mọi thiết bị thêm Tăng cường, Đột xuất, Sửa chữa.
  */
 export function equipmentCycles(row, devices = []) {
   const name = String(row?.name || '').trim().toLocaleLowerCase('vi');

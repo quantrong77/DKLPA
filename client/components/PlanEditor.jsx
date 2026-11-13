@@ -13,6 +13,7 @@ import { SourceDialog } from './CtSource.jsx';
 import DocPreview from './DocPreview.jsx';
 import QltnLink from './QltnLink.jsx';
 import { useOrg } from './useOrg.js';
+import TestPlanPicker from './TestPlanPicker.jsx';
 import { StatusBadge, SideInput } from './CtEditor.jsx';
 import { blockFromLibrary, libraryChanges } from '../lib/ctLibrary.js';
 import { fieldErrors } from '../lib/form.js';
@@ -237,7 +238,7 @@ function TestEquipment({ form, setField, devices }) {
             onChange={e => set(i, { position: e.target.value })} />
           <div className="flex flex-col gap-1 col-start-2 sm:col-start-auto">
             <select aria-label={`Chu kỳ thí nghiệm ${i + 1}`} className={`${inputCls} ${inputBorder()}`} value={cycles.includes(cycle) || !cycle ? cycle : ''}
-              title={devs.length ? `Chu kỳ có hạng mục theo QĐ 1901 (${devs.map(d => d.key).join(', ')}), thêm Đột xuất, Sửa chữa` : 'Chu kỳ, thêm Đột xuất, Sửa chữa; "Tự ghi…" để ghi chu kỳ khác'}
+              title={devs.length ? `Chu kỳ có hạng mục theo QĐ 1901 (${devs.map(d => d.key).join(', ')}), thêm Tăng cường, Đột xuất, Sửa chữa` : 'Chu kỳ, thêm Tăng cường, Đột xuất, Sửa chữa; "Tự ghi…" để ghi chu kỳ khác'}
               onChange={e => {
                 if (e.target.value !== CUSTOM_CYCLE) { set(i, { note: withCycle(r.note, e.target.value) }); return; }
                 set(i, { note: withCycle(r.note, '') });
@@ -817,6 +818,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
             {step === 'appendix1' && (
               <>
                 <IsolationDevices form={form} setField={setField} />
+                <TestPlanPicker form={form} update={update} devices={devices} />
                 <TestGroups form={form} setField={setField} devices={devices} />
                 <Instruments form={form} setField={setField} />
               </>

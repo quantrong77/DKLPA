@@ -133,6 +133,22 @@ Tên kỹ thuật vẫn là `dkct` (bảng `dkct_*`, đường dẫn `/api/dkct`
   in) giữ nguyên. Không gộp vào tên đang là tổ khác hoặc còn dữ liệu cũ (409). Không có giao dịch CSDL: dấu
   `department.rename` trong `dkct_settings`; lỗi giữa chừng thì đổi lại cùng tên cũ → tên mới để làm nốt.
 
+## Kế hoạch thí nghiệm năm (Google Sheet)
+
+- Cài đặt → Kế hoạch thí nghiệm (`services/testPlan.js`, `routes/testPlan.js`, bảng `dkct_test_plan_items`): **mỗi năm một
+  kế hoạch** (`dkct_settings` `testplan.plans`; thêm năm mới chép cột của năm gần nhất; đổi năm chuyển dòng đã đồng bộ;
+  xóa năm xóa dòng của năm đó; phương án lấy kế hoạch theo năm phương án, không có thì năm gần nhất): link Google
+  Sheet, trang tính, năm, cột (mặc định theo "Cập nhật 2027": C trạm, D ngăn lộ, F mã TB, G thiết bị, X = 1 có TNĐK;
+  chu kỳ H sau 1 năm lắp đặt (1VH), L 3 năm, O 6 năm, P tăng cường; Q kiểm định AT; S ghi chú, T ngày TN). Lấy dòng có TNĐK và có đánh dấu chu kỳ
+  hoặc kiểm định AT (ô ghi số — dòng tổng — không tính).
+- Đồng bộ: link (máy chủ tải `…/export?format=xlsx`; sheet phải chia sẻ "Bất kỳ ai có đường liên kết" — Người xem) hoặc
+  tải file .xlsx lên; thay toàn bộ dòng của năm, ghi theo lô. Tên trạm so không dấu ("Đắk" = "Đăk", "220KV" = "220kV").
+  Loại thiết bị QĐ 1901 theo mã TB + cấp điện áp của ngăn (MC ≤ 35kV chân không, TI ≤ 35kV xuyến, TU ≥ 110kV kiểu tụ…).
+- Phương án → Phụ lục I: `TestPlanPicker` liệt kê thiết bị của trạm theo ngăn lộ (ngăn của phương án chọn sẵn, "572" khớp
+  "XT572", "FL NXT 572"); "Thêm vào phương án" (`client/lib/testPlan.js` `fromTestPlan`): Bảng 1 một nhóm mỗi thiết bị
+  có bảng QĐ 1901 (hạng mục theo chu kỳ dài nhất), bảng thiết bị cần thí nghiệm mọi thiết bị (chu kỳ, kiểm định AT, ghi
+  chú); `testPlanItemIds` lưu các dòng kế hoạch phương án đã dùng (để theo dõi tiến độ).
+
 ## Cấu trúc
 
 ```

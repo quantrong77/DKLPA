@@ -52,6 +52,8 @@ const { createZaloBot } = require('./services/zaloBot');
 const { createWebPush } = require('./services/webPush');
 const { createOrgNames } = require('./services/orgNames');
 const { orgNamesRouter } = require('./routes/orgNames');
+const { createTestPlan } = require('./services/testPlan');
+const { testPlanRouter } = require('./routes/testPlan');
 const { pushRouter } = require('./routes/push');
 const path = require('node:path');
 const { safeParse } = require('./util');
@@ -125,6 +127,8 @@ function createDkctModule(deps) {
   const secretKey = deps.secretKey ?? (process.env.DKCT_SECRET_KEY || process.env.JWT_SECRET || '');
   // tên công ty, đội in trên văn bản mới (admin đổi ở Cài đặt → Tên đơn vị)
   shared.orgNames = createOrgNames(db);
+  // kế hoạch thí nghiệm hằng năm (Google Sheet / .xlsx) để lấy hạng mục khi lập phương án
+  shared.testPlan = createTestPlan({ db, fetch: deps.testPlanFetch });
   shared.outageSettings = createOutageSettings({ db, source: deps.outageSource, auto: deps.outageAuto, secret: secretKey });
   // báo biến động lịch qua Zalo Bot (admin đặt token, người nhận ở Cài đặt → Thông báo Zalo; mặc định ZALO_BOT_TOKEN)
   shared.zalo = createZaloBot({
@@ -169,6 +173,7 @@ function createDkctModule(deps) {
   router.use(zaloRouter(shared));
   router.use(pushRouter(shared));
   router.use(orgNamesRouter(shared));
+  router.use(testPlanRouter(shared));
   router.use(workRouter(shared));
   router.use(registrationRouter(shared));
   router.use(surveyRouter(shared));
