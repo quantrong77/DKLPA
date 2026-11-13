@@ -71,7 +71,7 @@ export const HELP_SECTIONS = [
       ['Lập giấy', 'Từ dòng lịch cắt điện, công việc không có lịch, biên bản khảo sát, phương án (nút "Lập giấy ĐKCT" ở tab Phương án) hoặc "Lập giấy mới".'],
       ['Nơi nhận', 'Chọn từ danh mục (email tự điền); lập từ biên bản hoặc phương án thì tự chọn đơn vị QLVH của trạm.'],
       ['Đơn vị công tác', 'Có thể nhiều ĐVCT; mỗi ĐVCT bắt buộc có chỉ huy trực tiếp, có thời gian và địa điểm riêng; số nhân viên tự đếm. LĐCV, GSATĐ, người cảnh giới chọn từ danh mục hoặc tự ghi, bậc ATĐ tự hiện.'],
-      ['Số giấy', 'Số theo đơn vị, theo năm (vd 215/ĐK-TNLĐ); trưởng/phó đơn vị đặt được số khởi đầu.'],
+      ['Số giấy', 'Số theo đơn vị, theo năm (vd 215/ĐK-TNLĐ); trưởng/phó đơn vị đặt được số khởi đầu bất kỳ (vd theo sổ giấy cứng), số đã có văn bản tự bỏ qua, không trùng số.'],
       ['Tiếp theo', 'Tải Word; từ giấy lập giấy xác nhận đủ điều kiện đóng điện (giấy lập từ phương án thì giấy xác nhận lấy luôn hạng mục của phương án đó).']
     ]
   },

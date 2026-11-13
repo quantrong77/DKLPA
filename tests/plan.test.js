@@ -120,7 +120,7 @@ test('renderPlanDocx: điền đủ nội dung, không còn chú thích <…> ha
   for (const tag of ['nguoilap', 'ld_dtc', 'nv_pkt.dvkt', 'ld_pkt.dvkt', 'bgd.dvkt', 'tram.ttd', 'nv_pkt.ttd', 'ld_pkt.ttd', 'bgd.ttd', 'nv_pkt.ctyttd', 'ld_pkt.ctyttd', 'bgd.ctyttd']) {
     assert.ok(text.includes(`((${tag}))`), `giữ nhãn ký số ((${tag}))`);
   }
-  assert.ok(ps.includes('- Lưu: VT, Tổ TNLĐ.'));
+  assert.ok(ps.includes('- Lưu: VT, TNLĐ.'));
   assert.match(text, /Tách các link hàng kẹp mạch dòng XA2/);
   assert.match(text, /=B02\+SV1/);
   assert.match(text, /Hợp bộ thí nghiệm nhất thứ CPC 100/);
@@ -264,4 +264,11 @@ test('renderPlanDocx: bảng trạng thái cô lập đánh dấu "√" đúng c
   // không có thiết bị: bảng giữ nguyên, không lỗi
   const { markIsolationTable } = require('../server/services/planRender');
   assert.equal(markIsolationTable('<w:p/>', [{ receive: 'open' }]), '<w:p/>');
+});
+
+test('toPlanView: tên trạm giữa câu viết thường chữ đầu, trừ chữ viết tắt (TBA, NMTĐ)', () => {
+  const view = (name) => toPlanView({ docNumber: '1/PA', data: { ...PLAN, station: { ...PLAN.station, name } } }).featureText;
+  assert.match(view('Trạm biến áp 500kV Vĩnh Tân'), /các thiết bị trạm biến áp 500kV Vĩnh Tân năm/);
+  assert.match(view('TBA 220kV Đắk Nông'), /các thiết bị TBA 220kV Đắk Nông năm/);
+  assert.match(view('NMTĐ Srêpốk 4'), /các thiết bị NMTĐ Srêpốk 4 năm/);
 });

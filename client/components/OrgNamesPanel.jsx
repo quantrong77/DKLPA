@@ -59,7 +59,7 @@ export default function OrgNamesPanel() {
         <Field label="Tên đội (đơn vị cấp trên của các đơn vị trực tiếp)" htmlFor="org-unit" hint="Để trống: theo văn bản gần nhất của đơn vị, không có thì mặc định.">
           {input('org-unit', 'unitName', 200, defaults.unitName)}
         </Field>
-        <Field label="Tên gọi đơn vị trực tiếp trên văn bản" htmlFor="org-word" hint={`Đứng trước tên viết tắt, vd "Lưu: VT, ${word} TNLĐ", "Kỹ sư - ${word} TNLĐ".`}>
+        <Field label="Tên gọi đơn vị trực tiếp trên văn bản" htmlFor="org-word" hint={`Đứng trước tên viết tắt trong chức vụ gợi ý, vd "Kỹ sư - ${word} TNLĐ".`}>
           {input('org-word', 'teamWord', 40, defaults.teamWord)}
         </Field>
       </fieldset>

@@ -1,9 +1,9 @@
 /**
  * Tên đơn vị và chức danh (admin đặt ở Cài đặt → Tên đơn vị, chức danh; dkct_settings 'org.names'):
  * - companyName, unitName: tên công ty, đội in trên văn bản lập mới. Chưa đặt: theo văn bản gần nhất của đơn vị, rồi mặc định.
- * - teamWord: tên gọi ngắn của đơn vị trực tiếp trên văn bản (mặc định "Tổ": "Lưu: VT, Tổ TNLĐ", "Kỹ sư - Tổ TNLĐ").
+ * - teamWord: tên gọi ngắn của đơn vị trực tiếp trên văn bản (mặc định "Tổ": chức vụ gợi ý "Kỹ sư - Tổ TNLĐ").
  * - positions: chức danh gợi ý cho người của đơn vị trên văn bản (Tổ trưởng, Tổ phó, Kỹ sư, Công nhân).
- * - leadSignTitle: chức danh người ký phương án (mặc định "Tổ trưởng/ Tổ phó").
+ * - leadSignTitle: chức danh người ký phương án (mặc định như mẫu Word: "Đội trưởng/ Đội phó").
  * - roleLabels: tên vai trò trong phần mềm (admin, lead: trưởng/phó đơn vị, member).
  * Văn bản đã lập giữ tên, chức danh lúc lập; văn bản lập sau dùng giá trị mới.
  */
@@ -17,7 +17,7 @@ const DEFAULT_UNIT_NAME = 'Đội Sửa chữa, thí nghiệm điện 3';
 const DEFAULTS = {
   teamWord: 'Tổ',
   positions: ['Tổ trưởng', 'Tổ phó', 'Kỹ sư', 'Công nhân'],
-  leadSignTitle: 'Tổ trưởng/ Tổ phó',
+  leadSignTitle: 'Đội trưởng/ Đội phó',
   roleLabels: { admin: 'Quản trị viên', lead: 'Trưởng/phó đơn vị', member: 'Thành viên' }
 };
 const ROLES = Object.keys(DEFAULTS.roleLabels);

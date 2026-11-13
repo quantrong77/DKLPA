@@ -709,7 +709,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
 
   // nơi nhận mặc định khi mở bước ký duyệt (đã có trạm, khu vực truyền tải, tổ)
   useEffect(() => {
-    if (step === 'appendix23' && !readOnly && !form.recipients.length) setField('recipients', defaultRecipients(form, org.teamWord));
+    if (step === 'appendix23' && !readOnly && !form.recipients.length) setField('recipients', defaultRecipients(form));
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pickSurvey = async (id) => {
@@ -836,7 +836,7 @@ export default function PlanEditor({ initial, plan, catalogs, departments = [], 
                     </Field>
                   </div>
                   <LinesEditor label="Nơi nhận" lines={form.recipients} onChange={fn => setField('recipients', fn)}
-                    actions={<button type="button" className={btnSecondary} onClick={() => setField('recipients', defaultRecipients(form, org.teamWord))}><Wand2 className="w-4 h-4" /> Mặc định</button>} />
+                    actions={<button type="button" className={btnSecondary} onClick={() => setField('recipients', defaultRecipients(form))}><Wand2 className="w-4 h-4" /> Mặc định</button>} />
                 </Section>
                 <Section title="Phụ lục IV — Bản vẽ sơ đồ nhất thứ">
                   <DrawingChoice form={form} setField={setField} catalogs={catalogs} />

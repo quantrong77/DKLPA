@@ -5,7 +5,7 @@ import { useDkct } from '../context.jsx';
 export const ORG_DEFAULTS = {
   teamWord: 'Tổ',
   positions: ['Tổ trưởng', 'Tổ phó', 'Kỹ sư', 'Công nhân'],
-  leadSignTitle: 'Tổ trưởng/ Tổ phó',
+  leadSignTitle: 'Đội trưởng/ Đội phó',
   roleLabels: { admin: 'Quản trị viên', lead: 'Trưởng/phó đơn vị', member: 'Thành viên' }
 };
 

@@ -27,7 +27,7 @@ const PLAN = {
   reserve: 'Không.',
   teamLeader: 'Nguyễn Hữu Kính',
   preparedBy: 'Hoàng Trần Quản Trọng',
-  recipients: ['TTĐ LĐ;', 'TBAVT;', 'Lưu: VT, Tổ TNLĐ.'],
+  recipients: ['TTĐ LĐ;', 'TBAVT;', 'Lưu: VT, TNLĐ.'],
   isolationDevices: ['MC530', '530-6', '530-65'],
   testGroups: [
     { deviceKey: 'MBA', cycle: 'y3', label: 'MBA', items: [

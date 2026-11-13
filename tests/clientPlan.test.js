@@ -48,7 +48,7 @@ test('testGroupFor / devicesFromSteps / defaultRecipients / planFromSurvey', asy
     ['MC530', 'MC532', '530-6', '530-8', '530-65']);
 
   const form = { header: { transmissionName: 'Truyền tải điện Lâm Đồng', teamShort: 'TNLĐ' }, station: { qlvhShort: 'TBAVT' }, bays: '530, 532' };
-  assert.deepEqual(defaultRecipients(form), ['TTĐ Lâm Đồng;', 'TBAVT;', 'Lưu: VT, Tổ TNLĐ.']);
+  assert.deepEqual(defaultRecipients(form), ['TTĐ Lâm Đồng;', 'TBAVT;', 'Lưu: VT, TNLĐ.']);
   assert.equal(defaultWorkload(form), 'Kiểm tra thí nghiệm định kỳ các thiết bị nhất thứ thuộc ngăn lộ 530, 532.');
 
   const p = planFromSurvey({ station: {}, equipmentText: '', outageId: null }, { id: 'KS-1', data: SURVEY });
@@ -209,9 +209,8 @@ test('nơi nhận mặc định, chức vụ gợi ý theo tên gọi đơn vị
   const { defaultRecipients } = await load();
   const { workUnitRoleOptions } = await import('../client/lib/survey.js');
   const form = { header: { teamShort: 'TNLĐ', transmissionName: 'Truyền tải điện Lâm Đồng' }, station: { qlvhShort: 'TTLĐ PT' } };
-  assert.deepEqual(defaultRecipients(form), ['TTĐ Lâm Đồng;', 'TTLĐ PT;', 'Lưu: VT, Tổ TNLĐ.']);
-  assert.equal(defaultRecipients(form, 'Đội')[2], 'Lưu: VT, Đội TNLĐ.');
-  assert.equal(defaultRecipients({ header: {}, station: {} })[2], 'Lưu: VT, Tổ.');
+  assert.deepEqual(defaultRecipients(form), ['TTĐ Lâm Đồng;', 'TTLĐ PT;', 'Lưu: VT, TNLĐ.'], 'chỉ tên viết tắt của đơn vị lập');
+  assert.equal(defaultRecipients({ header: { teamName: 'Tổ Thí nghiệm điện Lâm Đồng' }, station: {} })[2], 'Lưu: VT.', 'không ghi tên đầy đủ');
   assert.deepEqual(workUnitRoleOptions('TNLĐ'), ['Tổ trưởng - Tổ TNLĐ', 'Tổ phó - Tổ TNLĐ', 'Kỹ sư - Tổ TNLĐ', 'Công nhân - Tổ TNLĐ']);
   assert.deepEqual(workUnitRoleOptions('TNLĐ', ['Đội trưởng', 'Kỹ sư'], 'Đội'), ['Đội trưởng - Đội TNLĐ', 'Kỹ sư - Đội TNLĐ']);
   assert.deepEqual(workUnitRoleOptions(''), []);

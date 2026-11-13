@@ -12,9 +12,6 @@ const { imageInfo, fitImage, imageParagraphXml, addImagePart } = require('./surv
 const { DEFAULT_DRAWING_LABEL } = require('../schema');
 const { isolationDevices } = require('./plan');
 const { appendDocx } = require('./docxAppend');
-const { DEFAULTS: ORG_DEFAULTS } = require('./orgNames');
-
-const DEFAULT_SIGN_TITLE = ORG_DEFAULTS.leadSignTitle;
 
 const TEMPLATE_PATH = path.join(__dirname, '..', '..', 'templates', 'template_pa.docx');
 // vùng in khổ A4 dọc của mẫu (lề trái 1701, phải 851 twip); cao ~ 2/3 trang để còn tiêu đề phụ lục
@@ -112,6 +109,33 @@ function insertAfterCheckLine(xml, tableXml, detail = '') {
   return xml.slice(0, at) + tableXml + (detail ? plainParagraph(detail) : '') + xml.slice(at);
 }
 
+/**
+ * Chức danh người ký phương án (Cài đặt → Tên đơn vị, chức danh; lưu theo phương án): đoạn có chữ ngay trên
+ * "(Ký, ghi rõ họ tên)" của ô ký có nhãn ((ld_dtc)) — theo vị trí, không theo chữ có sẵn của mẫu (mẫu sửa chức danh vẫn
+ * đúng). Chữ của mẫu đã giống thì giữ nguyên định dạng; không thấy ô ký thì để nguyên văn bản.
+ */
+function replaceSignTitle(xml, title) {
+  const at = xml.indexOf('((ld_dtc))');
+  if (!title || at < 0) return xml;
+  const paras = [...xml.slice(0, at).matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)];
+  let sign = -1;
+  for (let i = paras.length - 1; i >= 0; i--) if (/Ký,\s*ghi rõ/.test(paragraphText(paras[i][0]))) { sign = i; break; }
+  for (let i = sign - 1; i >= 0; i--) {
+    const p = paras[i][0];
+    const current = paragraphText(p).trim();
+    if (!current) continue;
+    if (current === title) return xml;
+    let first = true;
+    const replaced = p.replace(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g, () => {
+      const t = first ? `<w:t xml:space="preserve">${xmlEscape(title)}</w:t>` : '<w:t></w:t>';
+      first = false;
+      return t;
+    });
+    return xml.slice(0, paras[i].index) + replaced + xml.slice(paras[i].index + p.length);
+  }
+  return xml;
+}
+
 /** Thêm dấu "√" (căn giữa, như tiêu đề cột "Mở (√)" của mẫu) vào đoạn đầu của một ô bảng. */
 function markCell(cell) {
   let out = cell;
@@ -176,13 +200,12 @@ function renderPlanDocx(plan, drawings = [], templatePath = TEMPLATE_PATH, appen
   let xml = out.file('word/document.xml').asText();
   if ((equipXml || detail) && !hasEquipTag) xml = insertAfterCheckLine(xml, equipXml, detail);
   xml = markIsolationTable(xml, isolationDevices(plan?.data?.isolationDevices));
-  // chức danh người ký (Cài đặt → Tên đơn vị, chức danh; lưu theo phương án): thay chữ có sẵn của mẫu
-  const signTitle = String(plan?.data?.header?.leadSignTitle || '').trim();
-  if (signTitle && signTitle !== DEFAULT_SIGN_TITLE) xml = xml.split(`<w:t>${DEFAULT_SIGN_TITLE}</w:t>`).join(`<w:t xml:space="preserve">${xmlEscape(signTitle)}</w:t>`);
+  // chức danh người ký lưu theo phương án (phương án cũ chưa lưu: in như mẫu)
+  xml = replaceSignTitle(xml, String(plan?.data?.header?.leadSignTitle || '').trim());
   out.file('word/document.xml', xml);
   for (const d of images) addImagePart(out, d.buffer, d.info.type, d.part);
   files.forEach((a, i) => appendDocx(out, a.buffer, i + 1));
   return out.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
-module.exports = { renderPlanDocx, testEquipmentXml, insertAfterCheckLine, markIsolationTable, detailText, TEMPLATE_PATH };
+module.exports = { renderPlanDocx, testEquipmentXml, insertAfterCheckLine, markIsolationTable, replaceSignTitle, detailText, TEMPLATE_PATH };

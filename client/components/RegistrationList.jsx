@@ -87,9 +87,9 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
         {startDraft !== null && (
           <form onSubmit={setStart} className="flex items-center gap-2 w-full sm:w-auto">
             <label htmlFor="dk-start-no" className="text-xs text-slate-600 dark:text-slate-300">
-              Số khởi đầu năm {numbering.year} (đã cấp đến {numbering.lastIssued}):
+              Số khởi đầu năm {numbering.year} (số lớn nhất đã cấp {numbering.lastIssued}; đặt nhỏ hơn được, số đã dùng tự bỏ qua):
             </label>
-            <input id="dk-start-no" type="number" min={numbering.lastIssued + 1} value={startDraft} autoFocus
+            <input id="dk-start-no" type="number" min={1} value={startDraft} autoFocus
               onChange={e => setStartDraft(e.target.value)} className={`${inputCls} ${inputBorder()} !w-24`} />
             <button type="submit" className={btnSecondary}>Lưu</button>
             <button type="button" className={btnGhost} onClick={() => setStartDraft(null)}>Hủy</button>

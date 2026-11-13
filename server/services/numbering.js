@@ -1,6 +1,7 @@
 /**
  * Số giấy ĐKCT "<n>/ĐK-<tên viết tắt tổ>": một bộ đếm cho mỗi (tổ, năm), sang năm mới bắt đầu lại từ 1.
- * Có thể đặt số khởi đầu (vd chuyển từ sổ giấy giữa năm) nhưng không lùi về số đã cấp.
+ * Đặt được số khởi đầu bất kỳ từ 1 (vd theo sổ giấy cứng đã làm); khi cấp số, số đã có văn bản cùng loại, tổ, năm thì
+ * tự bỏ qua — không bao giờ trùng số.
  * Lấy số nguyên tử để hai giấy lưu cùng lúc không trùng số.
  * legacyLastIssued(department, year): số lớn nhất module ĐKCT cũ của ChatLan đã cấp — để số tiếp nối.
  */
@@ -22,6 +23,8 @@ function formatConfirmationNumber(n, shortName) {
  * options.table: bảng chứa các văn bản đã cấp số (docSeq, docDepartment, docYear);
  * options.prefix: tiền tố khóa bộ đếm để mỗi loại văn bản (giấy ĐKCT, phương án) đếm riêng.
  */
+const MAX_SKIP = 100000;
+
 function createNumbering(db, legacyLastIssued = async () => 0, { table = 'dkct_registrations', prefix = '' } = {}) {
   const key = (department) => `${prefix}${department}`;
   const legacy = prefix ? async () => 0 : legacyLastIssued;
@@ -43,11 +46,19 @@ function createNumbering(db, legacyLastIssued = async () => 0, { table = 'dkct_r
     );
   }
 
+  /** Số n đã có văn bản cùng loại, tổ, năm (hoặc module cũ đã cấp tới). */
+  async function used(department, year, n) {
+    if (n <= (Number(await legacy(department, year)) || 0)) return true;
+    return !!(await db.queryOne(`SELECT 1 AS x FROM ${table} WHERE docDepartment = ? AND docYear = ? AND docSeq = ?`, [department, year, n]));
+  }
+
   async function peek(department, year) {
     await ensureCounter(department, year);
     const row = await db.queryOne('SELECT lastNumber FROM dkct_counters WHERE department = ? AND year = ?', [key(department), year]);
     const last = Number(row?.lastNumber) || 0;
-    return { lastNumber: last, nextNumber: last + 1, lastIssued: await lastIssued(department, year) };
+    let next = last + 1;
+    for (let i = 0; i < MAX_SKIP && await used(department, year, next); i++) next += 1;
+    return { lastNumber: last, nextNumber: next, lastIssued: await lastIssued(department, year) };
   }
 
   async function increment(department, year) {
@@ -68,17 +79,23 @@ function createNumbering(db, legacyLastIssued = async () => 0, { table = 'dkct_r
     return Number(rows[0].lastNumber);
   }
 
-  /** Lấy số kế tiếp; nếu module cũ đã cấp tới số này thì nhảy qua (hai module còn chạy song song). */
+  /**
+   * Lấy số kế tiếp (nguyên tử); số đã có văn bản (đặt số khởi đầu lùi lại) hoặc module cũ đã cấp tới thì nhảy qua.
+   */
   async function takeNext(department, year) {
     await ensureCounter(department, year);
-    const n = await increment(department, year);
     const old = Number(await legacy(department, year)) || 0;
-    if (n > old) return n;
-    await db.execute(
-      'UPDATE dkct_counters SET lastNumber = ? WHERE department = ? AND year = ? AND lastNumber < ?',
-      [old, key(department), year, old]
-    );
-    return increment(department, year);
+    if (old) {
+      await db.execute(
+        'UPDATE dkct_counters SET lastNumber = ? WHERE department = ? AND year = ? AND lastNumber < ?',
+        [old, key(department), year, old]
+      );
+    }
+    for (let i = 0; i < MAX_SKIP; i++) {
+      const n = await increment(department, year);
+      if (!(await used(department, year, n))) return n;
+    }
+    throw new Error(`Không tìm được số trống cho ${department}/${year}`);
   }
 
   async function setStartNumber(department, year, startNumber, userId) {
@@ -86,10 +103,7 @@ function createNumbering(db, legacyLastIssued = async () => 0, { table = 'dkct_r
     if (!Number.isInteger(n) || n < 1 || n > 999999) {
       throw Object.assign(new Error('Số khởi đầu phải là số nguyên từ 1.'), { status: 400 });
     }
-    const issued = await lastIssued(department, year);
-    if (n <= issued) {
-      throw Object.assign(new Error(`Năm ${year} đã cấp đến số ${issued}; số khởi đầu phải lớn hơn ${issued}.`), { status: 400 });
-    }
+    // số khởi đầu nhỏ hơn số đã cấp được (theo sổ giấy cứng): khi cấp, số đã có văn bản tự bỏ qua
     await ensureCounter(department, year);
     await db.execute(
       'UPDATE dkct_counters SET lastNumber = ?, updatedBy = ?, updatedAt = CURRENT_TIMESTAMP WHERE department = ? AND year = ?',

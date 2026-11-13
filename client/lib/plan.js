@@ -207,14 +207,14 @@ export function devicesFromSteps(steps) {
   return found;
 }
 
-/** Nơi nhận mặc định: TTĐ, đơn vị QLVH (tên viết tắt), lưu (teamWord: tên gọi đơn vị trực tiếp, mặc định "Tổ"). */
-export function defaultRecipients(form, teamWord = 'Tổ') {
+/** Nơi nhận mặc định: TTĐ, đơn vị QLVH (tên viết tắt), lưu: VT và tên viết tắt của đơn vị lập phương án (không ghi tên đầy đủ). */
+export function defaultRecipients(form) {
   const h = form.header || {};
   const tt = String(h.transmissionName || '').replace(/^truyền tải điện\s*/i, '');
   return [
     `TTĐ ${tt || '…'};`,
     `${form.station?.qlvhShort || form.station?.qlvhUnitName || '…'};`,
-    `Lưu: VT, ${`${teamWord} ${h.teamShort || ''}`.trim()}.`
+    h.teamShort ? `Lưu: VT, ${h.teamShort}.` : 'Lưu: VT.'
   ];
 }
 

@@ -86,8 +86,8 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
         )}
         {startDraft !== null && (
           <form onSubmit={setStart} className="flex items-center gap-2 w-full sm:w-auto">
-            <label htmlFor="xn-start-no" className="text-xs text-slate-600 dark:text-slate-300">Số khởi đầu năm {numbering.year} (đã cấp đến {numbering.lastIssued}):</label>
-            <input id="xn-start-no" type="number" min={numbering.lastIssued + 1} value={startDraft} autoFocus
+            <label htmlFor="xn-start-no" className="text-xs text-slate-600 dark:text-slate-300">Số khởi đầu năm {numbering.year} (số lớn nhất đã cấp {numbering.lastIssued}; đặt nhỏ hơn được, số đã dùng tự bỏ qua):</label>
+            <input id="xn-start-no" type="number" min={1} value={startDraft} autoFocus
               onChange={e => setStartDraft(e.target.value)} className={`${inputCls} ${inputBorder()} !w-24`} />
             <button type="submit" className={btnSecondary}>Lưu</button>
             <button type="button" className={btnGhost} onClick={() => setStartDraft(null)}>Hủy</button>

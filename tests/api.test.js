@@ -125,10 +125,18 @@ test('giấy ĐKCT: cấp số theo tổ/năm, đặt số khởi đầu, lỗi 
     const id = created.body.registration.id;
 
     assert.equal((await app.call('member', 'PUT', '/numbering', { startNumber: 300 })).status, 403);
-    assert.equal((await app.call('lead', 'PUT', '/numbering', { startNumber: 215 })).status, 400, 'không lùi về số đã cấp');
+    assert.equal((await app.call('lead', 'PUT', '/numbering', { startNumber: 0 })).status, 400);
+    // đặt lùi được (theo sổ giấy cứng): số đã có giấy / module cũ đã cấp thì bỏ qua
+    assert.equal((await app.call('lead', 'PUT', '/numbering', { startNumber: 10 })).body.numbering.preview, '216/ĐK-TNLĐ', '≤ 214 module cũ, 215 đã cấp');
     assert.equal((await app.call('lead', 'PUT', '/numbering', { startNumber: 300 })).body.numbering.preview, '300/ĐK-TNLĐ');
     const second = await app.call('lead', 'POST', '/registrations', input);
     assert.equal(second.body.registration.docNumber, '300/ĐK-TNLĐ');
+    await app.call('lead', 'PUT', '/numbering', { startNumber: 299 });
+    assert.equal((await app.call('lead', 'POST', '/registrations', input)).body.registration.docNumber, '299/ĐK-TNLĐ');
+    const after = await app.call('lead', 'POST', '/registrations', input);
+    assert.equal(after.body.registration.docNumber, '301/ĐK-TNLĐ', 'bỏ qua 300 đã cấp');
+    await app.call('lead', 'DELETE', `/registrations/${after.body.registration.id}`);
+    await app.call('lead', 'DELETE', `/registrations/${(await app.call('lead', 'GET', '/registrations?search=299')).body.items.find(r => r.docNumber === '299/ĐK-TNLĐ').id}`);
 
     assert.equal((await app.call('member', 'GET', `/registrations/${id}`)).status, 200, 'cùng tổ được xem');
     assert.equal((await app.call('other', 'GET', `/registrations/${id}`)).status, 403, 'tổ khác không được xem');

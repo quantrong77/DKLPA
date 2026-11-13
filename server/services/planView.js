@@ -7,7 +7,8 @@ const { parseSide } = require('./ctLibrary');
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX'];
 const roman = (i) => ROMAN[i] || String(i + 1);
-const lowerFirst = (s) => (s ? s.charAt(0).toLocaleLowerCase('vi') + s.slice(1) : '');
+// viết thường chữ đầu khi đứng giữa câu ("Trạm biến áp …" -> "trạm biến áp …"); chữ viết tắt (TBA, NMTĐ, MBA…) giữ nguyên
+const lowerFirst = (s) => (!s || /^\p{Lu}{2,}(?![\p{Ll}])/u.test(s) ? s || '' : s.charAt(0).toLocaleLowerCase('vi') + s.slice(1));
 
 /** "Công ty Truyền tải điện 3" -> ["CÔNG TY", "TRUYỀN TẢI ĐIỆN 3"] như mẫu; tên khác tách như đầu giấy ĐKCT. */
 function companyLines(name) {
