@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FileStack, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye, Upload, FilePlus2 } from 'lucide-react';
+import { Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye, Upload } from 'lucide-react';
+import { IconSafetyPlan, IconPermit } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { useLatestRequest } from '../lib/latest.js';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime, ListError, NoMatch } from './ui.jsx';
@@ -98,7 +99,7 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
       {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
-        <EmptyState icon={FileStack} title="Chưa có phương án"
+        <EmptyState icon={IconSafetyPlan} title="Chưa có phương án"
           description={canCreate ? 'Bấm "Lập phương án", hoặc lập từ lịch cắt điện / công việc / biên bản khảo sát.' : 'Phương án do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
@@ -117,7 +118,7 @@ export default function PlanList({ selectedId, linked, onTrack, reloadKey, onOpe
                 {canCreate && onCreateRegistration && (
                   <button type="button" className={btnSecondary} onClick={() => onCreateRegistration(item)}
                     title="Lập giấy ĐKCT với căn cứ, nội dung, địa điểm, thời gian và rủi ro lấy từ phương án này">
-                    <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Lập giấy ĐKCT
+                    <IconPermit className="w-4 h-4 text-chatlan-600" /> Lập giấy ĐKCT
                   </button>
                 )}
                 {item.canEdit ? (

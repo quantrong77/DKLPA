@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { X, FileDown, FileText, RefreshCw, Loader2, AlertTriangle, Eye } from 'lucide-react';
+import { X, FileDown, FileText, RefreshCw, Loader2, AlertTriangle, Eye, Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { useDkct } from '../context.jsx';
 import { btnGhost, btnSecondary } from './ui.jsx';
 
@@ -75,6 +75,70 @@ async function printPages(stylesEl, hostEl, fileName) {
   frame.contentWindow.print();
 }
 
+// bề rộng khung xem trước (kéo mép trái) nhớ theo trình duyệt
+const WIDTH_KEY = 'dkct.preview.width';
+const MIN_WIDTH = 380;
+const ZOOMS = [0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 2];
+const clampWidth = (w) => Math.round(Math.min(Math.max(w, MIN_WIDTH), Math.max(MIN_WIDTH, window.innerWidth - 24)));
+function loadWidth() {
+  try { const w = Number(localStorage.getItem(WIDTH_KEY)); if (w > 0) return clampWidth(w); } catch { /* chế độ riêng tư */ }
+  return clampWidth(Math.min(920, window.innerWidth * 0.62));
+}
+const saveWidth = (w) => { try { localStorage.setItem(WIDTH_KEY, String(w)); } catch { /* bỏ qua */ } };
+
+/**
+ * Khung bên phải đổi bề rộng được: kéo tay nắm ở mép trái (chuột / cảm ứng), phím ←/→ khi tay nắm đang chọn
+ * (Shift: bước lớn; Home: rộng nhất; End: hẹp nhất), nhấp đúp hoặc nút Phóng to để chiếm cả màn hình.
+ * Trên điện thoại luôn toàn màn hình.
+ */
+function useResizablePanel() {
+  const [width, setWidth] = useState(loadWidth);
+  const [maximized, setMaximized] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const commit = (w) => { const v = clampWidth(w); setWidth(v); saveWidth(v); setMaximized(false); return v; };
+  const onPointerDown = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setDragging(true);
+  };
+  const onPointerMove = (e) => { if (dragging) { setMaximized(false); setWidth(clampWidth(window.innerWidth - e.clientX)); } };
+  const onPointerUp = (e) => {
+    if (!dragging) return;
+    setDragging(false);
+    commit(window.innerWidth - e.clientX);
+  };
+  const onKeyDown = (e) => {
+    const step = e.shiftKey ? 120 : 40;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); commit(width + step); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); commit(width - step); }
+    else if (e.key === 'Home') { e.preventDefault(); commit(window.innerWidth); }
+    else if (e.key === 'End') { e.preventDefault(); commit(MIN_WIDTH); }
+  };
+  useEffect(() => {
+    if (!dragging) return undefined;
+    const { cursor, userSelect } = document.body.style;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    return () => { document.body.style.cursor = cursor; document.body.style.userSelect = userSelect; };
+  }, [dragging]);
+  useEffect(() => {
+    const onResize = () => setWidth(w => clampWidth(w));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const handleProps = {
+    role: 'separator', 'aria-orientation': 'vertical', tabIndex: 0,
+    'aria-label': 'Đổi bề rộng khung xem trước (kéo, hoặc phím mũi tên trái / phải)',
+    'aria-valuemin': MIN_WIDTH, 'aria-valuenow': maximized ? undefined : width,
+    title: 'Kéo để đổi bề rộng · nhấp đúp: phóng to / thu lại',
+    'data-dragging': dragging ? 'true' : undefined,
+    onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onKeyDown,
+    onDoubleClick: () => setMaximized(m => !m)
+  };
+  return { width, maximized, setMaximized, dragging, handleProps };
+}
+
 /**
  * Khung xem trước bản Word bên phải màn hình (toàn màn hình trên điện thoại).
  * Dựng .docx ngay trong trình duyệt bằng docx-preview (tải khi mở lần đầu), tự thu nhỏ trang A4 cho vừa khung.
@@ -90,6 +154,13 @@ export default function DocPreview({ title, note, load, onDownload, downloadLabe
   const pageWidth = useRef(0);
   const [state, setState] = useState({ status: 'loading' }); // loading | ready | error
   const [fit, setFit] = useState(1);
+  const [zoomMode, setZoomMode] = useState('fit'); // 'fit' = vừa bề rộng khung, hoặc tỉ lệ cố định
+  const panel = useResizablePanel();
+  const zoom = zoomMode === 'fit' ? fit : zoomMode;
+  const stepZoom = (dir) => {
+    const next = dir > 0 ? ZOOMS.find(z => z > zoom + 0.01) : [...ZOOMS].reverse().find(z => z < zoom - 0.01);
+    if (next) setZoomMode(next);
+  };
 
   const measure = useCallback(() => {
     if (!frame.current || !pageWidth.current) return;
@@ -127,6 +198,20 @@ export default function DocPreview({ title, note, load, onDownload, downloadLabe
 
   useEffect(() => { run(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // run() đo ở tỉ lệ 1 rồi xóa zoom trên DOM; React không đặt lại nếu tỉ lệ không đổi, nên luôn đồng bộ sau mỗi lần vẽ
+  useEffect(() => { if (zoomBox.current) zoomBox.current.style.zoom = String(zoom); });
+
+  // Ctrl + lăn chuột trên trang: phóng to / thu nhỏ bản xem trước (không phóng cả trình duyệt)
+  const zoomRef = useRef(stepZoom);
+  zoomRef.current = stepZoom;
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return undefined;
+    const onWheel = (e) => { if (!e.ctrlKey) return; e.preventDefault(); zoomRef.current(e.deltaY < 0 ? 1 : -1); };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
   useEffect(() => {
     if (!frame.current || typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(measure);
@@ -136,7 +221,10 @@ export default function DocPreview({ title, note, load, onDownload, downloadLabe
 
   return (
     <ModalOverlay onClose={onClose} className="fixed inset-0 z-[60] flex justify-end bg-slate-900/30">
-      <aside className="h-full w-full md:w-[min(920px,62vw)] bg-slate-200 dark:bg-slate-900 shadow-2xl flex flex-col" aria-label={`Xem trước: ${title}`}>
+      <aside style={{ '--dkct-pw': panel.maximized ? '100vw' : `${panel.width}px` }}
+        className={`relative h-full w-full md:w-[var(--dkct-pw)] max-w-full bg-slate-200 dark:bg-slate-900 shadow-2xl flex flex-col ${panel.dragging ? '' : 'md:transition-[width] md:duration-150'}`}
+        aria-label={`Xem trước: ${title}`}>
+        <div {...panel.handleProps} className="dkct-resize-handle hidden md:block absolute left-0 inset-y-0 w-3 z-20 cursor-col-resize focus:outline-none" />
         <header className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <Eye className="w-4 h-4 text-chatlan-600 flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0">
@@ -157,8 +245,23 @@ export default function DocPreview({ title, note, load, onDownload, downloadLabe
             <button type="button" className={btnSecondary} onClick={onDownload}><FileDown className="w-4 h-4" /> <span className="hidden sm:inline">{downloadLabel}</span></button>
           )}
           {actions}
+          <button type="button" className={`${btnGhost} hidden md:inline-flex`} onClick={() => panel.setMaximized(m => !m)} aria-pressed={panel.maximized}
+            aria-label={panel.maximized ? 'Thu lại' : 'Phóng to toàn màn hình'} title={panel.maximized ? 'Thu lại' : 'Phóng to toàn màn hình'}>
+            {panel.maximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
           <button type="button" className={btnGhost} onClick={onClose} aria-label="Đóng xem trước"><X className="w-5 h-5" /></button>
         </header>
+        {state.status === 'ready' && (
+          <div className="flex items-center gap-1 px-3 py-1 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-xs" role="toolbar" aria-label="Thu phóng">
+            <button type="button" className={`${btnGhost} p-1.5`} onClick={() => stepZoom(-1)} aria-label="Thu nhỏ" title="Thu nhỏ (Ctrl + lăn chuột)"><ZoomOut className="w-4 h-4" /></button>
+            <span className="w-11 text-center font-semibold tabular-nums text-slate-700 dark:text-slate-200" aria-live="polite">{Math.round(zoom * 100)}%</span>
+            <button type="button" className={`${btnGhost} p-1.5`} onClick={() => stepZoom(1)} aria-label="Phóng to" title="Phóng to (Ctrl + lăn chuột)"><ZoomIn className="w-4 h-4" /></button>
+            <span className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" aria-hidden="true" />
+            <button type="button" onClick={() => setZoomMode('fit')} aria-pressed={zoomMode === 'fit'} className={`px-2 py-1 rounded-md font-semibold transition ${zoomMode === 'fit' ? 'bg-chatlan-50 text-chatlan-700 dark:bg-chatlan-900/50 dark:text-chatlan-200' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>Vừa khung</button>
+            <button type="button" onClick={() => setZoomMode(1)} aria-pressed={zoomMode === 1} className={`px-2 py-1 rounded-md font-semibold transition ${zoomMode === 1 ? 'bg-chatlan-50 text-chatlan-700 dark:bg-chatlan-900/50 dark:text-chatlan-200' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>100%</button>
+            <span className="ml-auto hidden lg:inline text-[11px] text-slate-400 dark:text-slate-500">Kéo mép trái để đổi bề rộng</span>
+          </div>
+        )}
 
         <div ref={frame} className="relative flex-1 overflow-auto">
           {state.status === 'loading' && (
@@ -172,7 +275,7 @@ export default function DocPreview({ title, note, load, onDownload, downloadLabe
               {state.errors.length > 0 && <ul className="list-disc pl-5 mt-1 space-y-0.5">{state.errors.map((e, i) => <li key={i}>{e.message}</li>)}</ul>}
             </div>
           )}
-          <div ref={zoomBox} style={{ zoom: fit }} className={state.status === 'error' ? 'hidden' : ''}>
+          <div ref={zoomBox} style={{ zoom }} className={state.status === 'error' ? 'hidden' : ''}>
             <div ref={styles} />
             <div ref={host} />
           </div>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardList, Search, FileDown, Trash2, Eye, Pencil, FilePlus2, FileStack, Image as ImageIcon, ScanEye, Upload } from 'lucide-react';
+import { Search, FileDown, Trash2, Eye, Pencil, Image as ImageIcon, ScanEye, Upload } from 'lucide-react';
+import { IconPylon, IconPermit, IconSafetyPlan } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { useLatestRequest } from '../lib/latest.js';
 import { btnGhost, btnSecondary, inputCls, inputBorder, ListError, NoMatch } from './ui.jsx';
@@ -71,7 +72,7 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
       {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
-        <EmptyState icon={ClipboardList} title="Chưa có biên bản khảo sát hiện trường"
+        <EmptyState icon={IconPylon} title="Chưa có biên bản khảo sát hiện trường"
           description={canCreate ? 'Bấm "Lập biên bản", hoặc lập từ một dòng ở tab "Lịch cắt điện".' : 'Biên bản do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
@@ -93,13 +94,13 @@ export default function SurveyList({ selectedId, linked, onTrack, reloadKey, onO
                 {canCreate && (
                   <button type="button" className={btnSecondary} onClick={() => onCreateRegistration(item)}
                     title="Lập giấy ĐKCT với căn cứ, nội dung, địa điểm và đánh giá rủi ro lấy từ biên bản này">
-                    <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Lập giấy ĐKCT
+                    <IconPermit className="w-4 h-4 text-chatlan-600" /> Lập giấy ĐKCT
                   </button>
                 )}
                 {canCreate && onCreatePlan && (
                   <button type="button" className={btnSecondary} onClick={() => onCreatePlan(item)}
                     title="Lập phương án với trạm và bảng nhận diện rủi ro lấy từ biên bản này">
-                    <FileStack className="w-4 h-4 text-chatlan-600" /> Lập phương án
+                    <IconSafetyPlan className="w-4 h-4 text-chatlan-600" /> Lập phương án
                   </button>
                 )}
                 {item.canEdit ? (

@@ -1,10 +1,11 @@
 import React from 'react';
-import { Zap, ClipboardList, FileStack, FileText, BadgeCheck, Check, ChevronRight, Route, X, CircleDot } from 'lucide-react';
+import { Check, ChevronRight, Route, X, CircleDot } from 'lucide-react';
+import { IconIsolatorOpen, IconPylon, IconSafetyPlan, IconPermit, IconEnergize } from './powerIcons.jsx';
 import { workflowSteps, doneCount, selectionTitle, listOfType, WORKFLOW_STEPS } from '../lib/workflow.js';
 import { chainAlert } from '../lib/outageChange.js';
 import { OutageAlertBanner } from './OutageAlert.jsx';
 
-const ICONS = { outage: Zap, survey: ClipboardList, plan: FileStack, registration: FileText, confirmation: BadgeCheck };
+const ICONS = { outage: IconIsolatorOpen, survey: IconPylon, plan: IconSafetyPlan, registration: IconPermit, confirmation: IconEnergize };
 
 const CIRCLE = {
   idle: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
@@ -39,7 +40,7 @@ export default function WorkflowBar({ tab, onTab, chain, selection, onClearSelec
   return (
     <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
       <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
-        <nav className="flex-1 min-w-0 overflow-x-auto -mx-1 px-1" aria-label="Luồng chuẩn bị công tác">
+        <nav data-dkct-steps className="flex-1 min-w-0 overflow-x-auto -mx-1 px-1" aria-label="Luồng chuẩn bị công tác">
           <ol className="flex items-stretch min-w-max">
             {steps.map((s, i) => {
               const Icon = ICONS[s.type];
@@ -53,12 +54,12 @@ export default function WorkflowBar({ tab, onTab, chain, selection, onClearSelec
                   )}
                   <button type="button" onClick={() => onTab(s.tab)} aria-current={active ? 'page' : undefined}
                     aria-label={`Bước ${i + 1}: ${s.label}${sub ? ` (${sub})` : ''}`}
-                    title={s.docs.length ? s.docs.map(d => d.label).join(', ') : undefined}
+                    title={`${s.docs.length ? `${s.docs.map(d => d.label).join(', ')} · ` : ''}Phím tắt Alt+${i + 1}`}
                     className={`flex items-center gap-1 sm:gap-2 p-1 sm:pl-1.5 sm:pr-3 sm:py-1.5 rounded-xl text-left transition-colors ${active
                       ? 'bg-chatlan-50 dark:bg-chatlan-900/40 shadow-[inset_0_-2px_0_0] shadow-chatlan-600'
                       : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center flex-shrink-0 ${CIRCLE[s.state]}`}>
-                      {s.state === 'done' ? <Check className="w-4 h-4" aria-hidden="true" /> : <Icon className="w-3.5 h-3.5" aria-hidden="true" />}
+                      {s.state === 'done' ? <Check className="w-4 h-4" aria-hidden="true" /> : <Icon className="w-4 h-4" />}
                     </span>
                     <span className="leading-tight">
                       <span className={`block text-sm font-semibold ${active ? 'text-chatlan-700 dark:text-chatlan-300' : 'text-slate-800 dark:text-slate-100'}`}>
@@ -167,7 +168,7 @@ export function TrackButton({ active, linked, onClick }) {
 
 /** Khung một dòng danh sách: nổi bật hồ sơ đang theo dõi và hồ sơ cùng luồng. */
 export function rowFrame(id, selectedId, linked) {
-  if (id === selectedId) return 'bg-chatlan-50/70 dark:bg-chatlan-900/40 border border-chatlan-500 ring-1 ring-chatlan-500';
-  if (linked?.has(id)) return 'bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-800';
-  return 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800';
+  if (id === selectedId) return 'dkct-row dkct-row-selected bg-chatlan-50/70 dark:bg-chatlan-900/40 border border-chatlan-500 ring-1 ring-chatlan-500';
+  if (linked?.has(id)) return 'dkct-row bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-800';
+  return 'dkct-row bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800';
 }

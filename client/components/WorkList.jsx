@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Briefcase, Search, Trash2, Eye, Pencil, ClipboardList, FileStack, FilePlus2, MapPin } from 'lucide-react';
+import { Search, Trash2, Eye, Pencil, MapPin } from 'lucide-react';
+import { IconHelmet, IconPylon, IconSafetyPlan, IconPermit } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { useLatestRequest } from '../lib/latest.js';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime, ListError, NoMatch, TimeBox } from './ui.jsx';
@@ -69,7 +70,7 @@ export default function WorkList({ selectedId, linked, onTrack, reloadKey, canCr
       {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
-        <EmptyState icon={Briefcase} title="Chưa có công việc nào"
+        <EmptyState icon={IconHelmet} title="Chưa có công việc nào"
           description={canCreate
             ? 'Việc không đăng ký cắt điện: bấm "Thêm công việc", rồi lập biên bản KSHT, phương án, giấy ĐKCT từ công việc đó.'
             : 'Công việc do trưởng/phó đơn vị thêm sẽ hiện ở đây.'} />
@@ -104,13 +105,13 @@ export default function WorkList({ selectedId, linked, onTrack, reloadKey, canCr
               {canCreate && (
                 <div className="mt-2 flex flex-wrap gap-1.5 sm:pl-10">
                   <button type="button" className={btnSecondary} onClick={() => onCreateSurvey(item)}>
-                    <ClipboardList className="w-4 h-4 text-chatlan-600" /> Lập biên bản KSHT{used(item.surveyCount)}
+                    <IconPylon className="w-4 h-4 text-chatlan-600" /> Lập biên bản KSHT{used(item.surveyCount)}
                   </button>
                   <button type="button" className={btnSecondary} onClick={() => onCreatePlan(item)}>
-                    <FileStack className="w-4 h-4 text-chatlan-600" /> Lập phương án{used(item.planCount)}
+                    <IconSafetyPlan className="w-4 h-4 text-chatlan-600" /> Lập phương án{used(item.planCount)}
                   </button>
                   <button type="button" className={btnSecondary} onClick={() => onCreateRegistration(item)}>
-                    <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Tạo giấy ĐKCT{used(item.registrationCount)}
+                    <IconPermit className="w-4 h-4 text-chatlan-600" /> Tạo giấy ĐKCT{used(item.registrationCount)}
                   </button>
                 </div>
               )}

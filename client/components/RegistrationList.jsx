@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FileText, Search, FileDown, Trash2, Eye, Hash, Pencil, BadgeCheck, ScanEye } from 'lucide-react';
+import { Search, FileDown, Trash2, Eye, Hash, Pencil, ScanEye } from 'lucide-react';
+import { IconPermit, IconEnergize } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { useLatestRequest } from '../lib/latest.js';
 import { btnGhost, btnSecondary, inputCls, inputBorder, formatDateTime, ListError, NoMatch } from './ui.jsx';
@@ -100,7 +101,7 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
       {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
-        <EmptyState icon={FileText} title="Chưa có giấy đăng ký công tác"
+        <EmptyState icon={IconPermit} title="Chưa có giấy đăng ký công tác"
           description={canCreate ? 'Tạo giấy từ tab "Lịch cắt điện" hoặc bấm "Lập giấy mới".' : 'Giấy do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
@@ -120,7 +121,7 @@ export default function RegistrationList({ selectedId, linked, onTrack, reloadKe
               <div className="flex items-center gap-1">
                 {canCreate && onCreateConfirmation && (
                   <button type="button" className={btnSecondary} onClick={() => onCreateConfirmation(item)} title="Lập giấy xác nhận đủ điều kiện đóng điện từ giấy này">
-                    <BadgeCheck className="w-4 h-4 text-chatlan-600" /> Giấy xác nhận
+                    <IconEnergize className="w-4 h-4 text-chatlan-600" /> Giấy xác nhận
                   </button>
                 )}
                 {item.canEdit ? (

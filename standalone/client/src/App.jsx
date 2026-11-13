@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ClipboardCheck, LogOut, Settings, UserRound, Loader2, Hourglass, X, House } from 'lucide-react';
+import { EvnMark, IconMeter } from '@dkct/components/powerIcons.jsx';
+import { ClipboardCheck, LogOut, UserRound, Loader2, Hourglass, X, House } from 'lucide-react';
 import DkctModule from '@dkct/index.jsx';
 import { btnPrimary, btnSecondary, btnGhost, inputCls, inputBorder } from '@dkct/components/ui.jsx';
 import { loadTheme, themeClass, THEME_EVENT } from '@dkct/lib/theme.js';
@@ -95,8 +96,9 @@ export default function App() {
     body = (
       <div className={`h-full flex flex-col ${themeClass(theme)}`}>
         <header className="flex items-center gap-2 px-4 py-2 bg-chatlan-600 text-white">
-          <ClipboardCheck className="w-5 h-5" aria-hidden="true" />
-          <span className="font-bold text-sm flex-1 truncate">Chuẩn bị công tác{me.department ? ` · ${me.department}` : ''}</span>
+          <EvnMark className="w-7 h-7 flex-shrink-0" />
+          {/* trang chính: tên ứng dụng đã ở đầu module, thanh này chỉ ghi đơn vị; trang Quản trị / chờ xếp đơn vị: ghi tên ứng dụng */}
+          <span className="font-bold text-sm flex-1 truncate">{view === 'dkct' && !waiting ? (me.department || 'EVNNPT') : `Chuẩn bị công tác${me.department ? ` · ${me.department}` : ''}`}</span>
           {isAdmin && (
             view === 'admin' ? (
               <button type="button" onClick={() => setView('dkct')} title="Về trang chính"
@@ -106,7 +108,7 @@ export default function App() {
             ) : (
               <button type="button" onClick={() => setView('admin')}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-white/15">
-                <Settings className="w-4 h-4" /> Quản trị
+                <IconMeter className="w-4 h-4" /> Quản trị
               </button>
             )
           )}

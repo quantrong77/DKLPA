@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Zap, Search, Link2, Unlink, Loader2, ChevronDown } from 'lucide-react';
+import { Search, Link2, Unlink, Loader2, ChevronDown } from 'lucide-react';
+import { IconIsolatorOpen } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { btnSecondary, inputCls, inputBorder, formatDateTime } from './ui.jsx';
 import { OutageAlertBanner } from './OutageAlert.jsx';
@@ -114,7 +115,7 @@ export default function LinkedOutage({ outageId, onChange, onOutage, readOnly })
   return (
     <div className="border-b border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-1 text-xs" aria-label="Lịch cắt điện liên quan">
       <div className="flex items-center gap-1.5 min-h-[1.75rem]">
-        <Zap className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" aria-hidden="true" />
+        <IconIsolatorOpen className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" aria-hidden="true" />
         {shown ? (
           <button type="button" className="flex-1 min-w-0 flex items-center gap-1 text-left" aria-expanded={open} onClick={() => setOpen(v => !v)}
             title={open ? 'Thu gọn' : 'Xem chi tiết lịch cắt điện'}>

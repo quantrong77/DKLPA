@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { ClipboardCheck, Loader2, LogIn, UserPlus } from 'lucide-react';
+import { Loader2, LogIn, UserPlus } from 'lucide-react';
+import { EvnMark, StarField } from '@dkct/components/powerIcons.jsx';
+import { loadTheme, themeClass } from '@dkct/lib/theme.js';
 import { btnPrimary, inputCls, inputBorder } from '@dkct/components/ui.jsx';
 import { getSupabase } from './api.js';
 
@@ -50,14 +52,15 @@ export default function Login() {
 
   const register = mode === 'register';
   return (
-    <div className="min-h-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-      <form onSubmit={submit} className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-6 space-y-4">
+    <div className={`relative isolate min-h-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 overflow-hidden ${themeClass(loadTheme(localStorage))}`}>
+      <div className="dkct-starfield pointer-events-none absolute -z-10 right-0 bottom-0 w-[min(900px,95vw)] h-[60vh]" aria-hidden="true">
+        <StarField fit="meet" className="w-full h-full" />
+      </div>
+      <form onSubmit={submit} data-dkct-header className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg shadow-chatlan-900/5 p-6 pt-7 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-chatlan-50 text-chatlan-600 flex items-center justify-center">
-            <ClipboardCheck className="w-5 h-5" aria-hidden="true" />
-          </div>
+          <EvnMark className="w-11 h-11 flex-shrink-0" />
           <div>
-            <h1 className="text-base font-bold text-slate-900 dark:text-white">Chuẩn bị công tác</h1>
+            <h1 data-dkct-title className="text-base font-bold text-slate-900 dark:text-white">Chuẩn bị công tác</h1>
             <p className="text-xs text-slate-500">{register ? 'Tạo tài khoản mới' : 'Đăng nhập để tiếp tục'}</p>
           </div>
         </div>

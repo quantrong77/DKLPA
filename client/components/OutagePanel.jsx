@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Zap, Upload, Search, FilePlus2, Loader2, CheckCircle2, AlertTriangle, X, ClipboardList, FileStack, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck, Eye, EyeOff, BadgeCheck } from 'lucide-react';
+import { Upload, Search, Loader2, CheckCircle2, AlertTriangle, X, Circle, CloudDownload, CalendarX2, CalendarPlus, CalendarClock, FilePenLine, LocateFixed, ExternalLink, History, Users, CalendarCheck, Eye, EyeOff } from 'lucide-react';
+import { IconPylon, IconSafetyPlan, IconPermit, IconEnergize, IconIsolatorOpen } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { btnPrimary, btnSecondary, btnGhost, cardCls, inputCls, inputBorder, formatDateTime, TimeBox } from './ui.jsx';
 import { TrackButton, rowFrame } from './WorkflowBar.jsx';
@@ -285,10 +286,10 @@ function ImportBox({ onDone, onLocate }) {
 
 // 4 bước hồ sơ cho một dòng lịch, theo thứ tự lập
 const STEPS = [
-  { key: 'surveyCount', label: 'Biên bản KSHT', icon: ClipboardList },
-  { key: 'planCount', label: 'Phương án', icon: FileStack },
-  { key: 'registrationCount', label: 'Giấy ĐKCT', icon: FilePlus2 },
-  { key: 'confirmationCount', label: 'Giấy xác nhận', icon: BadgeCheck }
+  { key: 'surveyCount', label: 'Biên bản KSHT', icon: IconPylon },
+  { key: 'planCount', label: 'Phương án', icon: IconSafetyPlan },
+  { key: 'registrationCount', label: 'Giấy ĐKCT', icon: IconPermit },
+  { key: 'confirmationCount', label: 'Giấy xác nhận', icon: IconEnergize }
 ];
 const doneSteps = (o) => STEPS.filter(s => o[s.key] > 0).length;
 
@@ -522,13 +523,13 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
           <EmptyState icon={CheckCircle2} title="Không có dòng lịch nào khớp bộ lọc"
             description={mineOnly && base.length === 0 ? 'Không có dòng nào của đơn vị trong khoảng này. Bỏ "Chỉ đơn vị của tôi" để xem tất cả.' : 'Bấm lại thẻ thống kê đang chọn để xem tất cả.'} />
         ) : 
-        <EmptyState icon={Zap} title="Không có lịch cắt điện trong khoảng này"
+        <EmptyState icon={IconIsolatorOpen} title="Không có lịch cắt điện trong khoảng này"
           description={canCreate ? 'Import file Excel lịch cắt điện ở trên, hoặc đổi khoảng ngày.' : 'Đổi khoảng ngày để xem lịch khác.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>
           {shown.map(o => (
             <li key={o.id} id={`outage-${o.id}`}
-              className={`${o.id !== selectedId && !linked?.has(o.id) && CHANGE_FRAME[o.changeKind] ? CHANGE_FRAME[o.changeKind] : rowFrame(o.id, selectedId, linked)} rounded-xl p-3 shadow-sm transition-shadow ${flash === o.id ? 'ring-4 ring-chatlan-400' : ''}`}>
+              className={`${o.id !== selectedId && !linked?.has(o.id) && CHANGE_FRAME[o.changeKind] ? CHANGE_FRAME[o.changeKind] : rowFrame(o.id, selectedId, linked)} dkct-row rounded-xl p-3 shadow-sm transition-shadow ${flash === o.id ? 'ring-4 ring-chatlan-400' : ''}`}>
               <div className="flex flex-wrap items-start gap-2">
                 {onTrack && <TrackButton active={o.id === selectedId} linked={linked?.has(o.id)} onClick={() => onTrack(o)} />}
                 <div className="min-w-0 flex-1 basis-72">
@@ -555,18 +556,18 @@ export default function OutagePanel({ selectedId, linked, onTrack, reloadKey, ca
                 {canCreate && (
                   <div className="flex flex-wrap gap-1.5 lg:flex-col">
                     <button type="button" className={btnSecondary} onClick={() => onCreateSurveyFromOutage(o)}>
-                      <ClipboardList className="w-4 h-4 text-chatlan-600" /> Lập biên bản KSHT{o.surveyCount > 0 ? ` (đã có ${o.surveyCount})` : ''}
+                      <IconPylon className="w-4 h-4 text-chatlan-600" /> Lập biên bản KSHT{o.surveyCount > 0 ? ` (đã có ${o.surveyCount})` : ''}
                     </button>
                     <button type="button" className={btnSecondary} onClick={() => onCreatePlanFromOutage(o)}>
-                      <FileStack className="w-4 h-4 text-chatlan-600" /> Lập phương án{o.planCount > 0 ? ` (đã có ${o.planCount})` : ''}
+                      <IconSafetyPlan className="w-4 h-4 text-chatlan-600" /> Lập phương án{o.planCount > 0 ? ` (đã có ${o.planCount})` : ''}
                     </button>
                     <button type="button" className={btnSecondary} onClick={() => onCreateFromOutage(o)}>
-                      <FilePlus2 className="w-4 h-4 text-chatlan-600" /> Tạo giấy ĐKCT{o.registrationCount > 0 ? ` (đã có ${o.registrationCount})` : ''}
+                      <IconPermit className="w-4 h-4 text-chatlan-600" /> Tạo giấy ĐKCT{o.registrationCount > 0 ? ` (đã có ${o.registrationCount})` : ''}
                     </button>
                     {onCreateConfirmationFromOutage && (
                       <button type="button" className={btnSecondary} onClick={() => onCreateConfirmationFromOutage(o)}
                         title="Lập giấy xác nhận đủ điều kiện đóng điện: theo giấy ĐKCT mới nhất của đơn vị cho dòng lịch này, chưa có giấy thì theo chính dòng lịch">
-                        <BadgeCheck className="w-4 h-4 text-chatlan-600" /> Lập giấy xác nhận{o.confirmationCount > 0 ? ` (đã có ${o.confirmationCount})` : ''}
+                        <IconEnergize className="w-4 h-4 text-chatlan-600" /> Lập giấy xác nhận{o.confirmationCount > 0 ? ` (đã có ${o.confirmationCount})` : ''}
                       </button>
                     )}
                   </div>

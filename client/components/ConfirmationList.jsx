@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye } from 'lucide-react';
+import { Search, FileDown, Trash2, Eye, Pencil, Hash, ScanEye } from 'lucide-react';
+import { IconEnergize } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { useLatestRequest } from '../lib/latest.js';
 import { btnGhost, btnSecondary, inputCls, inputBorder, ListError, NoMatch } from './ui.jsx';
@@ -98,7 +99,7 @@ export default function ConfirmationList({ selectedId, linked, onTrack, reloadKe
       {failed && !loading && !items.length ? <ListError message={failed} onRetry={load} />
         : !loading && !items.length && search.trim() ? <NoMatch search={search} onClear={() => setSearch('')} />
         : !loading && items.length === 0 ? (
-        <EmptyState icon={BadgeCheck} title="Chưa có giấy xác nhận"
+        <EmptyState icon={IconEnergize} title="Chưa có giấy xác nhận"
           description={canCreate ? 'Bấm "Lập giấy xác nhận", hoặc lập từ một giấy ĐKCT (tab Giấy ĐKCT).' : 'Giấy xác nhận do trưởng/phó đơn vị lập sẽ hiện ở đây.'} />
       ) : (
         <ul className="space-y-2" aria-busy={loading}>

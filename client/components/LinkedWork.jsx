@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Briefcase, Unlink, Loader2 } from 'lucide-react';
+import { Unlink, Loader2 } from 'lucide-react';
+import { IconHelmet } from './powerIcons.jsx';
 import { useDkct } from '../context.jsx';
 import { formatDateTime } from './ui.jsx';
 
@@ -27,7 +28,7 @@ export default function LinkedWork({ workId, onUnlink, readOnly }) {
   return (
     <div className="border-b border-sky-200 dark:border-sky-900/60 bg-sky-50 dark:bg-sky-950/30 px-4 py-1 text-xs" aria-label="Công việc liên quan">
       <div className="flex items-center gap-1.5 min-h-[1.75rem]">
-        <Briefcase className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" aria-hidden="true" />
+        <IconHelmet className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" aria-hidden="true" />
         <span className="flex-1 min-w-0 truncate" title={work ? `${place}\n${work.content}` : undefined}>
           {state === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-chatlan-600 inline" aria-label="Đang tải công việc" />}
           {state === 'missing' && <span className="text-sky-800 dark:text-sky-300">Công việc đã gắn không còn (có thể đã bị xóa)</span>}

@@ -5,7 +5,11 @@
 
 export const THEMES = [
   {
-    id: 'default', label: 'Mặc định', description: 'Xanh ChatLan, bo tròn, thoáng',
+    id: 'evnnpt', label: 'EVNNPT', description: 'Xanh – đỏ nhận diện EVNNPT, biểu tượng sơ đồ một sợi',
+    swatch: ['#02199d', '#f21a25', '#ffef03']
+  },
+  {
+    id: 'default', label: 'ChatLan', description: 'Xanh ChatLan, bo tròn, thoáng',
     swatch: ['#0068FF', '#e0edff', '#f8fafc']
   },
   {
@@ -14,12 +18,14 @@ export const THEMES = [
   }
 ];
 
-export const THEME_KEY = 'dkct.theme';
-export const themeOf = (id) => THEMES.find(t => t.id === id) || THEMES[0];
+// v2: đổi khóa khi thêm giao diện EVNNPT làm mặc định — ai đã chọn trước đây cũng thấy giao diện mới một lần, rồi chọn lại được
+export const THEME_KEY = 'dkct.theme.v2';
+export const DEFAULT_THEME = 'evnnpt';
+export const themeOf = (id) => THEMES.find(t => t.id === id) || THEMES.find(t => t.id === DEFAULT_THEME);
 export const themeClass = (id) => (themeOf(id).id === 'default' ? '' : `dkct-theme-${themeOf(id).id}`);
 
 export function loadTheme(storage) {
-  try { return themeOf(storage?.getItem(THEME_KEY)).id; } catch { return 'default'; }
+  try { return themeOf(storage?.getItem(THEME_KEY)).id; } catch { return DEFAULT_THEME; }
 }
 
 export const THEME_EVENT = 'dkct:theme';

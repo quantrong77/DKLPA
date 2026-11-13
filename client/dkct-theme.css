@@ -60,3 +60,102 @@
 
 /* thanh cuộn theo tông */
 .dkct-theme-pro ::-webkit-scrollbar-thumb { background: rgb(var(--chatlan-300)); }
+
+/* ───────────────────────── Giao diện EVNNPT (mặc định) ─────────────────────────
+ * Màu nhận diện lấy từ hình nền EVNNPT: xanh #02199D (chữ EVN, dải sao), đỏ #F21A25 (chữ NPT, sao giữa), vàng #FFEF03 (tâm sao).
+ * Xanh là màu làm việc (nút, nhãn, viền chọn); đỏ chỉ để nhấn (vạch đầu trang, bước đang mở); vàng chỉ ở dấu sao.
+ * Chữ: Be Vietnam Pro (thiết kế cho dấu tiếng Việt; tải từ Google Fonts, mất mạng thì dùng Segoe UI).
+ */
+.dkct-theme-evnnpt {
+  --chatlan-50: 240 243 252;
+  --chatlan-100: 225 230 248;
+  --chatlan-200: 195 204 240;
+  --chatlan-300: 148 162 226;
+  --chatlan-400: 89 108 205;
+  --chatlan-500: 38 62 183;
+  --chatlan-600: 2 25 157;
+  --chatlan-700: 3 21 128;
+  --chatlan-800: 6 19 102;
+  --chatlan-900: 8 17 77;
+  --evn-red: 242 26 37;
+  --evn-yellow: 255 239 3;
+  font-family: 'Be Vietnam Pro', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+:where(.dark) .dkct-theme-evnnpt {
+  /* nền tối: chữ / viền xanh sáng hơn để đủ tương phản */
+  --chatlan-300: 165 178 236;
+  --chatlan-400: 128 145 228;
+}
+
+/* nền giấy hơi xanh, tối thì xanh đêm */
+.dkct-theme-evnnpt.bg-slate-50,
+.dkct-theme-evnnpt .bg-slate-50 { background-color: #f3f5fb; }
+:where(.dark) .dkct-theme-evnnpt.dark\:bg-slate-950,
+:where(.dark) .dkct-theme-evnnpt .dark\:bg-slate-950 { background-color: #060a22; }
+
+.dkct-theme-evnnpt .rounded-2xl { border-radius: 10px; }
+.dkct-theme-evnnpt .rounded-xl { border-radius: 8px; }
+.dkct-theme-evnnpt .rounded-lg { border-radius: 6px; }
+
+/* đầu trang: vạch nhận diện trên cùng (đỏ ngắn + xanh), dải sao bên phải */
+.dkct-theme-evnnpt [data-dkct-header] {
+  background-image: linear-gradient(to right, rgb(var(--evn-red)) 0 72px, rgb(var(--chatlan-600)) 72px);
+  background-size: 100% 3px;
+  background-repeat: no-repeat;
+}
+.dkct-theme-evnnpt [data-dkct-title] {
+  color: rgb(var(--chatlan-700));
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+:where(.dark) .dkct-theme-evnnpt [data-dkct-title] { color: #fff; }
+
+.dkct-starfield { display: none; }
+.dkct-theme-evnnpt .dkct-starfield {
+  display: block;
+  color: rgb(var(--chatlan-600));
+  opacity: 0.09;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 45%);
+  mask-image: linear-gradient(to right, transparent, #000 45%);
+}
+:where(.dark) .dkct-theme-evnnpt .dkct-starfield { color: rgb(var(--chatlan-300)); opacity: 0.12; }
+
+/* thanh luồng: bước đang mở gạch chân đỏ */
+.dkct-theme-evnnpt [data-dkct-steps] [aria-current="page"] { box-shadow: inset 0 -2px 0 rgb(var(--evn-red)); }
+
+/* nút chính: xanh EVN, nhấn thì lún nhẹ */
+.dkct-theme-evnnpt .bg-chatlan-600 { box-shadow: 0 1px 0 rgb(var(--chatlan-900) / 0.35); }
+.dkct-theme-evnnpt button.bg-chatlan-600:not(:disabled):active { transform: translateY(1px); box-shadow: none; }
+.dkct-theme-evnnpt button.font-bold, .dkct-theme-evnnpt a.font-bold { font-weight: 600; }
+
+/* dòng danh sách: rê chuột hiện vạch xanh bên trái để thấy đang ở dòng nào */
+.dkct-theme-evnnpt .dkct-row { transition: box-shadow 120ms ease, border-color 120ms ease; }
+.dkct-theme-evnnpt .dkct-row:hover { box-shadow: inset 3px 0 0 rgb(var(--chatlan-600)); }
+.dkct-theme-evnnpt .dkct-row.dkct-row-selected { box-shadow: inset 3px 0 0 rgb(var(--evn-red)); }
+
+/* viền focus bàn phím rõ, theo màu nhận diện */
+.dkct-theme-evnnpt :where(a, button, [role="button"], [role="separator"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid rgb(var(--chatlan-600));
+  outline-offset: 2px;
+}
+:where(.dark) .dkct-theme-evnnpt :where(a, button, [role="button"], [role="separator"], input, select, textarea, summary):focus-visible {
+  outline-color: rgb(var(--chatlan-300));
+}
+
+.dkct-theme-evnnpt ::-webkit-scrollbar-thumb { background: rgb(var(--chatlan-200)); }
+
+/* khung xem trước: tay nắm kéo giãn ở mép trái */
+.dkct-resize-handle { touch-action: none; }
+.dkct-resize-handle::after {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 4px; height: 44px; transform: translate(-50%, -50%);
+  border-radius: 4px; background: rgb(148 163 184 / 0.7); transition: background 120ms, height 120ms;
+}
+.dkct-resize-handle:hover::after, .dkct-resize-handle:focus-visible::after, .dkct-resize-handle[data-dragging="true"]::after {
+  background: rgb(var(--chatlan-600, 0 88 224)); height: 72px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dkct-theme-evnnpt *, .dkct-resize-handle::after { transition: none !important; }
+  .dkct-theme-evnnpt button.bg-chatlan-600:active { transform: none; }
+}

@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
-import { ClipboardCheck, BookUser, Archive, Plus, RefreshCw, Loader2, Zap, Briefcase, Settings } from 'lucide-react';
+import { Plus, RefreshCw, Loader2 } from 'lucide-react';
+import { EvnMark, StarField, IconBusbar, IconMeter, IconFileStack, IconIsolatorOpen, IconHelmet } from './components/powerIcons.jsx';
 import { useDkct } from './context.jsx';
 import { TabButton, btnPrimary, btnGhost } from './components/ui.jsx';
 import RegistrationList from './components/RegistrationList.jsx';
@@ -9,7 +10,7 @@ import PlanList from './components/PlanList.jsx';
 import ConfirmationList from './components/ConfirmationList.jsx';
 import WorkList from './components/WorkList.jsx';
 import WorkflowBar, { WorkflowMini } from './components/WorkflowBar.jsx';
-import { APP_NAME, linkedIds } from './lib/workflow.js';
+import { APP_NAME, linkedIds, WORKFLOW_STEPS } from './lib/workflow.js';
 import { defaultWorkload, planFromSurvey, registrationFromPlan } from './lib/plan.js';
 import { confirmationFromPlan } from './lib/confirmation.js';
 import { fromSaved } from './lib/form.js';
@@ -44,6 +45,19 @@ const EMPTY_WORK = {
   leader: null
 };
 
+// chữ Be Vietnam Pro cho giao diện EVNNPT: nạp một lần khi cần (mất mạng thì dùng phông hệ thống)
+const FONT_URL = 'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap';
+function useBrandFont(enabled) {
+  useEffect(() => {
+    if (!enabled || typeof document === 'undefined' || document.querySelector('link[data-dkct-font]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = FONT_URL;
+    link.dataset.dkctFont = '1';
+    document.head.appendChild(link);
+  }, [enabled]);
+}
+
 const PageLoading = () => (
   <div className="flex items-center gap-2 p-4 text-sm text-slate-500" role="status"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Đang tải…</div>
 );
@@ -52,9 +66,10 @@ export default function DkctApp() {
   const { api, notify } = useDkct();
   // tab đang mở, gốc luồng (Lịch / Công việc) nhớ theo trình duyệt: tải lại trang vẫn ở chỗ cũ
   const [tab, setTab] = usePersistentState('dkct.tab', 'outages', TABS);
-  // giao diện: Mặc định (ChatLan) | Chuyên nghiệp — nhớ theo trình duyệt
+  // giao diện: EVNNPT (mặc định) | ChatLan | Chuyên nghiệp — nhớ theo trình duyệt
   const [theme, setTheme] = useState(() => loadTheme(typeof localStorage === 'undefined' ? null : localStorage));
   const chooseTheme = (id) => { setTheme(id); saveTheme(typeof localStorage === 'undefined' ? null : localStorage, id); };
+  useBrandFont(theme === 'evnnpt');
   const [meta, setMeta] = useState(null);
   const [catalogs, setCatalogs] = useState({ personnel: [], stations: [], substations: [], drawings: [], duties: [], risks: [] });
   const [editor, setEditor] = useState(null); // { initial, registration, outage }
@@ -264,16 +279,32 @@ export default function DkctApp() {
     confirmations: { label: 'Lập giấy xác nhận', onClick: openNewConfirmation }
   };
   const primary = permissions.canCreate ? PRIMARY[tab] : null;
+  // phím tắt: Alt+1…5 mở bước của luồng, Alt+N bấm nút chính (lập mới) — chỉ khi chưa mở biểu mẫu nào
+  const anyEditor = Boolean(editor || surveyEditor || planEditor || confirmationEditor || workEditor);
+  const shortcut = React.useRef(null);
+  shortcut.current = { anyEditor, primary, ready: Boolean(meta) };
+  useEffect(() => {
+    const onKey = (e) => {
+      const cur = shortcut.current;
+      if (!e.altKey || e.ctrlKey || e.metaKey || cur.anyEditor) return;
+      const step = WORKFLOW_STEPS[Number(e.key) - 1];
+      if (step) { e.preventDefault(); setTab(step.tab); return; }
+      if ((e.key === 'n' || e.key === 'N') && cur.primary && cur.ready) { e.preventDefault(); cur.primary.onClick(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const linked = linkedIds(chain);
   const pick = (type) => ({ selectedId: selection?.type === type ? selection.id : null, linked, onTrack: (item) => track(type, item) });
   return (
     <div className={`h-full flex flex-col bg-slate-50 dark:bg-slate-950 ${themeClass(theme)}`} data-dkct-theme={theme}>
-      <div data-dkct-header className="px-4 pt-4 pb-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+      <div data-dkct-header className="relative isolate px-4 pt-4 pb-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+        <div className="dkct-starfield pointer-events-none absolute top-0 right-0 h-16 w-[min(360px,40%)] -z-10 overflow-hidden" aria-hidden="true">
+          <StarField className="w-full h-full" />
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-chatlan-50 dark:bg-chatlan-900/50 text-chatlan-600 dark:text-chatlan-400 flex items-center justify-center">
-              <ClipboardCheck className="w-5 h-5" />
-            </div>
+            <EvnMark className="w-10 h-10 flex-shrink-0" />
             <div>
               <h1 data-dkct-title className="text-base font-bold text-slate-900 dark:text-white">{APP_NAME}</h1>
               <WorkflowMini tab={tab} onTab={setTab} chain={chain} selection={selection} />
@@ -286,7 +317,7 @@ export default function DkctApp() {
               </span>
             )}
             {primary && (
-              <button type="button" className={btnPrimary} onClick={primary.onClick} disabled={!meta}><Plus className="w-4 h-4" /> {primary.label}</button>
+              <button type="button" className={btnPrimary} onClick={primary.onClick} disabled={!meta} title={`${primary.label} (Alt+N)`} aria-keyshortcuts="Alt+N"><Plus className="w-4 h-4" /> {primary.label}</button>
             )}
             <HelpAboutButtons tab={tab} />
             <PushButton />
@@ -304,9 +335,9 @@ export default function DkctApp() {
         </div>
         <WorkflowBar tab={tab} onTab={setTab} chain={chain} selection={selection} onClearSelection={() => setSelection(null)}
           extraTabs={<>
-            <TabButton icon={BookUser} active={tab === 'catalogs'} onClick={() => setTab('catalogs')}>Danh mục</TabButton>
-            {permissions.isAdmin && <TabButton icon={Settings} active={tab === 'settings'} onClick={() => setTab('settings')}>Cài đặt</TabButton>}
-            <TabButton icon={Archive} active={tab === 'legacy'} onClick={() => setTab('legacy')}>Giấy cũ</TabButton>
+            <TabButton icon={IconBusbar} active={tab === 'catalogs'} onClick={() => setTab('catalogs')}>Danh mục</TabButton>
+            {permissions.isAdmin && <TabButton icon={IconMeter} active={tab === 'settings'} onClick={() => setTab('settings')}>Cài đặt</TabButton>}
+            <TabButton icon={IconFileStack} active={tab === 'legacy'} onClick={() => setTab('legacy')}>Giấy cũ</TabButton>
           </>} />
       </div>
 
@@ -323,8 +354,8 @@ export default function DkctApp() {
         {tab === 'plans' && <PlanList {...pick('plan')} reloadKey={reloadKey} onOpen={openPlan} canCreate={permissions.canCreate} onCreateRegistration={registrationFromPlanItem} />}
         {tab === 'outages' && (
           <div className="mb-3 inline-flex p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80" role="group" aria-label="Gốc của luồng">
-            <TabButton icon={Zap} active={firstView === 'outages'} onClick={() => setFirstView('outages')}>Lịch cắt điện</TabButton>
-            <TabButton icon={Briefcase} active={firstView === 'works'} onClick={() => setFirstView('works')}>Công việc không có lịch cắt điện</TabButton>
+            <TabButton icon={IconIsolatorOpen} active={firstView === 'outages'} onClick={() => setFirstView('outages')}>Lịch cắt điện</TabButton>
+            <TabButton icon={IconHelmet} active={firstView === 'works'} onClick={() => setFirstView('works')}>Công việc không có lịch cắt điện</TabButton>
           </div>
         )}
         {tab === 'outages' && firstView === 'outages' && (
