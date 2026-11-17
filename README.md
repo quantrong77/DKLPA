@@ -266,7 +266,7 @@ Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Su
 
 Repo có `Dockerfile` ở thư mục gốc để Koyeb build giao diện và Express server trong cùng một service; dữ liệu vẫn nằm trong Supabase.
 
-1. Koyeb → *Create Web Service* → *GitHub* → chọn repo `quantrong77/DKLPA`, nhánh `main`, builder *Dockerfile* (ở thư mục gốc).
+1. Koyeb → *Create Web Service* → *GitHub* → chọn repo `quantrong77/DKLPA`, nhánh `deploy/koyeb`, builder *Dockerfile* (ở thư mục gốc). Nhánh `main` tiếp tục dùng cho Render.
 2. Chọn instance `free`, vùng Frankfurt hoặc Washington, D.C.; expose HTTP port `8080`, route `/` tới port đó. Đặt health check HTTP `GET /healthz`.
 3. Thêm biến môi trường `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS`, `DKCT_SECRET_KEY`, `NODE_ENV=production`, `PORT=8080`.
 4. Dùng **đúng giá trị `DKCT_SECRET_KEY` cũ trên Render** để đọc lại mật khẩu lịch cắt điện đã mã hóa trong Supabase. Không cần gửi bí mật vào GitHub hoặc commit file `.env`.
