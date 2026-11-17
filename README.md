@@ -247,9 +247,9 @@ Mẫu Giấy xác nhận: thay `templates/template_gxn.source.docx`, chạy `pyt
 `node scripts/render-confirmation-sample.js`. Script bỏ các dòng trống dưới tên người ký (mẫu gốc tràn sang trang 2)
 và nới ô chữ ký để dòng "địa danh, ngày … tháng … năm …" nằm trên một dòng.
 
-## Chạy độc lập trên Supabase + Render (`standalone/`)
+## Chạy độc lập trên Supabase + Render hoặc Koyeb (`standalone/`)
 
-Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Supabase, server Express chạy trên Render (gói miễn phí).
+Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Supabase; giao diện React và server Express chạy chung trên Render hoặc Koyeb.
 
 - Người mới **tự đăng ký**, nhưng chưa thuộc tổ nào nên chưa xem được gì (máy chủ trả 403 cho mọi `/api/dkct`); admin vào **Quản trị** để tạo tổ (tên + viết tắt dùng trong số giấy), xếp người vào tổ và cấp **Trưởng/phó tổ** (được lập, sửa hồ sơ và danh mục).
 - Email trong `ADMIN_EMAILS` tự là admin (khi email đã xác nhận). Chỉ ghi email **đã đăng ký** vào `ADMIN_EMAILS`: đang tắt
@@ -261,6 +261,18 @@ Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Su
 - Lấy: Project URL, khóa **anon public** (*Project Settings → API Keys*), chuỗi kết nối **Transaction pooler** (nút *Connect*, cổng 6543).
 
 **2. Render** (render.com): *New → Blueprint* → repo DKLPA (đọc `render.yaml`), điền `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS`. Bảng `dkct_*` được tạo khi server khởi động.
+
+### Chuyển sang Koyeb Free
+
+Repo có `Dockerfile` ở thư mục gốc để Koyeb build giao diện và Express server trong cùng một service; dữ liệu vẫn nằm trong Supabase.
+
+1. Koyeb → *Create Web Service* → *GitHub* → chọn repo `quantrong77/DKLPA`, nhánh `main`, builder *Dockerfile* (ở thư mục gốc).
+2. Chọn instance `free`, vùng Frankfurt hoặc Washington, D.C.; expose HTTP port `8080`, route `/` tới port đó. Đặt health check HTTP `GET /healthz`.
+3. Thêm biến môi trường `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ADMIN_EMAILS`, `DKCT_SECRET_KEY`, `NODE_ENV=production`, `PORT=8080`.
+4. Dùng **đúng giá trị `DKCT_SECRET_KEY` cũ trên Render** để đọc lại mật khẩu lịch cắt điện đã mã hóa trong Supabase. Không cần gửi bí mật vào GitHub hoặc commit file `.env`.
+5. Sau khi Koyeb deploy thành công, mở URL mới và xác nhận đăng nhập, tải danh sách, xuất Word. Người dùng đăng nhập lại và bật lại thông báo đẩy trên URL mới; nếu dùng email-confirm links thì thêm URL Koyeb vào Supabase Auth → URL Configuration → Redirect URLs.
+
+Koyeb Free chỉ cho một Web Service mỗi tổ chức, 512 MB RAM, 0,1 vCPU và vùng Frankfurt/Washington; service scale về 0 sau một giờ không có truy cập. Koyeb lưu ý gói này dành cho thử nghiệm/hobby, không khuyến nghị cho production. Giữ service Render cũ đến khi đã kiểm tra xong URL mới.
 
 **Bảo mật khi chạy thật (production):**
 - **Bắt buộc**: khóa REST của Supabase cho các bảng `dkct_*`. Supabase mở mọi bảng trong schema `public` qua
@@ -282,13 +294,13 @@ Không cần ChatLan: Postgres và đăng nhập (email + mật khẩu) của Su
 
 Gói miễn phí: Render ngủ sau 15 phút không dùng (lần mở đầu chờ ~1 phút); Supabase tạm dừng dự án sau 7 ngày không có truy cập (bấm *Restore* trên trang Supabase).
 
-**Tự tải lịch cắt điện trên Render** (không cần ChatLan, không cần máy ở cơ quan bật):
-1. Render → service → *Environment*: có `DKCT_SECRET_KEY` (blueprint tự tạo; service tạo trước đó thì thêm tay một chuỗi ngẫu
+**Tự tải lịch cắt điện trên Render hoặc Koyeb** (không cần ChatLan, không cần máy ở cơ quan bật):
+1. Host → service → *Environment*: có `DKCT_SECRET_KEY` (Render blueprint tự tạo; nếu chuyển sang host mới thì giữ nguyên giá trị cũ; service tạo trước đó thì thêm tay một chuỗi ngẫu
    nhiên dài) để admin lưu được mật khẩu trang lịch trên giao diện.
 2. Mở ứng dụng bằng tài khoản admin → tab Lịch cắt điện → **Cài đặt tải lịch**: tên đăng nhập, mật khẩu, giờ tải
-   (vd `09:00, 15:00`) → Lưu → **Thử kết nối** (máy chủ Render phải vào được trang lịch của Công ty).
-3. Render ngủ thì bộ hẹn giờ không chạy: tạo lịch gọi đánh thức miễn phí ở https://cron-job.org — mỗi giờ tải một lịch
-   gọi `https://dkct.onrender.com/healthz` đúng giờ đó (vd 09:00 và 15:00, múi giờ Asia/Ho_Chi_Minh). Máy chủ thức dậy
+   (vd `09:00, 15:00`) → Lưu → **Thử kết nối** (máy chủ phải vào được trang lịch của Công ty).
+3. Host Free có thể scale về 0 nên bộ hẹn giờ tạm dừng: tạo lịch gọi đánh thức miễn phí ở https://cron-job.org — mỗi giờ tải một lịch
+   gọi `https://dkct.onrender.com/healthz` (hoặc URL Koyeb của service) đúng giờ đó (vd 09:00 và 15:00, múi giờ Asia/Ho_Chi_Minh). Máy chủ thức dậy
    (~1 phút) thấy lỡ giờ hẹn thì **tải bù** ngay (trong vòng 2 giờ sau giờ hẹn); mỗi giờ hẹn mỗi ngày chỉ tải một lần,
    kể cả khi bản chạy ở máy dùng chung CSDL Supabase.
 
