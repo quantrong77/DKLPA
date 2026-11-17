@@ -1,5 +1,11 @@
 # dkct-module — Chuẩn bị công tác cho ChatLan
 
+## Triển khai bản độc lập
+
+- Oracle Cloud: xem [ORACLE_CLOUD.md](ORACLE_CLOUD.md), triển khai bằng nhánh `deploy/oracle-cloud`.
+- Render: tiếp tục dùng nhánh `main` và cấu hình `render.yaml`.
+- Koyeb: hướng dẫn riêng có trong nhánh `deploy/koyeb`.
+
 Module gồm phần server (Express router) và giao diện (React/Tailwind), gắn vào ChatLan. Giao diện là một luồng công việc 5 bước:
 **Lịch cắt điện (hoặc Công việc không có lịch cắt điện) → Khảo sát → Phương án → Giấy ĐKCT → Giấy xác nhận**. Bấm biểu tượng luồng ở một hồ sơ (hoặc mở hồ sơ) để theo dõi:
 thanh luồng cho biết bước nào đã có hồ sơ, bước nào là bước tiếp theo, và tô các hồ sơ cùng luồng trong từng danh sách.

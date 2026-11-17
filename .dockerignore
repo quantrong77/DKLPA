@@ -1,0 +1,18 @@
+.git
+.codebase-memory
+node_modules
+**/node_modules
+coverage
+scripts
+tests
+README.md
+ORACLE_CLOUD.md
+Caddyfile.oracle
+compose.oracle.yaml
+render.yaml
+standalone/dist
+backgroup PTC3.jpg
+.env
+.env.*
+**/.env
+**/.env.*
