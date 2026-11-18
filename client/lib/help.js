@@ -26,7 +26,7 @@ export const HELP_SECTIONS = [
       ['Phím tắt', 'Trong biểu mẫu: Ctrl+S lưu, Esc đóng (hỏi lại nếu chưa lưu); ảnh khảo sát, sơ đồ: Ctrl+V dán ảnh. Nhãn "● Chưa lưu" ở đầu biểu mẫu nhắc còn thay đổi chưa lưu; đóng tab trình duyệt khi chưa lưu thì trình duyệt hỏi lại.'],
       ['Nhớ chỗ đang xem', 'Tải lại trang vẫn mở đúng tab, đúng mục danh mục / cài đặt đang xem.'],
       ['Giao diện', 'Nút bảng màu ở đầu trang: chọn "Mặc định" hoặc "Chuyên nghiệp"; trình duyệt ghi nhớ lựa chọn.'],
-      ['Quyền', 'Trưởng/phó đơn vị, trưởng phòng, admin lập và sửa hồ sơ của đơn vị; thành viên xem. Dọn lịch, sửa thư viện mạch dòng và tab "Cài đặt" (khu vực, trạm của đơn vị, tải lịch tự động, mẫu văn bản) chỉ admin.']
+      ['Quyền', 'Trưởng/phó đơn vị, trưởng phòng, admin lập và sửa hồ sơ của đơn vị; thành viên xem. Dọn lịch, sửa thư viện mạch dòng và Cài đặt (khu vực, trạm của đơn vị, tải lịch tự động, mẫu văn bản) chỉ admin. Bản chạy riêng: người dùng, đơn vị và Cài đặt nằm ở trang Quản trị (nút trên thanh tiêu đề); trong ChatLan: tab "Cài đặt".']
     ]
   },
   {
@@ -92,7 +92,7 @@ export const HELP_SECTIONS = [
     ]
   },
   {
-    id: 'settings', title: 'Cài đặt (admin)',
+    id: 'settings', title: 'Cài đặt (admin; bản chạy riêng: Quản trị → Cài đặt)',
     items: [
       ['Khu vực, trạm của đơn vị', 'Chọn khu vực TTĐ mỗi đơn vị phụ trách: dùng cho "Chỉ đơn vị của tôi" và để báo lịch thay đổi cho trưởng/phó đơn vị. Bấm sửa một đơn vị để tích đúng các trạm đơn vị phụ trách (gom theo khu vực, tích cả khu vực một lần): đã tích trạm thì "Chỉ đơn vị của tôi" chỉ hiện lịch các trạm đó.'],
       ['Tải lịch tự động', 'Tên đăng nhập, mật khẩu trang lịch cắt điện của Công ty (mật khẩu lưu mã hóa, không hiện lại), giờ tự tải hằng ngày (vd 07:00, 15:00; để trống = tắt) và số ngày tới. "Thử kết nối" kiểm tra đăng nhập. Lưu là có hiệu lực ngay; ô để trống dùng giá trị trong .env của máy chủ.'],

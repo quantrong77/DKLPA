@@ -9,29 +9,41 @@ import TestPlanSettingsPanel from './TestPlanSettingsPanel.jsx';
 import { TabButton } from './ui.jsx';
 import { usePersistentState } from '../lib/persist.js';
 
-const TABS = [
-  { id: 'teamAreas', label: 'Khu vực, trạm của đơn vị', icon: MapPinned },
-  { id: 'outageSettings', label: 'Tải lịch tự động', icon: CloudDownload },
-  { id: 'zalo', label: 'Thông báo Zalo', icon: MessageCircle },
-  { id: 'templates', label: 'Mẫu văn bản', icon: FileText },
-  { id: 'testPlan', label: 'Kế hoạch thí nghiệm', icon: CalendarRange },
-  { id: 'orgNames', label: 'Tên đơn vị, chức danh', icon: Building2 }
+/**
+ * Các mục cài đặt hệ thống (chỉ admin). Dùng chung: tab "Cài đặt" của module (khi chạy trong ChatLan)
+ * và trang Quản trị của bản độc lập (nhóm "Cài đặt"). Cần <DkctProvider> bao ngoài.
+ */
+export const SETTINGS_SECTIONS = [
+  { id: 'teamAreas', label: 'Khu vực, trạm của đơn vị', icon: MapPinned,
+    description: 'Trạm, khu vực từng đơn vị trực tiếp phụ trách: dùng để lọc lịch cắt điện và chọn người nhận thông báo.',
+    selfDescribed: true, render: () => <TeamAreasPanel canManage /> },
+  { id: 'outageSettings', label: 'Tải lịch tự động', icon: CloudDownload,
+    description: 'Tài khoản trang lịch cắt điện của Công ty và giờ máy chủ tự tải lịch mỗi ngày.',
+    selfDescribed: true, render: () => <OutageSettingsPanel /> },
+  { id: 'zalo', label: 'Thông báo Zalo', icon: MessageCircle,
+    description: 'Token Zalo Bot và người nhận tin khi lịch cắt điện thay đổi.',
+    selfDescribed: true, render: () => <ZaloSettingsPanel /> },
+  { id: 'templates', label: 'Mẫu văn bản', icon: FileText,
+    description: 'Mẫu Word dùng để xuất biên bản khảo sát, phương án, giấy đăng ký và giấy xác nhận.',
+    selfDescribed: true, render: () => <TemplatesPanel canManage /> },
+  { id: 'testPlan', label: 'Kế hoạch thí nghiệm', icon: CalendarRange,
+    description: 'Kế hoạch thí nghiệm từng năm (Google Sheet hoặc .xlsx): lấy thiết bị vào phương án.',
+    selfDescribed: true, render: () => <TestPlanSettingsPanel /> },
+  { id: 'orgNames', label: 'Tên đơn vị, chức danh', icon: Building2,
+    description: 'Tên công ty, đội in ở đầu văn bản; tên gọi đơn vị trực tiếp và chức danh người ký.',
+    selfDescribed: true, render: () => <OrgNamesPanel /> }
 ];
 
-/** Cài đặt hệ thống (chỉ admin): khu vực / trạm từng tổ phụ trách, tải lịch cắt điện tự động, thông báo Zalo, mẫu Word, tên đơn vị. */
+/** Tab "Cài đặt" của module (chỉ admin, khi nơi nhúng không có trang quản trị riêng). */
 export default function SettingsPanel() {
-  const [tab, setTab] = usePersistentState('dkct.settingsTab', 'teamAreas', TABS.map(t => t.id));
+  const [tab, setTab] = usePersistentState('dkct.settingsTab', 'teamAreas', SETTINGS_SECTIONS.map(t => t.id));
+  const current = SETTINGS_SECTIONS.find(t => t.id === tab) || SETTINGS_SECTIONS[0];
   return (
     <div className="space-y-3">
       <div className="flex gap-2 overflow-x-auto" role="group" aria-label="Mục cài đặt">
-        {TABS.map(t => <TabButton key={t.id} icon={t.icon} active={tab === t.id} onClick={() => setTab(t.id)}>{t.label}</TabButton>)}
+        {SETTINGS_SECTIONS.map(t => <TabButton key={t.id} icon={t.icon} active={tab === t.id} onClick={() => setTab(t.id)}>{t.label}</TabButton>)}
       </div>
-      {tab === 'teamAreas' && <TeamAreasPanel canManage />}
-      {tab === 'outageSettings' && <OutageSettingsPanel />}
-      {tab === 'zalo' && <ZaloSettingsPanel />}
-      {tab === 'templates' && <TemplatesPanel canManage />}
-      {tab === 'orgNames' && <OrgNamesPanel />}
-      {tab === 'testPlan' && <TestPlanSettingsPanel />}
+      {current.render()}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 import { EvnMark, StarField, IconBusbar, IconMeter, IconFileStack, IconIsolatorOpen, IconHelmet } from './components/powerIcons.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { useBrandFont } from './lib/brandFont.js';
 import { useDkct } from './context.jsx';
 import { TabButton, btnPrimary, btnGhost } from './components/ui.jsx';
 import RegistrationList from './components/RegistrationList.jsx';
@@ -46,25 +47,15 @@ const EMPTY_WORK = {
   leader: null
 };
 
-// chữ Be Vietnam Pro cho giao diện EVNNPT: nạp một lần khi cần (mất mạng thì dùng phông hệ thống)
-const FONT_URL = 'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap';
-function useBrandFont(enabled) {
-  useEffect(() => {
-    if (!enabled || typeof document === 'undefined' || document.querySelector('link[data-dkct-font]')) return;
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = FONT_URL;
-    link.dataset.dkctFont = '1';
-    document.head.appendChild(link);
-  }, [enabled]);
-}
-
 const PageLoading = () => (
   <div className="flex items-center gap-2 p-4 text-sm text-slate-500" role="status"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Đang tải…</div>
 );
 
 export default function DkctApp() {
-  const { api, notify } = useDkct();
+  const { api, notify, features } = useDkct();
+  // nơi nhúng quyết định: bản độc lập có trang Quản trị riêng (chứa Cài đặt) và không có giấy của module cũ
+  const showSettingsTab = features?.settingsTab !== false;
+  const showLegacy = features?.legacy !== false;
   // tab đang mở, gốc luồng (Lịch / Công việc) nhớ theo trình duyệt: tải lại trang vẫn ở chỗ cũ
   const [tab, setTab] = usePersistentState('dkct.tab', 'outages', TABS);
   // giao diện: EVNNPT (mặc định) | ChatLan | Chuyên nghiệp — nhớ theo trình duyệt
@@ -269,8 +260,10 @@ export default function DkctApp() {
   });
 
   const permissions = meta?.permissions || {};
-  // trang Cài đặt chỉ admin; quyền đổi (đăng nhập tài khoản khác) thì quay về Lịch cắt điện
-  useEffect(() => { if (meta && tab === 'settings' && !permissions.isAdmin) setTab('outages'); }, [meta, tab, permissions.isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  // trang Cài đặt chỉ admin (và chỉ khi nơi nhúng không đưa nó vào trang quản trị riêng); Giấy cũ chỉ khi nơi nhúng có:
+  // tab không còn hợp lệ (đổi tài khoản, bản cũ nhớ tab) thì quay về Lịch cắt điện
+  const tabHidden = (tab === 'settings' && (!showSettingsTab || (meta && !permissions.isAdmin))) || (tab === 'legacy' && !showLegacy);
+  useEffect(() => { if (tabHidden) setTab('outages'); }, [tabHidden]); // eslint-disable-line react-hooks/exhaustive-deps
   // nút chính đầu trang theo tab; Danh mục, Cài đặt, Giấy cũ không có
   const PRIMARY = {
     outages: firstView === 'works' ? { label: 'Thêm công việc', onClick: openNewWork } : { label: 'Lập giấy mới', onClick: openNew },
@@ -342,8 +335,8 @@ export default function DkctApp() {
         <WorkflowBar tab={tab} onTab={setTab} chain={chain} selection={selection} onClearSelection={() => setSelection(null)}
           extraTabs={<>
             <TabButton icon={IconBusbar} active={tab === 'catalogs'} onClick={() => setTab('catalogs')}>Danh mục</TabButton>
-            {permissions.isAdmin && <TabButton icon={IconMeter} active={tab === 'settings'} onClick={() => setTab('settings')}>Cài đặt</TabButton>}
-            <TabButton icon={IconFileStack} active={tab === 'legacy'} onClick={() => setTab('legacy')}>Giấy cũ</TabButton>
+            {showSettingsTab && permissions.isAdmin && <TabButton icon={IconMeter} active={tab === 'settings'} onClick={() => setTab('settings')}>Cài đặt</TabButton>}
+            {showLegacy && <TabButton icon={IconFileStack} active={tab === 'legacy'} onClick={() => setTab('legacy')}>Giấy cũ</TabButton>}
           </>} />
       </div>
 
@@ -375,8 +368,8 @@ export default function DkctApp() {
         )}
         <Suspense fallback={<PageLoading />}>
         {tab === 'catalogs' && <CatalogPanel catalogs={catalogs} canManage={permissions.canManageCatalog} isAdmin={permissions.isAdmin} onChanged={loadCatalog} />}
-        {tab === 'settings' && permissions.isAdmin && <SettingsPanel />}
-        {tab === 'legacy' && <LegacyPanel />}
+        {tab === 'settings' && showSettingsTab && permissions.isAdmin && <SettingsPanel />}
+        {tab === 'legacy' && showLegacy && <LegacyPanel />}
         </Suspense>
         </ErrorBoundary>
       </div>

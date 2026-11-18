@@ -85,7 +85,7 @@ function RowEditor({ cfg, value, onChange, catalogs }) {
 }
 
 /** Quản lý các danh mục; thành viên thường chỉ xem. Thư viện mạch dòng: tạm thời chỉ admin sửa.
- * Cài đặt hệ thống (khu vực của tổ, tải lịch tự động, mẫu văn bản) ở tab "Cài đặt" của admin. */
+ * Cài đặt hệ thống (khu vực của tổ, tải lịch tự động, mẫu văn bản): tab "Cài đặt" của admin (ChatLan) hoặc trang Quản trị (bản độc lập). */
 export default function CatalogPanel({ catalogs, canManage, isAdmin, onChanged }) {
   const { api, notify, confirmAction } = useDkct();
   const [tab, setTab] = usePersistentState('dkct.catalogTab', 'personnel', [...Object.keys(CATALOGS), 'ctLibrary']);

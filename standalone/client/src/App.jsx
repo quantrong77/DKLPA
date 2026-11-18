@@ -10,10 +10,34 @@ import FeedbackHost from './ui/FeedbackHost.jsx';
 import { notify, confirmAction } from './ui/feedback.js';
 import { initSupabase, getSupabase, apiFetch, appApi, downloadAuthenticatedFile } from './api.js';
 import Login from './Login.jsx';
-import AdminPanel from './AdminPanel.jsx';
+import AdminPanel, { DEFAULT_ADMIN_SECTION, isPending } from './AdminPanel.jsx';
 
-// Dịch vụ cho module ĐKCT, giống ChatLan cung cấp (xem ../../client/index.jsx)
-const services = { apiFetch, downloadAuthenticatedFile, notify, confirmAction, ModalOverlay, EmptyState };
+// Dịch vụ cho module ĐKCT, giống ChatLan cung cấp (xem ../../client/index.jsx).
+// features: bản độc lập đưa Cài đặt vào trang Quản trị; không có giấy của module ĐKCT cũ trong ChatLan nên ẩn Giấy cũ.
+const services = { apiFetch, downloadAuthenticatedFile, notify, confirmAction, ModalOverlay, EmptyState, features: { settingsTab: false, legacy: false } };
+
+// trang đang mở theo địa chỉ: #quan-tri/<mục> là trang Quản trị, còn lại là trang chính (nút Back của trình duyệt dùng được)
+const ADMIN_HASH = '#quan-tri';
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const on = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  const go = useCallback((next) => {
+    if (next) { window.location.hash = next; return; }
+    window.history.pushState(null, '', window.location.pathname + window.location.search);
+    setHash('');
+  }, []);
+  const admin = hash === ADMIN_HASH || hash.startsWith(`${ADMIN_HASH}/`);
+  const section = admin ? decodeURIComponent(hash.slice(ADMIN_HASH.length + 1)) || DEFAULT_ADMIN_SECTION : null;
+  return { view: admin ? 'admin' : 'dkct', section, go };
+}
+// mục Quản trị mở gần nhất: lần sau bấm "Quản trị" mở lại đúng mục đó
+const ADMIN_SECTION_KEY = 'dkct.admin.section';
+const lastAdminSection = () => { try { return localStorage.getItem(ADMIN_SECTION_KEY) || DEFAULT_ADMIN_SECTION; } catch { return DEFAULT_ADMIN_SECTION; } };
+const rememberAdminSection = (slug) => { try { localStorage.setItem(ADMIN_SECTION_KEY, slug); } catch { /* trình duyệt chặn bộ nhớ */ } };
 
 /** Hồ sơ: họ tên, chức danh, điện thoại dùng cho mục "người đại diện" trên giấy. */
 function ProfileDialog({ user, onClose, onSaved }) {
@@ -54,7 +78,8 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
-  const [view, setView] = useState('dkct'); // dkct | admin
+  const { view, section, go } = useHashRoute();
+  const [pending, setPending] = useState(0); // số người chờ xếp đơn vị: huy hiệu ở nút Quản trị
   const [profileOpen, setProfileOpen] = useState(false);
   const [bootError, setBootError] = useState('');
   // bản độc lập: thanh trên cùng đổi theo giao diện chọn trong module
@@ -80,6 +105,13 @@ export default function App() {
   }, []);
   useEffect(() => { if (session) loadMe(); else setMe(null); }, [session?.user?.id, loadMe]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const isAdminUser = me?.role === 'admin';
+  const loadPending = useCallback(async () => {
+    try { setPending((await appApi('/users')).items.filter(isPending).length); } catch { /* chỉ là huy hiệu, lỗi thì bỏ qua */ }
+  }, []);
+  useEffect(() => { if (isAdminUser) loadPending(); else setPending(0); }, [isAdminUser, loadPending]);
+  const onAdminChanged = useCallback(() => { loadMe(); loadPending(); }, [loadMe, loadPending]);
+
   const logout = useCallback(() => getSupabase()?.auth.signOut(), []);
   useEffect(() => {
     window.addEventListener('dkct:unauthorized', logout);
@@ -101,14 +133,20 @@ export default function App() {
           <span className="font-bold text-sm flex-1 truncate">{view === 'dkct' && !waiting ? (me.department || 'EVNNPT') : `Chuẩn bị công tác${me.department ? ` · ${me.department}` : ''}`}</span>
           {isAdmin && (
             view === 'admin' ? (
-              <button type="button" onClick={() => setView('dkct')} title="Về trang chính"
+              <button type="button" onClick={() => go('')} title="Về trang chính"
                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 bg-white text-chatlan-700">
-                <House className="w-4 h-4" /> Trang chính
+                <House className="w-4 h-4" aria-hidden="true" /> Trang chính
               </button>
             ) : (
-              <button type="button" onClick={() => setView('admin')}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-white/15">
-                <IconMeter className="w-4 h-4" /> Quản trị
+              <button type="button" onClick={() => go(`${ADMIN_HASH}/${pending ? DEFAULT_ADMIN_SECTION : lastAdminSection()}`)}
+                title={pending ? `Quản trị: ${pending} người chờ xếp đơn vị` : 'Quản trị: người dùng, đơn vị, cài đặt'}
+                className="relative px-2.5 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-white/15">
+                <IconMeter className="w-4 h-4" /> <span className="sr-only sm:not-sr-only">Quản trị</span>
+                {pending > 0 && (
+                  <span className="min-w-[1.125rem] px-1 rounded-full bg-amber-400 text-[11px] font-bold leading-[1.125rem] text-slate-900 text-center">
+                    {pending}<span className="sr-only"> người chờ xếp đơn vị</span>
+                  </span>
+                )}
               </button>
             )
           )}
@@ -122,7 +160,10 @@ export default function App() {
           </button>
         </header>
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {view === 'admin' && isAdmin ? <AdminPanel me={me} onChanged={loadMe} onBack={() => setView('dkct')} />
+          {view === 'admin' && isAdmin ? (
+            <AdminPanel me={me} section={section} services={services} onChanged={onAdminChanged}
+              onSection={(slug) => { rememberAdminSection(slug); go(`${ADMIN_HASH}/${slug}`); }} />
+          )
             : waiting ? (
               <EmptyState icon={Hourglass} title="Đang chờ quản trị viên xếp đơn vị"
                 description="Tài khoản đã tạo. Khi quản trị viên xếp bạn vào đơn vị, tải lại trang để bắt đầu dùng.">
