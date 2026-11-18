@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 import { EvnMark, StarField, IconBusbar, IconMeter, IconFileStack, IconIsolatorOpen, IconHelmet } from './components/powerIcons.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { useDkct } from './context.jsx';
 import { TabButton, btnPrimary, btnGhost } from './components/ui.jsx';
 import RegistrationList from './components/RegistrationList.jsx';
@@ -281,6 +282,11 @@ export default function DkctApp() {
   const primary = permissions.canCreate ? PRIMARY[tab] : null;
   // phím tắt: Alt+1…5 mở bước của luồng, Alt+N bấm nút chính (lập mới) — chỉ khi chưa mở biểu mẫu nào
   const anyEditor = Boolean(editor || surveyEditor || planEditor || confirmationEditor || workEditor);
+  // trình soạn gặp lỗi khi vẽ: "Thử lại" đóng tất cả trình soạn để quay về danh sách
+  const closeEditors = useCallback(() => {
+    setEditor(null); setSurveyEditor(null); setPlanEditor(null); setConfirmationEditor(null); setWorkEditor(null);
+  }, []);
+
   const shortcut = React.useRef(null);
   shortcut.current = { anyEditor, primary, ready: Boolean(meta) };
   useEffect(() => {
@@ -342,6 +348,7 @@ export default function DkctApp() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4">
+        <ErrorBoundary resetKeys={[tab, firstView, reloadKey]}>
         {tab === 'registrations' && (
           <RegistrationList {...pick('registration')} reloadKey={reloadKey} onOpen={openExisting} numbering={meta?.numbering}
             canCreate={permissions.canCreate} onNumberingChanged={loadMeta} onCreateConfirmation={openConfirmationFromRegistration} />
@@ -371,8 +378,10 @@ export default function DkctApp() {
         {tab === 'settings' && permissions.isAdmin && <SettingsPanel />}
         {tab === 'legacy' && <LegacyPanel />}
         </Suspense>
+        </ErrorBoundary>
       </div>
 
+      <ErrorBoundary variant="overlay" onReset={closeEditors}>
       <Suspense fallback={null}>
       {editor && (
         <RegistrationEditor
@@ -420,6 +429,7 @@ export default function DkctApp() {
         />
       )}
       </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }
