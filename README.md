@@ -297,6 +297,15 @@ Chuyển dữ liệu đang dùng trong ChatLan sang Supabase (chạy ở máy c�
 
 Chạy ở máy: chép `standalone/.env.example` thành `standalone/.env`, rồi `npm ci && cd standalone && npm ci && npm run build && npm start` (http://localhost:3000). Test: `npm test` trong `standalone/`; toàn bộ test module trên Postgres: `npm run test:pg`.
 
+**Chạy ở máy thay Render** (Render tạm dừng / hết giờ miễn phí): nhấp đúp `Chay-local.cmd` ở thư mục gốc, hoặc `npm run local --prefix standalone`.
+Dùng đúng CSDL Supabase, đăng nhập và tự tải lịch như trên Render (cùng `standalone/.env`); tự cài thư viện nếu thiếu, build lại giao diện
+khi mã nguồn mới hơn bản build (`-- --build` để ép build), chạy với `NODE_ENV=production`, máy chủ dừng bất thường thì tự chạy lại.
+Cổng: `PORT` trong `.env` (mặc định 3000). Đóng cửa sổ là dừng; đừng chạy cùng lúc với bản Render (hai nơi cùng tự tải lịch).
+
+- Điện thoại / máy khác trong mạng LAN: `http://<IP máy>:3000` (in ra khi chạy) — dùng được, nhưng không có thông báo đẩy, không cài lên màn hình chính (trình duyệt chỉ cho phép trên HTTPS).
+- HTTPS qua Tailscale: một lần `tailscale serve --bg 3000` → `https://<tên máy>.<tailnet>.ts.net` (chỉ máy trong tailnet vào được);
+  người ngoài tailnet: `tailscale funnel --bg 3000` (công khai ra Internet). Supabase → *Authentication → URL Configuration*: đặt *Site URL* là địa chỉ này để thư xác nhận đăng ký mở đúng chỗ.
+
 ## Gắn vào ChatLan-cloud, dùng chung dữ liệu với bản độc lập (`server/shared.js`)
 
 ChatLan-cloud gắn module (submodule `modules/dkct`) nhưng không dùng CSDL TiDB của mình: `createSharedDkct({ pool, emailOf,
