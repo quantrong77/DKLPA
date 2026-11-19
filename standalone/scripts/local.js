@@ -79,7 +79,7 @@ function addresses() {
   for (const ip of lan.filter(ip => !ip.startsWith('100.'))) log(`Mạng LAN:    http://${ip}:${PORT}   (không có thông báo đẩy: trình duyệt chỉ cho phép trên HTTPS)`);
   if (tailnet) {
     log(`Tailscale:   http://${tailnet}:${PORT}`);
-    log(`HTTPS (thông báo đẩy, cài lên điện thoại): chạy một lần "tailscale serve --bg ${PORT}" rồi mở https://${tailnet}`);
+    log(`HTTPS (thông báo đẩy, cài lên điện thoại): https://${tailnet} — nếu chưa mở được, chạy một lần "tailscale funnel --bg ${PORT}" (mở cho cả internet; "tailscale serve" chỉ trong mạng Tailscale và sẽ tắt truy cập từ internet)`);
   }
   console.log('');
 }
